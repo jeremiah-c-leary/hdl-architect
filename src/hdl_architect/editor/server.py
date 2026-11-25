@@ -203,6 +203,18 @@ class Store:
                 m, b["def"], b["old"], b["new"]
             ),
             "delete_port": lambda m, b: core_ops.delete_port(m, b["def"], b["port"]),
+            "add_part": lambda m, b: core_ops.add_part(
+                m, b["sheet"], b["name"], b.get("kind"), b.get("def")
+            ),
+            "rename_part": lambda m, b: core_ops.rename_part(
+                m, b["sheet"], b["old"], b["new"]
+            ),
+            "delete_part": lambda m, b: core_ops.delete_part(m, b["sheet"], b["name"]),
+            "rename_def": lambda m, b: core_ops.rename_def(m, b["old"], b["new"]),
+            "set_part_def": lambda m, b: core_ops.set_part_def(
+                m, b["sheet"], b["part"], b["def"]
+            ),
+            "set_kind": lambda m, b: core_ops.set_kind(m, b["def"], b["kind"]),
             "set_interface": lambda m, b: core_ops.set_interface(
                 m,
                 [(x["def"], x["port"]) for x in b["ports"]],

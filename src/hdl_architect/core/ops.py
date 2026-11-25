@@ -53,12 +53,16 @@ class Model:
 
     def __init__(self, docs: dict[str, dict]):
         self.docs = docs
-        self.part_defs: dict[str, tuple[str, dict, dict]] = (
-            {}
-        )  # name -> (file, package, def)
+        self.reindex()
+
+    def reindex(self) -> None:
+        """Rebuild the index (after an operation renamed or added definitions)."""
+        # name -> (file, package, def)
+        self.part_defs: dict[str, tuple[str, dict, dict]] = {}
         self.port_defs: dict[str, tuple[str, dict, dict]] = {}
-        self.package_name: dict[int, str] = {}  # id(package dict) -> qualified name
-        for fid, doc in docs.items():
+        # id(package dict) -> qualified name
+        self.package_name: dict[int, str] = {}
+        for fid, doc in self.docs.items():
             if isinstance(doc.get("package"), dict):
                 self._index(fid, doc["package"], "")
 
@@ -89,6 +93,16 @@ class Model:
             if short(d.get("conjugateOf")) == t:
                 return name
         return t
+
+    def ensure_part_import(self, pkg: dict, def_name: str) -> None:
+        """Make part def `def_name` visible in package `pkg` (add `Pkg::*`)."""
+        entry = self.part_defs.get(short(def_name))
+        if entry is None or entry[1] is pkg:
+            return
+        owner = self.package_name[id(entry[1])]
+        names = {i["name"] for i in pkg.get("imports", [])}
+        if f"{owner}::*" not in names and f"{owner}::{short(def_name)}" not in names:
+            pkg.setdefault("imports", []).append({"name": f"{owner}::*"})
 
     def ensure_import(self, pkg: dict, type_name: str) -> None:
         """Make port def `type_name` visible in package `pkg` (add `Pkg::*`)."""
@@ -424,3 +438,257 @@ def connect_new(model: Model, sheet_name: str, a, b) -> Result:
         refs.append(f"{part}.{data[key]}" if part else data[key])
     res = connect(model, sheet_name, refs[0], refs[1])
     return Result(changed | set(res.changed), res.notes, data)
+
+
+# ---------------------------------------------------------------- parts and definitions
+# The kinds of part def (PartKinds): a def says its kind by specializing one.
+KINDS = {
+    "SystemPart",
+    "FpgaPart",
+    "Fpga",
+    "HwPart",
+    "Subsystem",
+    "Container",
+    "Rtl",
+    "VendorIp",
+    "HardMacro",
+    "RegisterFile",
+    "FpgaComponent",
+}
+_DEF_COLLS = (
+    "attributeDefs",
+    "itemDefs",
+    "metadataDefs",
+    "portDefs",
+    "partDefs",
+    "actionDefs",
+)
+_USAGE_LISTS = (
+    "parts",
+    "ports",
+    "attributes",
+    "items",
+    "parameters",
+    "performs",
+    "actions",
+)
+
+
+def pascal(name: str) -> str:
+    """`temp_if` -> `TempIf` (as HA 2 names a new component's definition)."""
+    return "".join(w[0].upper() + w[1:] for w in re.split(r"[_\W]+", name) if w)
+
+
+def _all_defs(model: Model):
+    """(file, package, collection, def) for every definition of every kind."""
+
+    def walk(fid, pkg):
+        for coll in _DEF_COLLS:
+            for d in pkg.get(coll, []):
+                yield fid, pkg, coll, d
+        for sub in pkg.get("packages", []):
+            yield from walk(fid, sub)
+
+    for fid, doc in model.docs.items():
+        if isinstance(doc.get("package"), dict):
+            yield from walk(fid, doc["package"])
+
+
+def _def_names(model: Model) -> set[str]:
+    return {d["name"] for _, _, _, d in _all_defs(model)}
+
+
+def _part(sheet: dict, name: str) -> dict:
+    part = next((p for p in sheet.get("parts", []) if p["name"] == name), None)
+    if part is None:
+        raise OpError("not_found", f"{sheet['name']} has no part {name}")
+    return part
+
+
+def _check_part_name(sheet: dict, name: str) -> None:
+    if not isinstance(name, str) or not NAME_RE.match(name):
+        raise OpError("bad_name", f'"{name}" is not a legal name.')
+    if any(p["name"] == name for p in sheet.get("parts", [])):
+        raise OpError("exists", f"{sheet['name']} already has a part called {name}.")
+
+
+def _rename_ref(text: str, old: str, new: str) -> str:
+    """A reference `old` or `old.x...` on a sheet, renamed."""
+    return (
+        new
+        if text == old
+        else new + text[len(old) :] if text.startswith(old + ".") else text
+    )
+
+
+def add_part(
+    model: Model,
+    sheet_name: str,
+    name: str,
+    kind: str | None = None,
+    def_name: str | None = None,
+) -> Result:
+    """Add a part to a sheet: of an existing part def (`def_name`), or of a new
+    part def of `kind` (named after the part in PascalCase, made unique), in
+    the sheet's package. Result.data["type"] is the part's def."""
+    file, pkg, sheet = model.part_def(sheet_name)
+    _check_part_name(sheet, name)
+    if (kind is None) == (def_name is None):
+        raise OpError("bad_request", "give either a kind or a part def")
+    if def_name is not None:
+        model.part_def(def_name)
+        type_ = short(def_name)
+    else:
+        if short(kind) not in KINDS or short(kind) not in model.part_defs:
+            raise OpError("not_found", f"no kind {kind}")
+        taken, base = _def_names(model), pascal(name) or "Part"
+        type_, i = base, 2
+        while type_ in taken:
+            type_, i = f"{base}{i}", i + 1
+        pkg.setdefault("partDefs", []).append(
+            {"name": type_, "specializes": [short(kind)]}
+        )
+        model.part_defs[type_] = (file, pkg, pkg["partDefs"][-1])
+        model.ensure_part_import(pkg, kind)
+    model.ensure_part_import(pkg, type_)
+    sheet.setdefault("parts", []).append({"name": name, "type": type_})
+    return Result({file}, data={"type": type_})
+
+
+def rename_part(model: Model, sheet_name: str, old: str, new: str) -> Result:
+    """Rename a part and every reference to it on its sheet: wires (`old.port`)
+    and allocations."""
+    file, _, sheet = model.part_def(sheet_name)
+    part = _part(sheet, old)
+    if new == old:
+        return Result([])
+    _check_part_name(sheet, new)
+    part["name"] = new
+    for wires in _wire_lists(sheet):
+        for w in wires:
+            w["ends"] = [_rename_ref(e, old, new) for e in w["ends"]]
+    for a in sheet.get("allocations", []):
+        a["from"], a["to"] = _rename_ref(a["from"], old, new), _rename_ref(
+            a["to"], old, new
+        )
+    return Result({file})
+
+
+def delete_part(model: Model, sheet_name: str, name: str) -> Result:
+    """Delete a part and every wire and allocation on its sheet that refers to it."""
+    file, _, sheet = model.part_def(sheet_name)
+    sheet["parts"].remove(_part(sheet, name))
+    hit = lambda e: e == name or e.startswith(name + ".")  # noqa: E731
+    removed = 0
+    for k in ("connections", "bindings"):
+        if k in sheet:
+            keep = [w for w in sheet[k] if not any(hit(e) for e in w["ends"])]
+            removed += len(sheet[k]) - len(keep)
+            sheet[k] = keep
+    if "allocations" in sheet:
+        sheet["allocations"] = [
+            a for a in sheet["allocations"] if not (hit(a["from"]) or hit(a["to"]))
+        ]
+    for k in ("connections", "bindings", "allocations", "parts"):
+        if k in sheet and not sheet[k]:
+            del sheet[k]
+    notes = [f"Removed {removed} wire(s) to {name}."] if removed else []
+    return Result({file}, notes)
+
+
+def rename_def(model: Model, old: str, new: str) -> Result:
+    """Rename a definition (of any kind) and every reference to it in the model:
+    specializations, the types of every usage (parts, ports, attributes, items,
+    parameters, performs, actions, metadata), conjugateOf, and imports that
+    name it."""
+    entry = next(
+        ((f, p, c, d) for f, p, c, d in _all_defs(model) if d["name"] == old), None
+    )
+    if entry is None:
+        raise OpError("not_found", f"no definition {old}")
+    if new == old:
+        return Result([])
+    if not isinstance(new, str) or not NAME_RE.match(new):
+        raise OpError("bad_name", f'"{new}" is not a legal name.')
+    if new in _def_names(model):
+        raise OpError("exists", f"{new} already exists.")
+
+    def ref(name):  # `Old` or `Pkg::Old` -> renamed; anything else unchanged
+        if isinstance(name, str) and short(name) == old:
+            return name[: len(name) - len(old)] + new
+        return name
+
+    changed = set()
+    for fid, pkg, coll, d in _all_defs(model):
+        before = repr(d)
+        if d is entry[3]:
+            d["name"] = new
+        if "specializes" in d:
+            d["specializes"] = [ref(x) for x in d["specializes"]]
+        if "conjugateOf" in d:
+            d["conjugateOf"] = ref(d["conjugateOf"])
+        for lst in _USAGE_LISTS:
+            for u in d.get(lst, []):
+                if "type" in u:
+                    u["type"] = ref(u["type"])
+        for m in d.get("metadata", []):
+            m["type"] = ref(m["type"])
+        if repr(d) != before:
+            changed.add(fid)
+    for fid, doc in model.docs.items():
+
+        def walk(pkg):
+            hit = False
+            for i in pkg.get("imports", []):
+                if i["name"].endswith("::" + old):
+                    i["name"] = i["name"][: -len(old)] + new
+                    hit = True
+            for sub in pkg.get("packages", []):
+                hit = walk(sub) or hit
+            return hit
+
+        if isinstance(doc.get("package"), dict) and walk(doc["package"]):
+            changed.add(fid)
+    model.reindex()
+    return Result(changed)
+
+
+def set_part_def(
+    model: Model, sheet_name: str, part_name: str, def_name: str
+) -> Result:
+    """Change which part def a part is. Wires to ports the new def does not
+    have are removed (they would point at nothing), with a note."""
+    file, pkg, sheet = model.part_def(sheet_name)
+    part = _part(sheet, part_name)
+    _, _, new_def = model.part_def(def_name)
+    part["type"] = short(def_name)
+    model.ensure_part_import(pkg, def_name)
+    have = {ident(u) for u in new_def.get("ports", [])}
+    dead = (
+        lambda e: e.startswith(part_name + ".") and e.split(".")[1] not in have
+    )  # noqa: E731
+    removed = 0
+    for k in ("connections", "bindings"):
+        if k in sheet:
+            keep = [w for w in sheet[k] if not any(dead(e) for e in w["ends"])]
+            removed += len(sheet[k]) - len(keep)
+            sheet[k] = keep
+            if not keep:
+                del sheet[k]
+    notes = (
+        [f"Removed {removed} wire(s) to ports {short(def_name)} does not have."]
+        if removed
+        else []
+    )
+    return Result({file}, notes)
+
+
+def set_kind(model: Model, def_name: str, kind: str) -> Result:
+    """Make a part def of another kind: its kind specialization is replaced."""
+    file, pkg, d = model.part_def(def_name)
+    if short(kind) not in KINDS or short(kind) not in model.part_defs:
+        raise OpError("not_found", f"no kind {kind}")
+    rest = [x for x in d.get("specializes", []) if short(x) not in KINDS]
+    d["specializes"] = [short(kind), *rest]
+    model.ensure_part_import(pkg, kind)
+    return Result({file})

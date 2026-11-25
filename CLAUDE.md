@@ -30,8 +30,10 @@ frozen in `~/projects/sysmlpy_spike`).
   deleting ports (`add_port`, `rename_port`, `delete_port`), the "new port +
   wire" gestures (`connect_new`); each but `connect_new` is also an `ha`
   command (`ha connect`, `ha set-interface`, `ha add-port`, ...). No browser
-  code adds a port or wire to the model itself any more. Known debt: parts,
-  definitions, kinds and the global nets are still edited in `edits.js`/`nets.js`, and `nets`, `edits` and
+  code adds a port or wire to the model itself any more. Parts and
+  definitions too: `add_part`, `rename_part`, `delete_part`, `rename_def`,
+  `set_part_def`, `set_kind` (each an `ha` command). Known debt: the global
+  nets (clocks, resets, SYSREF) are still edited in `nets.js`, and `nets`, `edits` and
   `store` import `render`/`menus` (the core depends on the UI); moving each
   operation to `core/ops.py` fixes it, one at a time, each with Python tests.
 - `src/hdl_architect/generators/`: one module per generator, each with

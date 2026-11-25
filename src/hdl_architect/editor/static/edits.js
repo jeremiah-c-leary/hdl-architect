@@ -1,15 +1,13 @@
 // HA 2: Editing operations on the model and its layout.
-import { COLLS, G, S } from "./state.js";
-import { askName, hint, pascal, snake } from "./util.js";
+import { G, S } from "./state.js";
+import { askName, hint, snake } from "./util.js";
 import {
   endStr,
-  ensureImport,
   partDef,
   partType,
   partsOf,
   pkgOf,
   portsOfDef,
-  short,
 } from "./model.js";
 import { drawnWires } from "./nets.js";
 import { hasPortLayout, layoutOf, portLayout, sheetLayout } from "./layout.js";
@@ -22,12 +20,6 @@ export function uniquePortName(P, base) {
   let n = base,
     i = 2;
   while (names.has(n)) n = `${base}_${i++}`;
-  return n;
-}
-export function uniqueDefName(base) {
-  let n = base,
-    i = 2;
-  while (S.defs[n]) n = `${base}${i++}`;
   return n;
 }
 export function uniquePartName(D, base) {
@@ -219,7 +211,6 @@ export async function connectPorts(a, b) {
     );
 }
 export function addComponent(D, col, y, kindOrDef, isDef) {
-  const pkg = pkgOf(D);
   const suggestion = isDef
     ? uniquePartName(D, snake(kindOrDef))
     : uniquePartName(D, kindOrDef === "HwPart" ? "hw" : snake(kindOrDef));
@@ -232,33 +223,27 @@ export function addComponent(D, col, y, kindOrDef, isDef) {
     alert(`${D} already has a part called ${name}.`);
     return;
   }
-  mutate(() => {
-    let type = kindOrDef;
-    if (!isDef) {
-      type = uniqueDefName(pascal(name));
-      (pkg.model.package.partDefs = pkg.model.package.partDefs || []).push({
-        name: type,
-        specializes: [kindOrDef],
-      });
-      ensureImport(pkg, kindOrDef);
-    } else ensureImport(pkg, type);
-    const d = partDef(D);
-    (d.parts = d.parts || []).push({ name, type });
-    sheetLayout(D).parts[name] = { col, y: Math.max(G.TOP + 10, y), h: G.MINH };
-  });
+  // core.ops.add_part: a new part def of the kind (named after the part), or
+  // an instance of an existing def; the browser places it in the column
+  return applyOp(
+    "add_part",
+    isDef
+      ? { sheet: D, name, def: kindOrDef }
+      : { sheet: D, name, kind: kindOrDef },
+    () => {
+      sheetLayout(D).parts[name] = {
+        col,
+        y: Math.max(G.TOP + 10, y),
+        h: G.MINH,
+      };
+    },
+  );
 }
+// Parts and definitions are model operations (core.ops: rename_part,
+// delete_part, rename_def, set_part_def, set_kind): the references follow.
+// The browser moves or removes their layout entries.
 export function renamePart(D, old, nu) {
-  mutate(() => {
-    const d = partDef(D);
-    d.parts.find((p) => p.name === old).name = nu;
-    const fix = (s) =>
-      s === old ? nu : s.startsWith(old + ".") ? nu + s.slice(old.length) : s;
-    for (const c of [...(d.connections || []), ...(d.bindings || [])])
-      c.ends = c.ends.map(fix);
-    for (const a of d.allocations || []) {
-      a.from = fix(a.from);
-      a.to = fix(a.to);
-    }
+  return applyOp("rename_part", { sheet: D, old, new: nu }, () => {
     const sl = sheetLayout(D);
     sl.parts[nu] = sl.parts[old];
     delete sl.parts[old];
@@ -282,21 +267,8 @@ export function renamePort(P, old, nu) {
   });
 }
 export function renameDef(old, nu) {
-  mutate(() => {
-    const pkg = pkgOf(old);
-    S.defs[old].def.name = nu;
-    for (const p of S.pkgs)
-      for (const coll of COLLS)
-        for (const d of p.model.package[coll] || []) {
-          if (d.specializes)
-            d.specializes = d.specializes.map((s) =>
-              short(s) === old ? nu : s,
-            );
-          for (const u of [...(d.parts || []), ...(d.ports || [])])
-            if (u.type && short(u.type) === old) u.type = nu;
-          if (d.conjugateOf === old) d.conjugateOf = nu;
-        }
-    const L = layoutOf(pkg);
+  const L = layoutOf(pkgOf(old));
+  return applyOp("rename_def", { old, new: nu }, () => {
     if (L.sheets[old]) {
       L.sheets[nu] = L.sheets[old];
       delete L.sheets[old];
@@ -310,20 +282,16 @@ export function renameDef(old, nu) {
   });
 }
 export function deletePart(D, name) {
-  mutate(() => {
-    const d = partDef(D);
-    d.parts = d.parts.filter((p) => p.name !== name);
-    const hit = (s) => s === name || s.startsWith(name + ".");
-    d.connections = (d.connections || []).filter((c) => !c.ends.some(hit));
-    d.bindings = (d.bindings || []).filter((c) => !c.ends.some(hit));
-    d.allocations = (d.allocations || []).filter(
-      (a) => !hit(a.to) && !hit(a.from),
-    );
-    for (const k of ["connections", "bindings", "allocations", "parts"])
-      if (d[k] && !d[k].length) delete d[k];
+  return applyOp("delete_part", { sheet: D, name }, () => {
     delete sheetLayout(D).parts[name];
     if (S.sel && S.sel.name === name) S.sel = null;
   });
+}
+export function setPartDef(D, part, def) {
+  return applyOp("set_part_def", { sheet: D, part, def });
+}
+export function setKind(P, kind) {
+  return applyOp("set_kind", { def: P, kind });
 }
 export function deletePort(P, name) {
   return applyOp("delete_port", { def: P, port: name }, () => {

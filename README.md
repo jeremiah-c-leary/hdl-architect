@@ -36,6 +36,7 @@ commands, activate it:
     ha connect adc_if.cfg Control.adc_cfg         # wire two ports (from a design folder)
     ha set-interface Uart.irq --type BitIn        # set a port's interface
     ha rename-port AdcInterface.ref_clk jesd_clk  # its wires and clock pairings follow
+    ha rename-def Uart UartStatus                 # every use in the model follows
 
 Each design keeps its command settings in an `ha.toml` (model paths, top,
 workspace, templates); command-line options override it.

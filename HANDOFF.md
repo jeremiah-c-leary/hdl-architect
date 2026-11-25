@@ -158,7 +158,9 @@ as friction shows.
 - [ ] Operations API in Python shared by HA 2, CLI and MCP [D4]. Started:
       `core/ops.py` with `connect`, `set_interface`, `add_port`,
       `rename_port`, `delete_port`, `connect_new` (HA 2 via `POST /api/op`;
-      `ha` commands). Next: parts and definitions, then the global nets.
+      `ha` commands); parts and definitions (`add_part`, `rename_part`,
+      `delete_part`, `rename_def`, `set_part_def`, `set_kind`). Next: the
+      global nets (clocks, resets, SYSREF).
       Next: the other edits in `edits.js` and `nets.js`, one per PR.
 - [ ] Address map, windows, checks; CSR bus as a global net [D5].
 - [ ] Files view (scaffold status per block); protocol editor; new package.
