@@ -13,6 +13,7 @@ this server is an editor for them, like SysON is for its model. It:
 It listens on 127.0.0.1 only and writes only the files it loaded (and their
 sidecars).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,7 +26,7 @@ from pathlib import Path
 
 from hdl_architect.core import model as core_model
 
-ROOT = Path.cwd()                  # file ids are shown relative to where the server was started
+ROOT = Path.cwd()  # file ids are shown relative to where the server was started
 STATIC = Path(__file__).resolve().parent / "static"
 
 SCHEMA = json.loads(core_model.JSON_SCHEMA.read_text(encoding="utf-8"))
@@ -47,14 +48,18 @@ def canonical(obj, def_name: str):
     if not isinstance(obj, dict):
         return obj
     props = DEFS.get(def_name, {}).get("properties")
-    if not props:                       # a map (values, redefines): keep the user's order
+    if not props:  # a map (values, redefines): keep the user's order
         return obj
     out = {}
     for k, s in props.items():
         if k in obj:
             t = _target(s)
-            out[k] = canonical(obj[k], t) if t in DEFS and DEFS[t].get("properties") else obj[k]
-    for k in obj:                       # anything the schema does not know (rejected by validation)
+            out[k] = (
+                canonical(obj[k], t)
+                if t in DEFS and DEFS[t].get("properties")
+                else obj[k]
+            )
+    for k in obj:  # anything the schema does not know (rejected by validation)
         if k not in out:
             out[k] = obj[k]
     return out
@@ -67,15 +72,27 @@ def keep_floats(new, old):
         return {k: keep_floats(v, old.get(k)) for k, v in new.items()}
     if isinstance(new, list) and isinstance(old, list):
         by_name = {o.get("name"): o for o in old if isinstance(o, dict) and "name" in o}
-        return [keep_floats(n, by_name.get(n.get("name")) if isinstance(n, dict) and "name" in n
-                            else (old[i] if i < len(old) else None)) for i, n in enumerate(new)]
+        return [
+            keep_floats(
+                n,
+                (
+                    by_name.get(n.get("name"))
+                    if isinstance(n, dict) and "name" in n
+                    else (old[i] if i < len(old) else None)
+                ),
+            )
+            for i, n in enumerate(new)
+        ]
     if isinstance(new, int) and not isinstance(new, bool) and isinstance(old, float):
-        return float(new)          # it was a Real: it stays one, changed or not
+        return float(new)  # it was a Real: it stays one, changed or not
     return new
 
 
 def dump_model(doc: dict) -> str:
-    doc = {"schemaVersion": doc.get("schemaVersion"), "package": canonical(doc.get("package"), "Package")}
+    doc = {
+        "schemaVersion": doc.get("schemaVersion"),
+        "package": canonical(doc.get("package"), "Package"),
+    }
     return json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -94,6 +111,7 @@ def _port_usages(doc: dict):
             yield from d.get("ports", [])
         for sub in pkg.get("packages", []):
             yield from walk(sub)
+
     if isinstance(doc, dict) and isinstance(doc.get("package"), dict):
         yield from walk(doc["package"])
 
@@ -117,9 +135,10 @@ def to_file(doc: dict) -> dict:
 class Store:
     def __init__(self, paths: list[Path]):
         import jsonschema
+
         self.paths = paths
         self.validator = jsonschema.Draft202012Validator(SCHEMA)
-        self.files: dict[str, Path] = {}          # id (path relative to ROOT) -> file
+        self.files: dict[str, Path] = {}  # id (path relative to ROOT) -> file
 
     def scan(self) -> list[dict]:
         out = []
@@ -134,17 +153,35 @@ class Store:
                     continue
                 if not isinstance(doc, dict) or "schemaVersion" not in doc:
                     continue
-                fid = str(f.resolve().relative_to(ROOT)) if f.resolve().is_relative_to(ROOT) else str(f.resolve())
+                fid = (
+                    str(f.resolve().relative_to(ROOT))
+                    if f.resolve().is_relative_to(ROOT)
+                    else str(f.resolve())
+                )
                 self.files[fid] = f
                 lf = layout_file(f)
-                layout = json.loads(lf.read_text(encoding="utf-8")) if lf.is_file() else None
-                out.append({"file": fid, "model": to_editor(doc), "layout": layout,
-                            "version": version(f), "layoutVersion": version(lf)})
+                layout = (
+                    json.loads(lf.read_text(encoding="utf-8")) if lf.is_file() else None
+                )
+                out.append(
+                    {
+                        "file": fid,
+                        "model": to_editor(doc),
+                        "layout": layout,
+                        "version": version(f),
+                        "layoutVersion": version(lf),
+                    }
+                )
         return out
 
     def errors(self, doc) -> list[str]:
-        return [f"{'/'.join(map(str, e.absolute_path)) or '(root)'}: {e.message}"
-                for e in sorted(self.validator.iter_errors(doc), key=lambda e: list(map(str, e.absolute_path)))]
+        return [
+            f"{'/'.join(map(str, e.absolute_path)) or '(root)'}: {e.message}"
+            for e in sorted(
+                self.validator.iter_errors(doc),
+                key=lambda e: list(map(str, e.absolute_path)),
+            )
+        ]
 
     def save_model(self, fid: str, doc: dict, base) -> tuple[list[str], str | None]:
         f = self.files.get(fid)
@@ -185,7 +222,11 @@ class Store:
         try:
             core_model.check_model(self.paths)
         except core_model.ModelError as e:
-            return [l.strip() for l in str(e).splitlines() if l.strip() and not l.strip().endswith(":")] or [str(e)]
+            return [
+                l.strip()
+                for l in str(e).splitlines()
+                if l.strip() and not l.strip().endswith(":")
+            ] or [str(e)]
         return []
 
 
@@ -210,7 +251,7 @@ def layout_file(f: Path) -> Path:
 class Handler(BaseHTTPRequestHandler):
     store: Store
 
-    def log_message(self, fmt, *args):          # quiet
+    def log_message(self, fmt, *args):  # quiet
         pass
 
     def _send(self, code: int, body: bytes, ctype: str):
@@ -232,11 +273,19 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/check":
             with LOCK:
                 return self._json({"errors": self.store.check()})
-        name = "index.html" if path in ("/", "/index.html") else path.removeprefix("/static/")
+        name = (
+            "index.html"
+            if path in ("/", "/index.html")
+            else path.removeprefix("/static/")
+        )
         f = (STATIC / name).resolve()
         if STATIC.resolve() not in f.parents or not f.is_file():
             return self._send(404, b"not found", "text/plain")
-        ctype = {".html": "text/html", ".js": "text/javascript", ".css": "text/css"}.get(f.suffix, "text/plain")
+        ctype = {
+            ".html": "text/html",
+            ".js": "text/javascript",
+            ".css": "text/css",
+        }.get(f.suffix, "text/plain")
         self._send(200, f.read_bytes(), ctype + "; charset=utf-8")
 
     def do_PUT(self):
@@ -247,9 +296,13 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"errors": ["the request is not JSON"]}, 400)
         with LOCK:
             if self.path == "/api/file":
-                errs, ver = self.store.save_model(body.get("file", ""), body.get("model"), body.get("base"))
+                errs, ver = self.store.save_model(
+                    body.get("file", ""), body.get("model"), body.get("base")
+                )
             elif self.path == "/api/layout":
-                errs, ver = self.store.save_layout(body.get("file", ""), body.get("layout") or {}, body.get("base"))
+                errs, ver = self.store.save_layout(
+                    body.get("file", ""), body.get("layout") or {}, body.get("base")
+                )
             else:
                 return self._json({"errors": ["unknown endpoint"]}, 404)
         code = 200 if not errs else 409 if errs == [STALE] else 422
@@ -258,11 +311,19 @@ class Handler(BaseHTTPRequestHandler):
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="ha serve", description=__doc__.splitlines()[0])
-    ap.add_argument("--path", action="append", required=True, metavar="DIR",
-                    help="model search path directory (repeatable)")
+    ap.add_argument(
+        "--path",
+        action="append",
+        required=True,
+        metavar="DIR",
+        help="model search path directory (repeatable)",
+    )
     ap.add_argument("--port", type=int, default=8765)
-    ap.add_argument("--normalize", action="store_true",
-                    help="rewrite every model file in canonical form, then exit (prints what changed)")
+    ap.add_argument(
+        "--normalize",
+        action="store_true",
+        help="rewrite every model file in canonical form, then exit (prints what changed)",
+    )
     args = ap.parse_args(argv)
     paths = [Path(p).resolve() for p in args.path]
     for p in paths:

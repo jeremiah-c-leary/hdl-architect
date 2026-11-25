@@ -16,6 +16,7 @@ carried over from the spike10 trial.
   then regenerates gen/<entity>.vhd and gen/<entity>.core every run.
 - Anything else with no core: reported as missing.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,7 +34,16 @@ CONTAINERS = {"Subsystem", "FpgaPart", "Fpga"}
 
 
 def copier(template: Path, dst: Path, data: dict) -> None:
-    args = ["copier", "copy", "--quiet", "--defaults", "--vcs-ref", "HEAD", str(template), str(dst)]
+    args = [
+        "copier",
+        "copy",
+        "--quiet",
+        "--defaults",
+        "--vcs-ref",
+        "HEAD",
+        str(template),
+        str(dst),
+    ]
     for k, v in data.items():
         args += ["--data", f"{k}={v}"]
     subprocess.run(args, check=True)
@@ -61,9 +71,15 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         prog="ha scaffold",
         description="Create or update a workspace from the model and team Copier templates. "
-                    "Settings come from ha.toml ([model], [scaffold]); options override it.")
-    ap.add_argument("--config", help="settings file (default: ha.toml here or in a parent directory)")
-    ap.add_argument("--path", action="append", help="model search path directory (repeatable)")
+        "Settings come from ha.toml ([model], [scaffold]); options override it.",
+    )
+    ap.add_argument(
+        "--config",
+        help="settings file (default: ha.toml here or in a parent directory)",
+    )
+    ap.add_argument(
+        "--path", action="append", help="model search path directory (repeatable)"
+    )
     ap.add_argument("--top", help="top-level part def")
     ap.add_argument("--ws", help="workspace directory")
     ap.add_argument("--templates", help="Copier templates directory")
@@ -80,9 +96,16 @@ def main(argv=None) -> int:
     ws_dir = args.ws or sc.get("workspace")
     tpl_dir = args.templates or sc.get("templates")
     project = args.project or sc.get("project")
-    missing = [n for n, v in (("[model] paths / --path", paths), ("[model] top / --top", top_name),
-                              ("[scaffold] workspace / --ws", ws_dir),
-                              ("[scaffold] templates / --templates", tpl_dir)) if not v]
+    missing = [
+        n
+        for n, v in (
+            ("[model] paths / --path", paths),
+            ("[model] top / --top", top_name),
+            ("[scaffold] workspace / --ws", ws_dir),
+            ("[scaffold] templates / --templates", tpl_dir),
+        )
+        if not v
+    ]
     if missing:
         where = f"in {cfg_file}" if cfg_file else "(no ha.toml found here or above)"
         print(f"error: missing {', '.join(missing)} {where}", file=sys.stderr)
@@ -100,12 +123,17 @@ def main(argv=None) -> int:
         copier(tpl / "project", ws, {"project": project or entity_name(top_name)})
     ans = yaml.safe_load((ws / ".copier-answers.yml").read_text())
     vendor, library = ans["vendor"], ans["library"]
-    place = {"Rtl": ans["rtl_dir"], "Subsystem": ans["subsystem_dir"],
-             "VendorIp": ans["vendor_ip_dir"], "FpgaPart": ans["fpga_dir"], "Fpga": ans["fpga_dir"]}
+    place = {
+        "Rtl": ans["rtl_dir"],
+        "Subsystem": ans["subsystem_dir"],
+        "VendorIp": ans["vendor_ip_dir"],
+        "FpgaPart": ans["fpga_dir"],
+        "Fpga": ans["fpga_dir"],
+    }
 
     cores = find_cores(ws)
     status, problems, seen = [], [], set()
-    for inst in top.walk_post():                       # children first: their libraries are known
+    for inst in top.walk_post():  # children first: their libraries are known
         if inst.definition in seen:
             continue
         seen.add(inst.definition)
@@ -113,9 +141,15 @@ def main(argv=None) -> int:
         key = f"{vendor}:{library}:{ent}"
         lib = f"{ent}_lib"
         if inst.kind in CONTAINERS:
-            folder = cores[key][0].parent.parent if key in cores else ws / place[inst.kind] / ent
+            folder = (
+                cores[key][0].parent.parent
+                if key in cores
+                else ws / place[inst.kind] / ent
+            )
             if not folder.is_dir():
-                copier(tpl / "subsystem", folder, {"name": inst.definition, "entity": ent})
+                copier(
+                    tpl / "subsystem", folder, {"name": inst.definition, "entity": ent}
+                )
                 what = "created (folder from template)"
             else:
                 what = "ok"
@@ -123,39 +157,88 @@ def main(argv=None) -> int:
             for c in inst.children:
                 ckey = f"{vendor}:{library}:{entity_name(c.definition)}"
                 if ckey in cores:
-                    c.metadata["HdlSource"] = {"vhdl_library": logical_name(cores[ckey][1])}
+                    c.metadata["HdlSource"] = {
+                        "vhdl_library": logical_name(cores[ckey][1])
+                    }
             text, probs = structural(inst)
             problems += [f"{inst.definition}: {p}" for p in probs]
             gen = folder / "gen"
             gen.mkdir(exist_ok=True)
             (gen / f"{ent}.vhd").write_text("\n".join(text))
-            deps = sorted({f"{vendor}:{library}:{entity_name(c.definition)}" for c in inst.children})
-            core = {"name": f"{key}:0.1.0",
-                    "description": f"{inst.definition} ({inst.kind}). Generated by the scaffolder every run; do not edit.",
-                    # the top stays in the default library: Edalize's GHDL flow elaborates it there
-                    "filesets": {"rtl": {"files": [f"{ent}.vhd"], "file_type": "vhdlSource-2008",
-                                         **({} if inst is top else {"logical_name": lib}),
-                                         **({"depend": deps} if deps else {})}},
-                    "targets": {"default": {"filesets": ["rtl"], "toplevel": ent}}}
+            deps = sorted(
+                {
+                    f"{vendor}:{library}:{entity_name(c.definition)}"
+                    for c in inst.children
+                }
+            )
+            core = {
+                "name": f"{key}:0.1.0",
+                "description": f"{inst.definition} ({inst.kind}). Generated by the scaffolder every run; do not edit.",
+                # the top stays in the default library: Edalize's GHDL flow elaborates it there
+                "filesets": {
+                    "rtl": {
+                        "files": [f"{ent}.vhd"],
+                        "file_type": "vhdlSource-2008",
+                        **({} if inst is top else {"logical_name": lib}),
+                        **({"depend": deps} if deps else {}),
+                    }
+                },
+                "targets": {"default": {"filesets": ["rtl"], "toplevel": ent}},
+            }
             if inst is top:
-                core["targets"]["sim"] = {"filesets": ["rtl"], "toplevel": ent, "flow": "sim",
-                                          "flow_options": {"tool": "ghdl"}}
-                core["targets"]["synth"] = {"filesets": ["rtl"], "toplevel": ent, "default_tool": "vivado",
-                                            "tools": {"vivado": {"part": ans["fpga_part"]}}}
-            (gen / f"{ent}.core").write_text("CAPI=2:\n" + yaml.safe_dump(core, sort_keys=False))
+                core["targets"]["sim"] = {
+                    "filesets": ["rtl"],
+                    "toplevel": ent,
+                    "flow": "sim",
+                    "flow_options": {"tool": "ghdl"},
+                }
+                core["targets"]["synth"] = {
+                    "filesets": ["rtl"],
+                    "toplevel": ent,
+                    "default_tool": "vivado",
+                    "tools": {"vivado": {"part": ans["fpga_part"]}},
+                }
+            (gen / f"{ent}.core").write_text(
+                "CAPI=2:\n" + yaml.safe_dump(core, sort_keys=False)
+            )
             cores[key] = (gen / f"{ent}.core", core)
-            status.append((inst.definition, inst.kind, folder, what + "; gen/ regenerated"))
+            status.append(
+                (inst.definition, inst.kind, folder, what + "; gen/ regenerated")
+            )
         elif key in cores:
-            status.append((inst.definition, inst.kind, cores[key][0].parent, "ok (core found)"))
+            status.append(
+                (inst.definition, inst.kind, cores[key][0].parent, "ok (core found)")
+            )
         elif inst.kind == "Rtl":
             folder = ws / place["Rtl"] / ent
-            copier(tpl / "rtl-block", folder, {"name": inst.definition, "entity": ent, "vendor": vendor,
-                                               "library": library, "logical_name": lib})
+            copier(
+                tpl / "rtl-block",
+                folder,
+                {
+                    "name": inst.definition,
+                    "entity": ent,
+                    "vendor": vendor,
+                    "library": library,
+                    "logical_name": lib,
+                },
+            )
             (folder / "rtl" / f"{ent}.vhd").write_text("\n".join(skeleton(inst)))
-            cores[key] = (folder / f"{ent}.core", yaml.safe_load((folder / f"{ent}.core").read_text().split("\n", 1)[1]))
-            status.append((inst.definition, inst.kind, folder, "created (template + entity skeleton)"))
+            cores[key] = (
+                folder / f"{ent}.core",
+                yaml.safe_load((folder / f"{ent}.core").read_text().split("\n", 1)[1]),
+            )
+            status.append(
+                (
+                    inst.definition,
+                    inst.kind,
+                    folder,
+                    "created (template + entity skeleton)",
+                )
+            )
         else:
-            status.append((inst.definition, inst.kind, None, f"MISSING: no core named {key}"))
+            status.append(
+                (inst.definition, inst.kind, None, f"MISSING: no core named {key}")
+            )
             problems.append(f"{inst.definition}: no core named {key}")
 
     for d, k, f, s in status:
