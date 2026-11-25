@@ -60,6 +60,17 @@ frozen in `~/projects/sysmlpy_spike`).
 - Hosting: GitHub (`origin`), like the user's other projects. Work happens
   on branches; commit and push only when the user asks.
 
+## Formatting
+
+- Python: Black 26.10.1 (`pip install -e ".[dev]"`; `black src tests`),
+  Black's defaults (88 columns).
+- HA 2's browser code (`editor/static`: JS, CSS, HTML): Prettier 3.10.1
+  (`npm install` once; `npm run format`), Prettier's defaults.
+- Never format files with their own writer: model JSON and layouts (HA 2's
+  canonical form), `tests/golden/`, templates, docs (`.prettierignore`).
+- A formatting-only commit goes in `.git-blame-ignore-revs`. Never mix
+  formatting with other changes in one commit.
+
 ## Verifying a change
 
 - Always: `python -m pytest` (byte-identical FpgaOne, GHDL analysis,
