@@ -414,9 +414,8 @@ function renderClockTree() {
         30,
       ),
     );
-    let i = 0;
     for (const [port] of n.ins)
-      (el(
+      el(
         "text",
         {
           x: p.x + 6,
@@ -425,8 +424,7 @@ function renderClockTree() {
         },
         box,
         trunc(port, 14),
-      ),
-        i++);
+      );
     for (const [port, info] of n.outs) {
       if (n.kind === "input") continue;
       el(
