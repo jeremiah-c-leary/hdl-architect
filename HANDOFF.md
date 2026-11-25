@@ -155,7 +155,9 @@ as friction shows.
 
 **Phase 1: HA 2 for architecture**
 - [ ] Move to parent / into a subsystem (one command instead of ~10 edits).
-- [ ] Operations API in Python shared by HA 2, CLI and MCP [D4].
+- [ ] Operations API in Python shared by HA 2, CLI and MCP [D4]. Started:
+      `core/ops.py` with `connect` (HA 2 via `POST /api/op`, `ha connect`).
+      Next: the other edits in `edits.js` and `nets.js`, one per PR.
 - [ ] Address map, windows, checks; CSR bus as a global net [D5].
 - [ ] Files view (scaffold status per block); protocol editor; new package.
 - [ ] Headless diagram export command for document builds.

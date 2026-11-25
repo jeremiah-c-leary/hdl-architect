@@ -13,14 +13,22 @@ frozen in `~/projects/sysmlpy_spike`).
 
 ## Layout
 
-- `src/hdl_architect/core/`: the schema and `model.py`, the model loader.
+- `src/hdl_architect/core/`: the schema, `model.py` (the model loader),
+  `files.py` (reading model files and writing them in canonical form, for
+  every writer) and `ops.py` (model operations: named, validated edits such as
+  `connect`, shared by HA 2's server and the `ha` commands).
 - `src/hdl_architect/editor/`: HA 2 (`server.py` + `static/`). User guide:
   `docs/ha2.md`. The browser code is ES modules loaded from `static/main.js` (no build
   step): `state`, `util`, `model`, `nets`, `layout`, `store`, `edits`, `menus`,
   `render`, `interaction`, `clocktree`, `export`. `main.js` exposes every
   module's exports as `window.ha2` for the tests and the browser console.
-  Known debt: `nets`, `edits` and `store` import `render`/`menus` (the core
-  depends on the UI); moving the core to Python (the operations API) fixes it.
+  Model rules belong in `core/ops.py`, not in the browser: HA 2 keeps only
+  drawing rules (columns, port sides) and calls an operation through
+  `POST /api/op` (`runOp` in `store.js`), which writes the files and returns
+  them. Done: wiring two ports (`connect`, also `ha connect`). Known debt: the
+  other edits are still in `edits.js`/`nets.js`, and `nets`, `edits` and
+  `store` import `render`/`menus` (the core depends on the UI); moving each
+  operation to `core/ops.py` fixes it, one at a time, each with Python tests.
 - `src/hdl_architect/generators/`: one module per generator, each with
   `main(argv)`, registered under the `hdl_architect.generators` entry point
   in `pyproject.toml` (plugins, the PeakRDL pattern).

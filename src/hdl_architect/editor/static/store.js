@@ -93,6 +93,36 @@ export async function put(url, body) {
   });
   return await r.json();
 }
+/** Run a model operation on the server (core.ops via POST /api/op). */
+export async function runOp(op, args) {
+  const bases = Object.fromEntries(S.pkgs.map((p) => [p.file, p.version]));
+  const r = await fetch("/api/op", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ op, ...args, bases }),
+  });
+  const res = await r.json();
+  if (res.stale) S.stale = true;
+  return res;
+}
+/** Take the files an operation changed: they are now saved as they are. */
+export function takeChanged(changed) {
+  for (const c of changed) {
+    const p = S.pkgs.find((x) => x.file === c.file);
+    p.model = c.model;
+    p.version = c.version;
+    S.saved[p.file] = Object.assign(S.saved[p.file] || {}, {
+      m: JSON.stringify(c.model),
+    });
+  }
+  rebuildIndex();
+}
+/** Save now if an edit is waiting, so the files on disk are the page's. */
+export async function flushSave() {
+  clearTimeout(saveTimer);
+  await saveAll();
+  return !S.stale && !(S.saveProblems || []).length;
+}
 export async function saveAll() {
   setStatus("saving…");
   const problems = [];
