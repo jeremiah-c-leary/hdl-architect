@@ -144,7 +144,8 @@ as friction shows.
 
 **Phase 0: consolidate**
 - [ ] Commit the move on `ha2`, push, merge to `main` (needs the user's OK).
-- [ ] CI on GitHub Actions: `pytest` (with GHDL) on every push [D2-3].
+- [x] CI on GitHub Actions: `scripts/check` on every PR and on main, Python
+      3.11 and 3.14 (2026-11-25) [D2-3]. Also Black, Prettier, flake8, ESLint.
 - [ ] Move `@HdlSource` / `@IpConfig` / `@Provenance` into cores; the
       compile script from cores or an Edalize Questa target [D10].
 - [ ] VHDL generator: `FpgaPart` as a container (the scaffolder already does).
