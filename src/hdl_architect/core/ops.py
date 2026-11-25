@@ -12,6 +12,11 @@ in HA 2.
 
 from __future__ import annotations
 
+import re
+
+# A name that is also a legal VHDL identifier (the schema's Name)
+NAME_RE = re.compile(r"^[A-Za-z](_?[A-Za-z0-9])*$")
+
 # Ports of these types are global nets (clocks, resets, SYSREF), joined by net,
 # not by a drawn wire.
 GLOBAL_DEFS = {"ClockIn", "ClockOut", "ResetIn", "ResetOut", "SysrefIn", "SysrefOut"}
@@ -21,9 +26,10 @@ class Result:
     """What an operation did: the ids of the files it changed (sorted), and
     notes for the person (e.g. what else it did on their behalf)."""
 
-    def __init__(self, changed, notes=()):
+    def __init__(self, changed, notes=(), data=None):
         self.changed = sorted(changed)
         self.notes = list(notes)
+        self.data = data or {}  # values for the caller, e.g. the name given
 
 
 class OpError(Exception):
@@ -264,4 +270,128 @@ def set_interface(
                     notes.append(f"{other.ref} : {'~' if conj else ''}{short(t)}")
     if notes:
         notes = [f"Also typed the other end: {', '.join(notes)}."]
+    return Result(changed, notes)
+
+
+# ---------------------------------------------------------------- ports
+def _port(model: Model, def_name: str, port: str) -> tuple[str, dict, dict, dict]:
+    file, pkg, owner = model.part_def(def_name)
+    usage = next((u for u in owner.get("ports", []) if ident(u) == port), None)
+    if usage is None:
+        raise OpError("not_found", f"{def_name} has no port {port}")
+    return file, pkg, owner, usage
+
+
+def _check_name(owner: dict, name: str) -> None:
+    if not isinstance(name, str) or not NAME_RE.match(name):
+        raise OpError(
+            "bad_name",
+            f'"{name}" is not a legal name: a letter, then letters, digits and single '
+            "underscores (it must also be a legal VHDL name).",
+        )
+    if any(ident(u) == name for u in owner.get("ports", [])):
+        raise OpError("exists", f"{owner['name']} already has a port {name}.")
+
+
+def _sheets_using(model: Model, def_name: str):
+    """(file, sheet def, part name) for every part typed by `def_name`."""
+    for fid, _, d in model.part_defs.values():
+        for part in d.get("parts", []):
+            if short(part.get("type")) == def_name:
+                yield fid, d, part["name"]
+
+
+def _wire_lists(d: dict):
+    return [d[k] for k in ("connections", "bindings") if k in d]
+
+
+def add_port(
+    model: Model, def_name: str, name: str, type_: str | None = None
+) -> Result:
+    """Add a port to a part def; the name gets _2, _3... if taken. The name
+    given is in Result.data["name"]."""
+    file, pkg, owner = model.part_def(def_name)
+    taken = {ident(u) for u in owner.get("ports", [])}
+    n, i = name, 2
+    while n in taken:
+        n, i = f"{name}_{i}", i + 1
+    _check_name({"name": def_name}, n)
+    if type_ is not None and short(type_) not in model.port_defs:
+        raise OpError("not_found", f"no port def {type_}")
+    owner.setdefault("ports", []).append(
+        {"name": n, **({"type": type_} if type_ else {})}
+    )
+    if type_:
+        model.ensure_import(pkg, type_)
+    return Result({file}, data={"name": n})
+
+
+def rename_port(model: Model, def_name: str, old: str, new: str) -> Result:
+    """Rename a port (its identifier: the short name if it has one) and every
+    reference to it: the wires on each sheet that uses the def, the def's own
+    sheet, and the clock pairings (`clock_port`) of its other ports."""
+    file, _, owner, usage = _port(model, def_name, old)
+    if new == old:
+        return Result([])
+    _check_name(owner, new)
+    usage["shortName" if "shortName" in usage else "name"] = new
+    changed = {file}
+    for fid, d, part in _sheets_using(model, def_name):
+        for wires in _wire_lists(d):
+            for w in wires:
+                ends = [
+                    f"{part}.{new}" if e == f"{part}.{old}" else e for e in w["ends"]
+                ]
+                if ends != w["ends"]:
+                    w["ends"] = ends
+                    changed.add(fid)
+    for wires in _wire_lists(owner):  # its own sheet: the sheet port
+        for w in wires:
+            w["ends"] = [
+                (
+                    new
+                    if e == old
+                    else new + e[len(old) :] if e.startswith(old + ".") else e
+                )
+                for e in w["ends"]
+            ]
+    for u in owner.get("ports", []):
+        if (u.get("redefines") or {}).get("clock_port") == old:
+            u["redefines"]["clock_port"] = new
+    return Result(changed)
+
+
+def delete_port(model: Model, def_name: str, port: str) -> Result:
+    """Delete a port, every wire to it (on each sheet that uses the def and on
+    its own sheet), and any clock pairing that names it."""
+    file, _, owner, usage = _port(model, def_name, port)
+    owner["ports"].remove(usage)
+    if not owner["ports"]:
+        del owner["ports"]
+    changed, removed, notes = {file}, 0, []
+    places = [
+        (fid, d, {f"{part}.{port}"}) for fid, d, part in _sheets_using(model, def_name)
+    ]
+    places.append((file, owner, {port}))
+    for fid, d, refs in places:
+        for k in ("connections", "bindings"):
+            if k not in d:
+                continue
+            keep = [w for w in d[k] if not refs & set(w["ends"])]
+            if len(keep) != len(d[k]):
+                removed += len(d[k]) - len(keep)
+                changed.add(fid)
+                if keep:
+                    d[k] = keep
+                else:
+                    del d[k]
+    for u in owner.get("ports", []):
+        r = u.get("redefines") or {}
+        if r.get("clock_port") == port:
+            del r["clock_port"]
+            if not r:
+                del u["redefines"]
+            notes.append(f"{ident(u)} is no longer paired with a clock.")
+    if removed:
+        notes.insert(0, f"Removed {removed} wire(s) to {def_name}.{port}.")
     return Result(changed, notes)

@@ -271,3 +271,90 @@ def test_ha_set_interface(wifi, capsys):
     assert "refused (not_found)" in capsys.readouterr().err
     _, m2 = load(wifi)
     assert port_of(m2, "Uart", "p1")["type"] == "BitIn"
+
+
+# ---------------------------------------------------------------- ports
+SUBS = "wifi_packet_router_subsystems.json"
+
+
+def wires(m, d=TOP):
+    s = m.part_def(d)[2]
+    return [w["ends"] for w in s.get("connections", []) + s.get("bindings", [])]
+
+
+def test_add_port_gives_a_unique_name_and_imports_its_type(wifi):
+    docs, m = load(wifi)
+    r = ops.add_port(m, "Uart", "irq", "BitIn")
+    assert r.data == {"name": "irq"} and r.changed == [str(wifi / SUBS)]
+    assert ops.add_port(m, "Uart", "irq").data == {"name": "irq_2"}
+    assert port_of(m, "Uart", "irq")["type"] == "BitIn"
+    with pytest.raises(ops.OpError) as e:
+        ops.add_port(m, "Uart", "2bad")
+    assert e.value.code == "bad_name"
+
+
+def test_rename_port_updates_wires_and_clock_pairings(wifi):
+    docs, m = load(wifi)
+    r = ops.rename_port(m, "AdcInterface", "ref_clk", "jesd_clk")
+    assert port_of(m, "AdcInterface", "jesd_clk")["type"] == "ClockIn"
+    assert ["jesd_refclk", "adc_if.jesd_clk"] in wires(m)  # the wire on the top sheet
+    assert port_of(m, "AdcInterface", "sysref")["redefines"]["clock_port"] == "jesd_clk"
+    assert sorted(r.changed) == sorted([str(wifi / FPGA), str(wifi / SUBS)])
+
+
+def test_rename_a_sheet_port_updates_its_own_sheet(wifi):
+    docs, m = load(wifi)
+    ops.rename_port(m, TOP, "sys_clock", "board_clock")
+    assert ["board_clock", "adc_if.clk"] in wires(m)
+    assert not any("sys_clock" in e for w in wires(m) for e in w)
+
+
+def test_rename_port_keeps_the_readable_name(wifi):
+    docs, m = load(wifi)
+    p = add_port(m, "Uart", "x", "BitIn")
+    p.update({"name": "Spare IRQ", "shortName": "x"})
+    ops.rename_port(m, "Uart", "x", "irq_spare")
+    assert (p["name"], p["shortName"]) == ("Spare IRQ", "irq_spare")
+
+
+def test_rename_port_refusals(wifi):
+    docs, m = load(wifi)
+    for new, code in (("rst", "exists"), ("has space", "bad_name"), ("_x", "bad_name")):
+        with pytest.raises(ops.OpError) as e:
+            ops.rename_port(m, "AdcInterface", "ref_clk", new)
+        assert e.value.code == code
+    with pytest.raises(ops.OpError) as e:
+        ops.rename_port(m, "AdcInterface", "nope", "x")
+    assert e.value.code == "not_found"
+
+
+def test_delete_port_removes_its_wires_and_pairings(wifi):
+    docs, m = load(wifi)
+    n = len(wires(m))
+    r = ops.delete_port(m, "AdcInterface", "ref_clk")
+    assert len(wires(m)) == n - 1
+    assert not any("adc_if.ref_clk" in w for w in wires(m))
+    assert "clock_port" not in (
+        port_of(m, "AdcInterface", "sysref").get("redefines") or {}
+    )
+    assert r.notes == [
+        "Removed 1 wire(s) to AdcInterface.ref_clk.",
+        "sysref is no longer paired with a clock.",
+    ]
+    with pytest.raises(StopIteration):
+        port_of(m, "AdcInterface", "ref_clk")
+
+
+def test_ha_port_commands(wifi, capsys):
+    path = ["--path", str(wifi)]
+    assert ha(["add-port", "Uart.spare", "--type", "BitIn", *path]) == 0
+    assert ha(["rename-port", "Uart.spare", "spare_irq", *path]) == 0
+    assert ha(["rename-port", "Uart.nope", "x", *path]) == 1
+    assert ha(["delete-port", "Uart.spare_irq", *path]) == 0
+    assert "refused (not_found)" in capsys.readouterr().err
+    _, m = load(wifi)
+    assert not any(
+        ops.ident(u).startswith("spare") for u in m.part_def("Uart")[2]["ports"]
+    )
+    assert ha(["serve", "--path", str(wifi), "--normalize"]) == 0
+    assert "0 changed" in capsys.readouterr().out

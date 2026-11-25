@@ -16,7 +16,6 @@ import { sheetLayout } from "./layout.js";
 import { mutate } from "./store.js";
 import {
   addComponent,
-  addPort,
   deletePart,
   deletePort,
   flipComponent,
@@ -24,6 +23,7 @@ import {
   insertColumn,
   isPicked,
   moveColumn,
+  newPort,
   removeColumn,
   renameDef,
   renamePart,
@@ -229,7 +229,7 @@ export function compMenu(ev, D, name) {
           alert(`${P} already has a port ${n}.`);
           return;
         }
-        mutate(() => addPort(P, n, undefined, "left"));
+        newPort(P, n, "left");
       },
     },
     { sep: true },
