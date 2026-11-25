@@ -157,8 +157,8 @@ as friction shows.
 - [ ] Move to parent / into a subsystem (one command instead of ~10 edits).
 - [ ] Operations API in Python shared by HA 2, CLI and MCP [D4]. Started:
       `core/ops.py` with `connect`, `set_interface`, `add_port`,
-      `rename_port`, `delete_port` (HA 2 via `POST /api/op`; each an `ha`
-      command).
+      `rename_port`, `delete_port`, `connect_new` (HA 2 via `POST /api/op`;
+      `ha` commands). Next: parts and definitions, then the global nets.
       Next: the other edits in `edits.js` and `nets.js`, one per PR.
 - [ ] Address map, windows, checks; CSR bus as a global net [D5].
 - [ ] Files view (scaffold status per block); protocol editor; new package.
