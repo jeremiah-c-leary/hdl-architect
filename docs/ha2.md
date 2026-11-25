@@ -149,6 +149,24 @@ server checks the whole model with `fpga_ir.py`'s loader (schema, names,
 imports); its errors appear there too. A save that breaks the schema is
 refused and says why.
 
+## Port names and descriptions
+
+Right-click a port, then **Name…**: a readable name for the interface, e.g.
+"Processing CSR". The generated VHDL heads the port's signals with it
+(`-- Processing CSR : Axi4LiteManager`); the VHDL identifiers stay the port's
+own name (`processing_awaddr`, ...), changed with **Rename (VHDL name)…**.
+This is SysML's name and short name: the file holds `"name": "Processing CSR",
+"shortName": "processing"`, and the SysML text reads
+`port <processing> 'Processing CSR' : Axi4LiteManager;`. Connections refer
+to the short name.
+
+**Description…** (on a port, a component, or an empty spot in a column for
+the sheet) is SysML's `doc`: free text for readers outside FPGA design, shown
+under the name in the VHDL and, later, in the documents. On a component it
+describes the definition, so every instance shares it.
+
+Hover shows both. Ctrl+Enter saves a description; an empty box removes it.
+
 ## Export for documentation
 
 **Export** (top bar) saves the current sheet as SVG or PNG (twice the screen

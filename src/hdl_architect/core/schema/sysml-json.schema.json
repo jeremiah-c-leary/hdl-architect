@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sysmlpy-spike.local/schema/sysml-json/0.5",
-  "title": "SysML-shaped JSON, version 0.5",
+  "$id": "https://sysmlpy-spike.local/schema/sysml-json/0.6",
+  "title": "SysML-shaped JSON, version 0.6",
   "description": "A compact JSON form of a SysML v2 subset for FPGA models. One JSON object is one SysML element; relationship objects (memberships, typings, specializations) are folded into fields. Rule: no concept that SysML does not have. Generated to SysML text by layered/gen_sysml.py. Version 0.5 covers packages, attribute defs, item defs, port defs (with attributes and items), metadata defs, part defs (attributes and values, constraints, ports incl. conjugated, parts incl. subsetting and multiplicity ranges, bind, connect, perform, allocate, metadata, comments) and action defs (parameters, steps, bind, flows). A port may be untyped (`port cmd;`): valid SysML, used while exploring; generating HDL needs a port def.",
   "type": "object",
   "required": [
@@ -13,7 +13,8 @@
     "schemaVersion": {
       "enum": [
         "0.4",
-        "0.5"
+        "0.5",
+        "0.6"
       ]
     },
     "package": {
@@ -370,7 +371,12 @@
       "additionalProperties": false,
       "properties": {
         "name": {
-          "$ref": "#/$defs/Name"
+          "description": "The port's name. Without shortName it is the identifier (a Name); with shortName it may be readable text, e.g. 'Processing CSR'.",
+          "type": "string"
+        },
+        "shortName": {
+          "$ref": "#/$defs/Name",
+          "description": "SysML short name (`port <processing> 'Processing CSR' : T;`): the identifier used in VHDL and in references (connections, binds) when the name is readable text. (0.6)"
         },
         "type": {
           "$ref": "#/$defs/QualifiedName"
@@ -385,6 +391,25 @@
         },
         "redefines": {
           "$ref": "#/$defs/Values"
+        }
+      },
+      "if": {
+        "required": [
+          "shortName"
+        ]
+      },
+      "then": {
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/ReadableName"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/Name"
+          }
         }
       }
     },
@@ -767,6 +792,12 @@
           "minLength": 1
         }
       }
+    },
+    "ReadableName": {
+      "description": "A SysML name that need not be an identifier (written 'Processing CSR' in SysML text). Allowed when the element also has a shortName, which is then its identifier (VHDL, references). No quote characters or line breaks.",
+      "type": "string",
+      "pattern": "^[^'\\\\\\n\\r]+$",
+      "minLength": 1
     }
   }
 }

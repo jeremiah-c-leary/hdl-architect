@@ -9,8 +9,13 @@ library serial_subsystem_lib;
 
 entity fpga_one is
   port (
+    -- clk : ClockIn (100 MHz)
     clk : in    std_logic;
+
+    -- tx : ~BitIn
     tx  : out   std_logic;
+
+    -- rx : BitIn
     rx  : in    std_logic
   );
 end entity;
@@ -21,7 +26,11 @@ architecture structural of fpga_one is
   -- map them to the vendor's names in a wrapper if they differ.
   component zynq_ps is
     port (
+      -- clk : ClockIn
       clk         : in    std_logic;
+  
+      -- csr : AxiLite
+      -- Master.
       csr_awaddr  : out   std_logic_vector(31 downto 0);
       csr_awprot  : out   std_logic_vector(2 downto 0);
       csr_awvalid : out   std_logic;
@@ -41,6 +50,9 @@ architecture structural of fpga_one is
       csr_rresp   : in    std_logic_vector(1 downto 0);
       csr_rvalid  : in    std_logic;
       csr_rready  : out   std_logic;
+  
+      -- irq : BitIn
+      -- Interrupt input.
       irq         : in    std_logic
     );
   end component;
@@ -49,7 +61,11 @@ architecture structural of fpga_one is
   -- map them to the vendor's names in a wrapper if they differ.
   component axi_crossbar1to2 is
     port (
+      -- clk : ClockIn
       clk        : in    std_logic;
+  
+      -- s0 : ~AxiLite
+      -- Slave.
       s0_awaddr  : in    std_logic_vector(31 downto 0);
       s0_awprot  : in    std_logic_vector(2 downto 0);
       s0_awvalid : in    std_logic;
@@ -69,6 +85,9 @@ architecture structural of fpga_one is
       s0_rresp   : out   std_logic_vector(1 downto 0);
       s0_rvalid  : out   std_logic;
       s0_rready  : in    std_logic;
+  
+      -- m0 : AxiLite
+      -- Master.
       m0_awaddr  : out   std_logic_vector(31 downto 0);
       m0_awprot  : out   std_logic_vector(2 downto 0);
       m0_awvalid : out   std_logic;
@@ -88,6 +107,9 @@ architecture structural of fpga_one is
       m0_rresp   : in    std_logic_vector(1 downto 0);
       m0_rvalid  : in    std_logic;
       m0_rready  : out   std_logic;
+  
+      -- m1 : AxiLite
+      -- Master.
       m1_awaddr  : out   std_logic_vector(31 downto 0);
       m1_awprot  : out   std_logic_vector(2 downto 0);
       m1_awvalid : out   std_logic;
@@ -110,6 +132,7 @@ architecture structural of fpga_one is
     );
   end component;
 
+  -- ps.csr <-> crossbar.s0 : AxiLite
   signal ps_csr_awaddr       : std_logic_vector(31 downto 0);
   signal ps_csr_awprot       : std_logic_vector(2 downto 0);
   signal ps_csr_awvalid      : std_logic;
@@ -129,6 +152,8 @@ architecture structural of fpga_one is
   signal ps_csr_rresp        : std_logic_vector(1 downto 0);
   signal ps_csr_rvalid       : std_logic;
   signal ps_csr_rready       : std_logic;
+
+  -- crossbar.m0 <-> csr.csr : AxiLite
   signal crossbar_m0_awaddr  : std_logic_vector(31 downto 0);
   signal crossbar_m0_awprot  : std_logic_vector(2 downto 0);
   signal crossbar_m0_awvalid : std_logic;
@@ -148,6 +173,8 @@ architecture structural of fpga_one is
   signal crossbar_m0_rresp   : std_logic_vector(1 downto 0);
   signal crossbar_m0_rvalid  : std_logic;
   signal crossbar_m0_rready  : std_logic;
+
+  -- crossbar.m1 <-> serial.csr : AxiLite
   signal crossbar_m1_awaddr  : std_logic_vector(31 downto 0);
   signal crossbar_m1_awprot  : std_logic_vector(2 downto 0);
   signal crossbar_m1_awvalid : std_logic;
@@ -167,6 +194,8 @@ architecture structural of fpga_one is
   signal crossbar_m1_rresp   : std_logic_vector(1 downto 0);
   signal crossbar_m1_rvalid  : std_logic;
   signal crossbar_m1_rready  : std_logic;
+
+  -- serial.irq <-> ps.irq : ~BitIn
   signal serial_irq          : std_logic;
 
 begin
@@ -174,6 +203,7 @@ begin
   u_ps : zynq_ps
     port map (
       clk         => clk,
+      -- csr : AxiLite
       csr_awaddr  => ps_csr_awaddr,
       csr_awprot  => ps_csr_awprot,
       csr_awvalid => ps_csr_awvalid,
@@ -199,6 +229,7 @@ begin
   u_crossbar : axi_crossbar1to2
     port map (
       clk        => clk,
+      -- s0 : ~AxiLite
       s0_awaddr  => ps_csr_awaddr,
       s0_awprot  => ps_csr_awprot,
       s0_awvalid => ps_csr_awvalid,
@@ -218,6 +249,7 @@ begin
       s0_rresp   => ps_csr_rresp,
       s0_rvalid  => ps_csr_rvalid,
       s0_rready  => ps_csr_rready,
+      -- m0 : AxiLite
       m0_awaddr  => crossbar_m0_awaddr,
       m0_awprot  => crossbar_m0_awprot,
       m0_awvalid => crossbar_m0_awvalid,
@@ -237,6 +269,7 @@ begin
       m0_rresp   => crossbar_m0_rresp,
       m0_rvalid  => crossbar_m0_rvalid,
       m0_rready  => crossbar_m0_rready,
+      -- m1 : AxiLite
       m1_awaddr  => crossbar_m1_awaddr,
       m1_awprot  => crossbar_m1_awprot,
       m1_awvalid => crossbar_m1_awvalid,
@@ -261,6 +294,7 @@ begin
   u_serial : entity serial_subsystem_lib.serial_subsystem
     port map (
       clk         => clk,
+      -- csr : ~AxiLite
       csr_awaddr  => crossbar_m1_awaddr,
       csr_awprot  => crossbar_m1_awprot,
       csr_awvalid => crossbar_m1_awvalid,
@@ -288,6 +322,7 @@ begin
   u_csr : entity device_csr_lib.device_csr
     port map (
       clk         => clk,
+      -- csr : ~AxiLite
       csr_awaddr  => crossbar_m0_awaddr,
       csr_awprot  => crossbar_m0_awprot,
       csr_awvalid => crossbar_m0_awvalid,

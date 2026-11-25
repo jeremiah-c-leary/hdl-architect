@@ -68,8 +68,13 @@ frozen in `~/projects/sysmlpy_spike`).
   FpgaOne and compile it with Questa (`vsim -c -do compile.do` in
   `examples/fpga_one/sim`). If a generated file changes on purpose, update
   `tests/golden/` in the same change and say why.
-- After a schema change that adds a construct: regenerate the SysML text
-  and check it loads in SysON (`docs/history/schema-notes.md`, "SysON check").
+- After a schema change that adds a construct, or a change to the SysML
+  generator: regenerate the SysML text and load it into a new SysON project
+  (`~/tools/SysON/start.sh` starts SysON and its MCP server). Check that
+  references resolve to the RIGHT element, not only that they resolve: every
+  chained end's target must be a member of the first element's type (on
+  2026-11-25 all `Control.x` ends resolved, every one to the wrong element).
+  Procedure: `docs/history/schema-notes.md`, "SysON check".
 - After an HA 2 change: reload the page; test headlessly on a scratch copy
   of a model, never on the user's live files (the user may be editing
   `examples/wifi_router` in HA 2; ask them to reload after any model-file

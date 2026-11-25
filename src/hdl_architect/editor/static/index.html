@@ -47,6 +47,17 @@
 </main>
 <footer id="problems"></footer>
 <div id="menu" hidden></div>
+<dialog id="textDlg">
+  <form method="dialog">
+    <b id="textDlgTitle">Description</b>
+    <div class="hint-s" id="textDlgHint">Plain text for readers outside FPGA design. It goes into the VHDL comments and the documents. Empty removes it.</div>
+    <textarea id="textDlgText" rows="5"></textarea>
+    <div class="dlg-buttons">
+      <button value="cancel" type="submit">Cancel</button>
+      <button value="ok" type="submit" id="textDlgOk">Save  (Ctrl+Enter)</button>
+    </div>
+  </form>
+</dialog>
 <div id="clockTree" hidden>
   <div class="ct-bar">
     <b id="ctTitle">Clock tree</b>

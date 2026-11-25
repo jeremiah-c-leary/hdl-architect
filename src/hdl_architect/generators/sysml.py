@@ -100,8 +100,9 @@ def redefinitions(values: dict, indent: str) -> list[str]:
 
 
 def usage(keyword: str, u: dict, indent: str) -> list[str]:
-    typ = f" : {'~' if u.get('conjugated') else ''}{u['type']}" if "type" in u else ""   # untyped: `port p;`
-    head = f"{indent}{'abstract ' if u.get('isAbstract') else ''}{keyword} {u['name']}{typ}{mult(u)}"
+    typ = f" : {'~' if u.get('conjugated') else ''}{type_ref(u)}" if "type" in u else ""   # untyped: `port p;`
+    name = f"<{u['shortName']}> '{u['name']}'" if "shortName" in u else u["name"]   # SysML short name + name
+    head = f"{indent}{'abstract ' if u.get('isAbstract') else ''}{keyword} {name}{typ}{mult(u)}"
     if u.get("subsets"):
         head += " :> " + ", ".join(u["subsets"])
     body = (doc(u["doc"], indent + IND) if "doc" in u else []) + redefinitions(u.get("redefines", {}), indent + IND)
@@ -111,6 +112,48 @@ def usage(keyword: str, u: dict, indent: str) -> list[str]:
 def constraint(c: dict, indent: str) -> list[str]:
     body = (doc(c["doc"], indent + IND) if "doc" in c else []) + [f"{indent}{IND}{c['expr']}"]
     return [f"{indent}{'assert ' if c.get('assert') else ''}constraint {c['name']} {{"] + body + [f"{indent}}}"]
+
+
+# Part defs of every input file, by name, for references to ports that have a
+# readable SysML name: {def: {"ports": {identifier: readable name}, "parts": {part: type}}}.
+# SysON does not resolve a short name inside a chained reference (it resolved
+# `Control.processing` to an outer part named `processing`), so references are
+# written with the readable name: `Control.'Processing CSR'`.
+DEFS: dict[str, dict] = {}
+
+
+def index_defs(pkg: dict, prefix: str = "") -> None:
+    qname = prefix + pkg["name"]
+    for d in pkg.get("partDefs", []):
+        DEFS[d["name"]] = {
+            "package": qname,
+            "ports": {p["shortName"]: p["name"] for p in d.get("ports", []) if "shortName" in p},
+            "parts": {p["name"]: p.get("type", "").split("::")[-1] for p in d.get("parts", [])}}
+    for sub in pkg.get("packages", []):
+        index_defs(sub, qname + "::")
+
+
+def type_ref(u: dict) -> str:
+    """A usage's type. SysML resolves a name to the nearest declaration, so in
+    `part Control : Control;` the type would be the part itself: qualify it
+    with its package when the usage has the same name as its type."""
+    t = u["type"]
+    if "::" not in t and t == u["name"] and t in DEFS:
+        return f"{DEFS[t]['package']}::{t}"
+    return t
+
+
+def ref(d: dict, end: str) -> str:
+    """A bind / connect end of part def `d`, with a readable port name where there is one."""
+    me = DEFS.get(d["name"], {"ports": {}, "parts": {}})
+    head, _, tail = end.partition(".")
+    if not tail:                                       # a port of `d` itself
+        return f"'{me['ports'][head]}'" if head in me["ports"] else end
+    port, _, rest = tail.partition(".")
+    named = DEFS.get(me["parts"].get(head, ""), {}).get("ports", {})
+    if port in named and not rest:
+        return f"{head}.'{named[port]}'"
+    return end
 
 
 def part_def(d: dict, indent: str) -> list[str]:
@@ -133,8 +176,8 @@ def part_def(d: dict, indent: str) -> list[str]:
         + redefinitions(d.get("redefines", {}), i2),
         [l for c in d.get("constraints", []) for l in constraint(c, i2)],
         [l for p in d.get("parts", []) for l in usage("part", p, i2)],
-        [f"{i2}bind {b['ends'][0]} = {b['ends'][1]};" for b in d.get("bindings", [])],
-        [f"{i2}connect {c['ends'][0]} to {c['ends'][1]};" for c in d.get("connections", [])],
+        [f"{i2}bind {ref(d, b['ends'][0])} = {ref(d, b['ends'][1])};" for b in d.get("bindings", [])],
+        [f"{i2}connect {ref(d, c['ends'][0])} to {ref(d, c['ends'][1])};" for c in d.get("connections", [])],
         [f"{i2}perform action {p['name']} : {p['type']};" for p in d.get("performs", [])]
         + [f"{i2}allocate {a['from']} to {a['to']};" for a in d.get("allocations", [])],
         [l for p in d.get("ports", []) for l in usage("port", p, i2)],
@@ -220,6 +263,11 @@ def main(argv=None) -> int:
     if not files:
         ap.error("no model files: give JSON files or --path")
     failed = False
+    DEFS.clear()
+    for f in files:                                    # first pass: named ports, for references
+        model = json.loads(Path(f).read_text(encoding="utf-8"))
+        if isinstance(model, dict) and isinstance(model.get("package"), dict):
+            index_defs(model["package"])
     for f in files:
         model = json.loads(Path(f).read_text(encoding="utf-8"))
         if not isinstance(model, dict) or "schemaVersion" not in model:

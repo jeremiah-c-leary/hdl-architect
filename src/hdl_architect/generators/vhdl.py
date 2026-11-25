@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import textwrap
 import sys
 from pathlib import Path
 
@@ -85,6 +86,50 @@ def header(inst: Instance, generated: bool) -> list[str]:
             ""]
 
 
+def port_header(p: Port, width: int = 76) -> list[str]:
+    """Comment lines naming a port, its interface, its clock facts and its description.
+
+    `-- Processing CSR : Axi4LiteManager (clock clk)`: the port's readable SysML
+    name (when it has a shortName) or its identifier, then its `doc`, wrapped
+    to the line width."""
+    facts = []
+    f = p.params.get("frequency_hz")
+    if isinstance(f, (int, float)) and f:
+        facts.append(f"{f / 1e6:g} MHz")
+    cp = p.params.get("clock_port")
+    if isinstance(cp, str) and cp:
+        facts.append(f"clock {cp}")
+    elif p.params.get("synchronous") is False:
+        facts.append("asynchronous")
+    # the port's readable SysML name ("Processing CSR") when it has one, else its identifier
+    head = f"-- {p.title or p.name} : {p.declared or p.type}" + (f" ({', '.join(facts)})" if facts else "")
+    lines = [head]
+    if p.doc:
+        lines += ["-- " + l for l in textwrap.wrap(" ".join(p.doc.split()), width - 3)]
+    return lines
+
+
+def join_groups(groups: list[list[tuple[str, str]]], sep: str, blank: bool) -> list[str]:
+    """Join groups of ("code", text) / ("comment", text) lines: `sep` after every
+    code line except the very last one; a blank line between groups if `blank`."""
+    flat = []
+    for i, g in enumerate(groups):
+        if blank and i:
+            flat.append(("blank", ""))
+        flat += g
+    last = max((i for i, (k, _) in enumerate(flat) if k == "code"), default=-1)
+    out = []
+    for i, (k, t) in enumerate(flat):
+        if k == "code" and i != last:
+            if "--" in t:                     # keep the separator before a trailing comment
+                code, comment = t.split("--", 1)
+                t = code.rstrip() + sep + "  --" + comment
+            else:
+                t += sep
+        out.append(t)
+    return out
+
+
 def entity_block(inst: Instance, keyword: str = "entity") -> list[str]:
     """`entity x is ... end entity;` or the matching component declaration."""
     name = entity_name(inst.definition)
@@ -101,8 +146,10 @@ def entity_block(inst: Instance, keyword: str = "entity") -> list[str]:
     plist = [(n, s) for p in inst.ports for n, s in p.hdl_names()]
     if plist:
         w = max(len(n) for n, _ in plist)
-        lines = [f"    {n:<{w}} : {s.direction:<5} {vhdl_type(s)}" for n, s in plist]
-        out += ["  port ("] + [l + ";" for l in lines[:-1]] + [lines[-1], "  );"]
+        groups = [[("comment", "    " + h) for h in port_header(p)]
+                  + [("code", f"    {n:<{w}} : {s.direction:<5} {vhdl_type(s)}") for n, s in p.hdl_names()]
+                  for p in inst.ports]
+        out += ["  port ("] + join_groups(groups, ";", blank=True) + ["  );"]
     out.append(f"end {keyword};" if keyword == "component" else "end entity;")
     return out
 
@@ -118,6 +165,7 @@ class Netlist:
         self.actual: dict[tuple[str, str, str], str] = {}   # (child, port, signal) -> net
         self.nets: dict[str, Signal] = {}                    # internal signals to declare
         self.driven: set[str] = set()                        # boundary outputs driven
+        self.groups: list[tuple[str, list[str]]] = []        # (connection label, its nets)
         self.problems: list[str] = []
 
     def _child_port(self, ref: str) -> tuple[Instance, Port]:
@@ -176,12 +224,15 @@ class Netlist:
             self.problems.append(f"{where}: {len(same)} signal(s) have the same direction on "
                                  f"both ends ({', '.join(same[:3])}{', ...' if len(same) > 3 else ''}); "
                                  f"one side should be conjugated (~{pa.type})")
+        group: list[str] = []
+        self.groups.append((f"{a} <-> {b} : {pa.declared or pa.type}", group))
         for sig in pa.signals:
             other = bsig[sig.name]
             if sig.width != other.width:
                 self.problems.append(f"{where}: {sig.name} width {sig.width} vs {other.width}")
             net = f"{ca.name}_{pa.name}" if single else f"{ca.name}_{pa.name}_{sig.name}"
             self.nets[net] = sig
+            group.append(net)
             self._assign(ca.name, pa.name, sig.name, net, where)
             self._assign(cb.name, pb.name, sig.name, net, where)
 
@@ -220,7 +271,14 @@ def structural(inst: Instance) -> tuple[list[str], list[str]]:
 
     if nl.nets:
         w = max(len(n) for n in nl.nets)
-        out += [f"  signal {n:<{w}} : {vhdl_type(s)};" for n, s in nl.nets.items()] + [""]
+        seen: set[str] = set()
+        for label, nets in nl.groups:
+            nets = [n for n in nets if n not in seen]
+            if not nets:
+                continue
+            seen.update(nets)
+            out.append(f"  -- {label}")
+            out += [f"  signal {n:<{w}} : {vhdl_type(nl.nets[n])};" for n in nets] + [""]
     out.append("begin")
 
     for c in inst.children:
@@ -236,8 +294,10 @@ def structural(inst: Instance) -> tuple[list[str], list[str]]:
             lines = [f"      {g:<{w}} => {generic_value(v, c.generic_types.get(g, 'Integer'))}"
                      for g, v in gens]
             out += ["    generic map ("] + [l + "," for l in lines[:-1]] + [lines[-1], "    )"]
-        maps = []
+        maps, groups = [], []
         for p in c.ports:
+            group = []
+            groups.append((p, group))
             for hname, sig in p.hdl_names():
                 net = nl.actual.get((c.name, p.name, sig.name))
                 if net is None:
@@ -248,19 +308,13 @@ def structural(inst: Instance) -> tuple[list[str], list[str]]:
                     else:
                         net = "open"
                 maps.append((hname, net))
+                group.append((hname, net))
         if maps:
             w = max(len(n) for n, _ in maps)
-            lines = [f"      {n:<{w}} => {a}" for n, a in maps]
-            # keep the comma before any trailing comment
-            fixed = []
-            for i, l in enumerate(lines):
-                last = i == len(lines) - 1
-                if "--" in l:
-                    code, comment = l.split("--", 1)
-                    fixed.append(code.rstrip() + ("" if last else ",") + "  --" + comment)
-                else:
-                    fixed.append(l + ("" if last else ","))
-            out += ["    port map ("] + fixed + ["    );"]
+            lines = [([("comment", f"      -- {p.name} : {p.declared or p.type}")] if len(g) > 1 else [])
+                     + [("code", f"      {n:<{w}} => {a}") for n, a in g]
+                     for p, g in groups if g]
+            out += ["    port map ("] + join_groups(lines, ",", blank=False) + ["    );"]
 
     for p in inst.ports:
         undriven = [h for h, s in p.hdl_names() if s.direction == "out" and h not in nl.driven]

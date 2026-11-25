@@ -79,11 +79,11 @@
     },
     "Ethernet": {
       "clk": {
-        "offset": 72,
+        "offset": 76,
         "side": "left"
       },
       "cmd": {
-        "offset": 50,
+        "offset": 53,
         "side": "left"
       },
       "eth_mdio": {
@@ -99,7 +99,7 @@
         "side": "right"
       },
       "rst": {
-        "offset": 94,
+        "offset": 98,
         "side": "left"
       }
     },
@@ -143,7 +143,7 @@
         "side": "right"
       },
       "temp_read": {
-        "offset": 55,
+        "offset": 52,
         "side": "left"
       }
     },

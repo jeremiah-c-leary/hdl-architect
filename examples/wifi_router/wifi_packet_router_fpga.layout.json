@@ -1,6 +1,24 @@
 {
   "layoutVersion": 1,
   "ports": {
+    "CLKGENCTRL": {
+      "Control": {
+        "offset": 118.546875,
+        "side": "left"
+      },
+      "clk": {
+        "offset": 50,
+        "side": "left"
+      },
+      "clock_gen_spi": {
+        "offset": 50,
+        "side": "right"
+      },
+      "rst": {
+        "offset": 72,
+        "side": "left"
+      }
+    },
     "CLKRSTCTRL": {
       "rst": {
         "offset": 72,
@@ -15,7 +33,29 @@
         "side": "left"
       }
     },
+    "ClockGenCtrl": {
+      "CSR": {
+        "offset": 94,
+        "side": "left"
+      },
+      "SPI": {
+        "offset": 75,
+        "side": "right"
+      },
+      "clk": {
+        "offset": 50,
+        "side": "left"
+      },
+      "rst": {
+        "offset": 72,
+        "side": "left"
+      }
+    },
     "Control": {
+      "CLK_GEN_CTRL": {
+        "offset": 222,
+        "side": "right"
+      },
       "adc_if": {
         "offset": 186,
         "side": "left"
@@ -24,8 +64,8 @@
         "offset": 55,
         "side": "left"
       },
-      "clock_gen_spi": {
-        "offset": 101,
+      "clock_gen_csr": {
+        "offset": 211,
         "side": "right"
       },
       "dac_if": {
@@ -33,11 +73,11 @@
         "side": "left"
       },
       "dac_irq": {
-        "offset": 64,
+        "offset": 50,
         "side": "right"
       },
       "ethernet": {
-        "offset": 227,
+        "offset": 335,
         "side": "right"
       },
       "processing": {
@@ -49,11 +89,11 @@
         "side": "left"
       },
       "temp_if": {
-        "offset": 520,
+        "offset": 546,
         "side": "right"
       },
       "uart": {
-        "offset": 655,
+        "offset": 682,
         "side": "right"
       }
     },
@@ -124,11 +164,11 @@
         },
         "clock_gen_spi": {
           "side": "right",
-          "y": 201
+          "y": 253.453125
         },
         "dac_irq": {
           "side": "right",
-          "y": 164
+          "y": 150
         },
         "dac_jesd": {
           "side": "left",
@@ -148,15 +188,15 @@
         },
         "eth_mdio": {
           "side": "right",
-          "y": 349
+          "y": 454
         },
         "eth_reset_f": {
           "side": "right",
-          "y": 371
+          "y": 477
         },
         "eth_rgmii": {
           "side": "right",
-          "y": 327
+          "y": 432
         },
         "jesd_refclk": {
           "side": "left",
@@ -168,7 +208,7 @@
         },
         "status_uart": {
           "side": "right",
-          "y": 754
+          "y": 781
         },
         "sys_clock": {
           "side": "left",
@@ -180,14 +220,19 @@
         },
         "temp_alert": {
           "side": "right",
-          "y": 637
+          "y": 666
         },
         "temp_i2c": {
           "side": "right",
-          "y": 615
+          "y": 644
         }
       },
       "parts": {
+        "CLK_GEN_CTRL": {
+          "col": 3,
+          "h": 154.546875,
+          "y": 203.453125
+        },
         "CLK_RST_CTRL": {
           "col": 0,
           "h": 123.546875,
@@ -195,7 +240,7 @@
         },
         "Control": {
           "col": 2,
-          "h": 690,
+          "h": 753,
           "y": 100
         },
         "adc_if": {
@@ -211,12 +256,7 @@
         "ethernet": {
           "col": 3,
           "h": 188,
-          "y": 277
-        },
-        "hard_macro": {
-          "col": 0,
-          "h": 70,
-          "y": 744.453125
+          "y": 382
         },
         "processing": {
           "col": 1,
@@ -226,12 +266,12 @@
         "temp_if": {
           "col": 3,
           "h": 113,
-          "y": 565
+          "y": 594
         },
         "uart": {
           "col": 3,
           "h": 109,
-          "y": 704
+          "y": 731
         }
       }
     }

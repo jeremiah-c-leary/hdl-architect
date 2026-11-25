@@ -65,8 +65,8 @@
             "type": "CLKRSTCTRL"
           },
           {
-            "name": "hard_macro",
-            "type": "HardMacro2"
+            "name": "CLK_GEN_CTRL",
+            "type": "CLKGENCTRL"
           }
         ],
         "bindings": [
@@ -140,12 +140,6 @@
             "ends": [
               "status_uart",
               "uart.status_uart"
-            ]
-          },
-          {
-            "ends": [
-              "clock_gen_spi",
-              "Control.clock_gen_spi"
             ]
           },
           {
@@ -230,6 +224,18 @@
             "ends": [
               "sys_reset_f",
               "CLK_RST_CTRL.rst"
+            ]
+          },
+          {
+            "ends": [
+              "clock_gen_spi",
+              "CLK_GEN_CTRL.clock_gen_spi"
+            ]
+          },
+          {
+            "ends": [
+              "sys_clock",
+              "CLK_GEN_CTRL.clk"
             ]
           }
         ],
@@ -322,6 +328,18 @@
             "ends": [
               "CLK_RST_CTRL.rst_out",
               "dac_if.rst"
+            ]
+          },
+          {
+            "ends": [
+              "CLK_GEN_CTRL.Control",
+              "Control.CLK_GEN_CTRL"
+            ]
+          },
+          {
+            "ends": [
+              "CLK_RST_CTRL.rst_out",
+              "CLK_GEN_CTRL.rst"
             ]
           }
         ],
@@ -484,35 +502,38 @@
         ],
         "ports": [
           {
-            "name": "uart",
+            "name": "UART CSR",
+            "shortName": "uart",
             "type": "Axi4LiteManager"
           },
           {
-            "name": "ethernet",
+            "name": "ETH CSR",
+            "shortName": "ethernet",
             "type": "Axi4LiteManager"
           },
           {
-            "name": "adc_if",
+            "name": "ADC_CSR",
+            "shortName": "adc_if",
             "type": "Axi4LiteManager"
           },
           {
-            "name": "temp_if",
+            "name": "TEMP_CSR",
+            "shortName": "temp_if",
             "type": "Axi4LiteManager"
           },
           {
-            "name": "dac_if",
+            "name": "DAC_CSR",
+            "shortName": "dac_if",
             "type": "Axi4LiteManager"
           },
           {
-            "name": "processing",
+            "name": "PROCESSING CSR",
+            "shortName": "processing",
             "type": "Axi4LiteManager"
           },
           {
-            "name": "clock_gen_spi",
-            "type": "Spi3WireController"
-          },
-          {
-            "name": "dac_irq",
+            "name": "DAC DISCRETES",
+            "shortName": "dac_irq",
             "type": "BitIn"
           },
           {
@@ -522,6 +543,11 @@
           {
             "name": "rst",
             "type": "ResetIn"
+          },
+          {
+            "name": "CLK_GEN_CTRL_CSR",
+            "shortName": "CLK_GEN_CTRL",
+            "type": "Axi4LiteManager"
           }
         ]
       },
@@ -614,6 +640,32 @@
           {
             "name": "clk",
             "type": "ClockIn"
+          }
+        ]
+      },
+      {
+        "name": "CLKGENCTRL",
+        "specializes": [
+          "Rtl"
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "rst",
+            "type": "ResetIn"
+          },
+          {
+            "name": "SPI",
+            "shortName": "clock_gen_spi",
+            "type": "Spi3WireController"
+          },
+          {
+            "name": "CSR",
+            "shortName": "Control",
+            "type": "Axi4LiteSubordinate"
           }
         ]
       }
