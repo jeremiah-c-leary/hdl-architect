@@ -38,7 +38,7 @@ test("Ctrl+click two components: a new port on each, named after the other, wire
 test("click a port, then a component: a new port there with the matching interface", async () => {
   await E(page, "newPort('AdcInterface', 'cfg', 'right')");
   await E(page, "setPortType('AdcInterface', 'cfg', 'Axi4LiteManager')");
-  await E(page, "S.armed = { kind: 'part', part: 'adc_if', port: 'cfg' }");
+  await E(page, "editor.armed = { kind: 'part', part: 'adc_if', port: 'cfg' }");
   await E(page, "connectArmed({ part: 'ethernet' })");
   const p = portOnDisk(SUBS, "Ethernet", "adc_if");
   assert.equal(p.type, "Axi4LiteSubordinate");
@@ -51,7 +51,10 @@ test("click a port, then a component: a new port there with the matching interfa
 test("click a component's port, then the sheet edge: a new sheet port, bound", async () => {
   await E(page, "newPort('Uart', 'tx_dbg', 'right')");
   await E(page, "setPortType('Uart', 'tx_dbg', 'BitIn')");
-  await E(page, "S.armed = { kind: 'part', part: 'uart', port: 'tx_dbg' }");
+  await E(
+    page,
+    "editor.armed = { kind: 'part', part: 'uart', port: 'tx_dbg' }",
+  );
   await E(page, "connectArmed({ edge: 'right', y: 950 })");
   const p = portOnDisk(FPGA, TOP, "tx_dbg");
   assert.equal(p.type, "BitIn");
@@ -63,7 +66,7 @@ test("click a component's port, then the sheet edge: a new sheet port, bound", a
 });
 
 test("click a sheet port, then a component: a new port there, bound", async () => {
-  await E(page, "S.armed = { kind: 'edge', port: 'tx_dbg' }");
+  await E(page, "editor.armed = { kind: 'edge', port: 'tx_dbg' }");
   await E(page, "connectArmed({ part: 'temp_if' })");
   assert.equal(portOnDisk(SUBS, "TempSensorInterface", "tx_dbg").type, "BitIn");
   assert.ok(ends(topOnDisk().bindings).includes("tx_dbg temp_if.tx_dbg"));

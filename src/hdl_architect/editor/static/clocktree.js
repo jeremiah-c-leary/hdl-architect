@@ -10,7 +10,7 @@
  * clock generated three levels down shows where it really comes from.
  * Read-only: clock assignment stays on the sheets.
  */
-import { KIND_COLORS, S } from "./state.js";
+import { KIND_COLORS, editor } from "./state.js";
 import { el, tip, trunc } from "./svg.js";
 import { kindOf, partDef, partType, partsOf, short } from "./model.js";
 import { NET_COLORS, fmtHz, netsOf, portUsage } from "./nets.js";
@@ -248,7 +248,7 @@ export function layoutClockTree(g) {
 }
 
 export function renderClockTree() {
-  const D = S.sheet,
+  const D = editor.sheet,
     box = document.getElementById("ctSvg");
   box.innerHTML = "";
   if (!D || !partDef(D)) return;

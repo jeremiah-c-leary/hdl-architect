@@ -1,6 +1,6 @@
 // HA 2: Clocks, resets, SYSREF: global nets, their pairing and checks.
-import { G, S } from "./state.js";
-import { hint } from "./statusbar.js";
+import { G, editor } from "./state.js";
+import { showHint } from "./statusbar.js";
 import { askName } from "./dialogs.js";
 import {
   endStr,
@@ -222,7 +222,7 @@ export function pairMenu(ev, P, port) {
 }
 export function assignNet(D, end, net) {
   if (net && !net.src) {
-    hint(`${net.name} has no source to connect to.`);
+    showHint(`${net.name} has no source to connect to.`);
     return;
   }
   return applyOp("assign_net", {
@@ -319,9 +319,9 @@ export function netMenu(ev, D, end) {
   menu(ev.clientX, ev.clientY, items);
 }
 export function armNet(net) {
-  S.armedNet = net ? net.name : null;
+  editor.armedNet = net ? net.name : null;
   render();
-  hint(
+  showHint(
     net
       ? `Click ${net.cat} ports to put them on ${net.name} (click one already on it to take it off). Esc stops.`
       : "",

@@ -24,12 +24,12 @@ import * as renderMod from "./render.js";
 import * as interactionMod from "./interaction.js";
 import * as clocktreeMod from "./clocktree.js";
 import * as exportMod from "./export.js";
-import { S } from "./state.js";
+import { editor } from "./state.js";
 import { $ } from "./svg.js";
-import { hint, setStatus } from "./statusbar.js";
+import { setStatus, showDefaultHint } from "./statusbar.js";
 import { isSheet, kindOf, partDef, rebuildIndex } from "./model.js";
 import { settle } from "./layout.js";
-import { check, redo, undo } from "./store.js";
+import { checkModel, redo, undo } from "./store.js";
 import { render, renderSide } from "./render.js";
 import { goBack } from "./interaction.js";
 
@@ -62,7 +62,7 @@ function wireButtons() {
   $("undo").onclick = undo;
   $("redo").onclick = redo;
   $("back").onclick = goBack;
-  $("checkBtn").onclick = check;
+  $("checkBtn").onclick = checkModel;
   $("libFilter").oninput = renderSide;
 }
 
@@ -72,19 +72,19 @@ async function start() {
   openFirstSheet();
   render();
   setStatus("ready");
-  hint();
-  check(); // the server checks the whole model; problems appear under the sheet
+  showDefaultHint();
+  checkModel(); // the server checks the whole model; problems appear under the sheet
 }
 
 /**
  * Every model file, with its layout, from the server. What was loaded is
- * also what is saved: S.saved lets a later save tell what has changed.
+ * also what is saved: editor.saved lets a later save tell what has changed.
  */
 async function loadModel() {
   const response = await fetch("/api/model");
-  S.pkgs = (await response.json()).packages;
-  for (const pkg of S.pkgs)
-    S.saved[pkg.file] = {
+  editor.pkgs = (await response.json()).packages;
+  for (const pkg of editor.pkgs)
+    editor.saved[pkg.file] = {
       modelText: JSON.stringify(pkg.model),
       layoutText: JSON.stringify(pkg.layout || null),
     };
@@ -97,12 +97,12 @@ async function loadModel() {
  */
 function openFirstSheet() {
   const named = decodeURIComponent(location.hash.slice(1));
-  const sheets = Object.keys(S.defs)
-    .filter((n) => S.defs[n].coll === "partDefs" && isSheet(n))
+  const sheets = Object.keys(editor.defs)
+    .filter((n) => editor.defs[n].coll === "partDefs" && isSheet(n))
     .sort();
   const isFpga = (n) => ["Fpga", "FpgaPart"].includes(kindOf(n));
   const first = partDef(named) ? named : sheets.find(isFpga) || sheets[0];
   if (!first) return;
-  S.sheet = first;
+  editor.sheet = first;
   settle(first); // lay the sheet out: straight wires, nothing overlapping
 }

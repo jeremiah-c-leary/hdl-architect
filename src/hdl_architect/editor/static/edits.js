@@ -1,6 +1,6 @@
 // HA 2: Editing operations on the model and its layout.
-import { G, S } from "./state.js";
-import { hint } from "./statusbar.js";
+import { G, editor } from "./state.js";
+import { showHint } from "./statusbar.js";
 import { askName } from "./dialogs.js";
 import {
   endStr,
@@ -53,10 +53,10 @@ export function placePort(P, name, side, offset) {
 
 /** Ctrl+click two components: a new port on each, named after the other, wired. */
 export async function quickConnect(a, b) {
-  const D = S.sheet,
+  const D = editor.sheet,
     sl = sheetLayout(D);
   if (sl.parts[a].col === sl.parts[b].col) {
-    hint(
+    showHint(
       `${a} and ${b} are in the same column: there is no gutter for a horizontal wire (maybe a level of hierarchy is missing). Move one to another column.`,
     );
     return;
@@ -72,7 +72,7 @@ export async function quickConnect(a, b) {
     },
   );
   if (res)
-    hint(
+    showHint(
       `Connected ${a} and ${b}. Right-click a port to give it an interface.`,
     );
 }
@@ -80,10 +80,10 @@ export async function quickConnect(a, b) {
 /** Click a port, then a component (a new port there) or the sheet edge (a new sheet port). */
 export async function connectArmed(target) {
   // target: a part name on this sheet, or {edge:'left'|'right', y}
-  const D = S.sheet,
+  const D = editor.sheet,
     sl = sheetLayout(D),
-    armed = S.armed;
-  S.armed = null;
+    armed = editor.armed;
+  editor.armed = null;
   const armedPort =
     armed.kind === "edge"
       ? portsOfDef(D).find((p) => p.name === armed.port)
@@ -128,7 +128,7 @@ export async function connectArmed(target) {
     return;
   }
   if (sl.parts[armed.part].col === sl.parts[part].col) {
-    hint("Same column: move one of them first.");
+    showHint("Same column: move one of them first.");
     return render();
   }
   const aLeft = sl.parts[armed.part].col < sl.parts[part].col;
@@ -152,12 +152,12 @@ export async function connectPorts(a, b) {
   // model operation in Python (core.ops.connect, via the server). The drawing
   // rules stay here: two components in one column cannot be wired, and ports
   // turn to face their wire.
-  const D = S.sheet,
+  const D = editor.sheet,
     sl = sheetLayout(D);
-  S.armed = null;
+  editor.armed = null;
   const say = (msg) => {
     render();
-    hint(msg);
+    showHint(msg);
   };
   const isBind = a.kind === "edge" || b.kind === "edge";
   if (
@@ -206,7 +206,7 @@ export async function connectPorts(a, b) {
     },
   );
   if (res)
-    hint(
+    showHint(
       `Wired ${endStr(a)} ${isBind ? "=" : "–"} ${endStr(b)}.` +
         (turned.length ? ` Turned ${turned.join(", ")} to face the wire.` : ""),
     );
@@ -278,14 +278,14 @@ export function renameDef(old, nu) {
       L.ports[nu] = L.ports[old];
       delete L.ports[old];
     }
-    if (S.sheet === old) S.sheet = nu;
-    S.back = S.back.map((b) => (b === old ? nu : b));
+    if (editor.sheet === old) editor.sheet = nu;
+    editor.back = editor.back.map((b) => (b === old ? nu : b));
   });
 }
 export function deletePart(D, name) {
   return applyOp("delete_part", { sheet: D, name }, () => {
     delete sheetLayout(D).parts[name];
-    if (S.sel && S.sel.name === name) S.sel = null;
+    if (editor.sel && editor.sel.name === name) editor.sel = null;
   });
 }
 export function setPartDef(D, part, def) {
@@ -322,7 +322,7 @@ export function setPortType(P, name, type) {
   return setPortsType([{ P, port: name }], type);
 }
 export function setPortsType(list, type) {
-  const D = S.sheet && partDef(S.sheet) ? S.sheet : null;
+  const D = editor.sheet && partDef(editor.sheet) ? editor.sheet : null;
   return applyOp("set_interface", {
     sheet: D,
     ports: list.map((x) => ({ def: x.P, port: x.port })),
@@ -358,24 +358,24 @@ export function flipPorts(list) {
 export function flipComponent(D, name) {
   const P = partType(D, name);
   flipPorts(portsOfDef(P).map((p) => ({ P, port: p.name, isEdge: false })));
-  hint(
+  showHint(
     `Flipped ${name}: its ports swapped sides (on every instance of ${P}, and on ${P}'s own sheet).`,
   );
 }
 export const pickKey = (P, port) => `${P}.${port}`;
 export function isPicked(P, port) {
-  return S.picked.some((x) => pickKey(x.P, x.port) === pickKey(P, port));
+  return editor.picked.some((x) => pickKey(x.P, x.port) === pickKey(P, port));
 }
 export function togglePick(P, port, isEdge) {
   if (isPicked(P, port))
-    S.picked = S.picked.filter(
+    editor.picked = editor.picked.filter(
       (x) => pickKey(x.P, x.port) !== pickKey(P, port),
     );
-  else S.picked.push({ P, port, isEdge });
+  else editor.picked.push({ P, port, isEdge });
   render();
-  hint(
-    S.picked.length
-      ? `${S.picked.length} port(s) picked: press F (or right-click one) to move them to the other side. Esc clears.`
+  showHint(
+    editor.picked.length
+      ? `${editor.picked.length} port(s) picked: press F (or right-click one) to move them to the other side. Esc clears.`
       : "",
   );
 }
@@ -384,7 +384,7 @@ export function moveColumn(D, name, by) {
     q = sl.parts[name],
     to = q.col + by;
   if (to < 0 || to >= sl.columns) {
-    hint(`No column there: right-click a gutter to add one.`);
+    showHint(`No column there: right-click a gutter to add one.`);
     return;
   }
   mutate(() => {
@@ -394,7 +394,7 @@ export function moveColumn(D, name, by) {
 export function removeColumn(D, c) {
   const sl = sheetLayout(D);
   if (Object.values(sl.parts).some((q) => q.col === c)) {
-    hint("Only an empty column can be removed.");
+    showHint("Only an empty column can be removed.");
     return;
   }
   mutate(() => {

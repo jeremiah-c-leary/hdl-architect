@@ -48,12 +48,12 @@ test("an interface is set on disk at once, and an untyped far end gets the other
 test("several picked ports get one interface in one step, and undo takes it back", async () => {
   await addPort("Uart", "i_1");
   await addPort("Uart", "i_2");
-  const undos = await E(page, "S.undo.length");
+  const undos = await E(page, "editor.undo.length");
   await E(
     page,
     "setPortsType([{ P: 'Uart', port: 'i_1' }, { P: 'Uart', port: 'i_2' }], 'BitIn')",
   );
-  assert.equal(await E(page, "S.undo.length"), undos + 1);
+  assert.equal(await E(page, "editor.undo.length"), undos + 1);
   assert.equal(portOnDisk("Uart", "i_1").type, "BitIn");
   assert.equal(portOnDisk("Uart", "i_2").type, "BitIn");
   await E(page, "undo()");

@@ -58,7 +58,7 @@ test("renaming a def: every use follows, also the sheet you are on", async () =>
   await E(page, "renameDef('Control', 'ControlHub')");
   assert.equal(partsOnDisk().Control, "ControlHub");
   assert.ok(defOnDisk("ControlHub"));
-  assert.equal(await E(page, "S.sheet"), "ControlHub");
+  assert.equal(await E(page, "editor.sheet"), "ControlHub");
   assert.ok(await E(page, "!!layoutOf(pkgOf('ControlHub')).sheets.ControlHub"));
   await E(page, "goBack()");
 });
