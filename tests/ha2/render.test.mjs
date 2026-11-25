@@ -8,16 +8,19 @@ import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
-import { E, HERE, openPage, startServer, waitFor } from "./harness.mjs";
+import { E, HERE, openPage, startServer } from "./harness.mjs";
 
 const GOLDEN = join(HERE, "golden");
-let server, w;
+let server, page;
 
 before(async () => {
   server = await startServer();
-  w = await openPage(server.url);
+  page = await openPage(server.url);
 });
-after(() => server.stop());
+after(async () => {
+  assert.deepEqual(page.errors, [], "no errors in the page");
+  await server.stop();
+});
 
 function matchesGolden(name, text) {
   const file = join(GOLDEN, name);
@@ -34,35 +37,30 @@ function matchesGolden(name, text) {
   );
 }
 
-const svgOf = (id) => w.exportSvgText(w.document.getElementById(id)).text;
+const svgOf = (id) =>
+  E(page, `exportSvgText(document.getElementById('${id}')).text`);
 
-test("the top sheet", () => {
-  matchesGolden("sheet-top.svg", svgOf("canvas"));
+test("the top sheet", async () => {
+  matchesGolden("sheet-top.svg", await svgOf("canvas"));
 });
 
-test("the problem list of the top sheet", () => {
-  matchesGolden(
-    "problems-top.txt",
-    w.document.getElementById("problems").textContent + "\n",
-  );
+test("the problem list of the top sheet", async () => {
+  const text = await E(page, "document.getElementById('problems').textContent");
+  matchesGolden("problems-top.txt", text + "\n");
 });
 
 test("the clock tree", async () => {
-  w.openClockTree("clock");
-  await waitFor(
-    () => !w.document.getElementById("clockTree").hidden,
-    "the clock tree",
-  );
-  matchesGolden("clock-tree.svg", svgOf("ctSvg"));
+  await E(page, "openClockTree('clock')");
+  matchesGolden("clock-tree.svg", await svgOf("ctSvg"));
 });
 
 test("the reset tree", async () => {
-  w.openClockTree("reset");
-  matchesGolden("reset-tree.svg", svgOf("ctSvg"));
-  E(w, "closeClockTree()");
+  await E(page, "openClockTree('reset')");
+  matchesGolden("reset-tree.svg", await svgOf("ctSvg"));
+  await E(page, "closeClockTree()");
 });
 
-test("a subsystem's sheet (Control)", () => {
-  E(w, "openSheet('Control')");
-  matchesGolden("sheet-control.svg", svgOf("canvas"));
+test("a subsystem's sheet (Control)", async () => {
+  await E(page, "openSheet('Control')");
+  matchesGolden("sheet-control.svg", await svgOf("canvas"));
 });
