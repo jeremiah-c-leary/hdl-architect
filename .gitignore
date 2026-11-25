@@ -227,3 +227,5 @@ sim/work/
 *.json.tmp
 examples/*/sim/
 build/
+# The Python template above ignores every lib/ folder; a model's lib/ is source.
+!examples/**/lib/

@@ -1,0 +1,452 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "FpgaLib",
+    "doc": "FpgaLib - domain library for modeling FPGA architecture in SysML v2. Spike version: the minimum needed to replace the FPGA Architect JSON for one FPGA and drive HDL / script / SBOM / doc generators. Port defs: directed attributes become HDL signals, undirected ones are port parameters; declared from the driver/master side (~Port for the receiving side). HDL naming: a port with one signal maps to the port name (clk), otherwise <port>_<signal> (csr_awaddr).",
+    "imports": [
+      {
+        "name": "ScalarValues::*"
+      },
+      {
+        "name": "NumericalFunctions::*"
+      }
+    ],
+    "attributeDefs": [
+      {
+        "name": "Logic"
+      },
+      {
+        "name": "LogicVector",
+        "attributes": [
+          {
+            "name": "width",
+            "type": "Integer"
+          }
+        ]
+      }
+    ],
+    "metadataDefs": [
+      {
+        "name": "HdlSource",
+        "doc": "HDL source of a part def; consumed by the generators.",
+        "attributes": [
+          {
+            "name": "hdl_language",
+            "type": "String"
+          },
+          {
+            "name": "vhdl_library",
+            "type": "String"
+          },
+          {
+            "name": "files",
+            "type": "String",
+            "multiplicity": "1..*",
+            "doc": "Relative to the model file that declares them."
+          }
+        ]
+      },
+      {
+        "name": "Provenance",
+        "doc": "Supplier, version and licence, for the SBOM.",
+        "attributes": [
+          {
+            "name": "supplier",
+            "type": "String"
+          },
+          {
+            "name": "version",
+            "type": "String"
+          },
+          {
+            "name": "license",
+            "type": "String"
+          }
+        ]
+      },
+      {
+        "name": "IpConfig",
+        "doc": "Vendor IP regeneration: vlnv is vendor:library:name:version; configFile the .xci / .ip.",
+        "attributes": [
+          {
+            "name": "vlnv",
+            "type": "String"
+          },
+          {
+            "name": "configFile",
+            "type": "String"
+          }
+        ]
+      },
+      {
+        "name": "TargetDevice",
+        "doc": "The FPGA device, for build scripts.",
+        "attributes": [
+          {
+            "name": "vendor",
+            "type": "String"
+          },
+          {
+            "name": "family",
+            "type": "String"
+          },
+          {
+            "name": "device",
+            "type": "String"
+          }
+        ]
+      }
+    ],
+    "portDefs": [
+      {
+        "name": "ClockIn",
+        "attributes": [
+          {
+            "name": "frequency_hz",
+            "type": "Real"
+          },
+          {
+            "name": "clk",
+            "direction": "in",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "ResetIn",
+        "attributes": [
+          {
+            "name": "active_low",
+            "type": "Boolean",
+            "default": true
+          },
+          {
+            "name": "synchronous",
+            "type": "Boolean",
+            "default": true
+          },
+          {
+            "name": "clock_port",
+            "type": "String",
+            "doc": "Name of the clock port it is synchronous to, when synchronous."
+          },
+          {
+            "name": "rst",
+            "direction": "in",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "BitIn",
+        "attributes": [
+          {
+            "name": "val",
+            "direction": "in",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "DataIn",
+        "attributes": [
+          {
+            "name": "width",
+            "type": "Integer",
+            "default": 8
+          },
+          {
+            "name": "data",
+            "direction": "in",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "width"
+              }
+            }
+          },
+          {
+            "name": "valid",
+            "direction": "in",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "AxiLite",
+        "doc": "AXI4-Lite, master perspective (use ~AxiLite for the slave side).",
+        "attributes": [
+          {
+            "name": "addr_width",
+            "type": "Integer",
+            "default": 32
+          },
+          {
+            "name": "data_width",
+            "type": "Integer",
+            "default": 32
+          },
+          {
+            "name": "awaddr",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "addr_width"
+              }
+            }
+          },
+          {
+            "name": "awprot",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": 3
+            }
+          },
+          {
+            "name": "awvalid",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "awready",
+            "direction": "in",
+            "type": "Logic"
+          },
+          {
+            "name": "wdata",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "data_width"
+              }
+            }
+          },
+          {
+            "name": "wstrb",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "data_width / 8"
+              }
+            }
+          },
+          {
+            "name": "wvalid",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "wready",
+            "direction": "in",
+            "type": "Logic"
+          },
+          {
+            "name": "bresp",
+            "direction": "in",
+            "type": "LogicVector",
+            "redefines": {
+              "width": 2
+            }
+          },
+          {
+            "name": "bvalid",
+            "direction": "in",
+            "type": "Logic"
+          },
+          {
+            "name": "bready",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "araddr",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "addr_width"
+              }
+            }
+          },
+          {
+            "name": "arprot",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": 3
+            }
+          },
+          {
+            "name": "arvalid",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "arready",
+            "direction": "in",
+            "type": "Logic"
+          },
+          {
+            "name": "rdata",
+            "direction": "in",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "data_width"
+              }
+            }
+          },
+          {
+            "name": "rresp",
+            "direction": "in",
+            "type": "LogicVector",
+            "redefines": {
+              "width": 2
+            }
+          },
+          {
+            "name": "rvalid",
+            "direction": "in",
+            "type": "Logic"
+          },
+          {
+            "name": "rready",
+            "direction": "out",
+            "type": "Logic"
+          }
+        ]
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "FpgaComponent",
+        "isAbstract": true,
+        "attributes": [
+          {
+            "name": "lut",
+            "type": "Integer",
+            "default": 0
+          },
+          {
+            "name": "ff",
+            "type": "Integer",
+            "default": 0
+          },
+          {
+            "name": "dsp",
+            "type": "Integer",
+            "default": 0
+          },
+          {
+            "name": "bram",
+            "type": "Integer",
+            "default": 0
+          },
+          {
+            "name": "uram",
+            "type": "Integer",
+            "default": 0
+          }
+        ]
+      },
+      {
+        "name": "HardMacro",
+        "specializes": [
+          "FpgaComponent"
+        ]
+      },
+      {
+        "name": "VendorIp",
+        "specializes": [
+          "FpgaComponent"
+        ]
+      },
+      {
+        "name": "Rtl",
+        "specializes": [
+          "FpgaComponent"
+        ]
+      },
+      {
+        "name": "RegisterFile",
+        "specializes": [
+          "FpgaComponent"
+        ]
+      },
+      {
+        "name": "Container",
+        "isAbstract": true,
+        "specializes": [
+          "FpgaComponent"
+        ],
+        "redefines": {
+          "lut": {
+            "expr": "sum(children.lut)"
+          },
+          "ff": {
+            "expr": "sum(children.ff)"
+          },
+          "dsp": {
+            "expr": "sum(children.dsp)"
+          },
+          "bram": {
+            "expr": "sum(children.bram)"
+          },
+          "uram": {
+            "expr": "sum(children.uram)"
+          }
+        },
+        "parts": [
+          {
+            "name": "children",
+            "isAbstract": true,
+            "type": "FpgaComponent",
+            "multiplicity": "0..*"
+          }
+        ]
+      },
+      {
+        "name": "Subsystem",
+        "specializes": [
+          "Container"
+        ]
+      },
+      {
+        "name": "Fpga",
+        "specializes": [
+          "Container"
+        ],
+        "attributes": [
+          {
+            "name": "cap_lut",
+            "type": "Integer"
+          },
+          {
+            "name": "cap_ff",
+            "type": "Integer"
+          },
+          {
+            "name": "cap_bram",
+            "type": "Integer"
+          },
+          {
+            "name": "margin_lut_pct",
+            "type": "Integer",
+            "default": 30
+          }
+        ],
+        "constraints": [
+          {
+            "name": "lutMargin",
+            "assert": true,
+            "expr": "lut * 100 <= cap_lut * (100 - margin_lut_pct)"
+          }
+        ]
+      }
+    ]
+  }
+}
