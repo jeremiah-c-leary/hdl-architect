@@ -1,0 +1,23 @@
+CAPI=2:
+name: {{ vendor }}:{{ library }}:{{ entity }}:0.1.0
+description: {{ name }} (Rtl). Written once by the scaffolder; yours now.
+filesets:
+  rtl:
+    files: [rtl/{{ entity }}.vhd]
+    file_type: vhdlSource-2008
+    logical_name: {{ logical_name }}
+{%- if has_registers %}
+  regs:
+    files: [regs/{{ entity }}.rdl]
+    file_type: systemRDLSource
+{%- endif %}
+  tb:
+    files: [tb/{{ entity }}_tb.vhd]
+    file_type: vhdlSource-2008
+targets:
+  default: {filesets: [rtl{% if has_registers %}, regs{% endif %}]}
+  sim:
+    filesets: [rtl, tb]
+    toplevel: {{ entity }}_tb
+    flow: sim
+    flow_options: {tool: ghdl}

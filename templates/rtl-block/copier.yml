@@ -1,0 +1,10 @@
+_answers_file: .copier-answers.yml
+name:         {type: str, help: definition name in the model}
+entity:       {type: str, help: VHDL entity (snake case)}
+vendor:       {type: str}
+library:      {type: str}
+logical_name: {type: str, help: VHDL library of this block}
+has_registers:
+  type: bool
+  default: false
+  help: does the block contain a RegisterFile part?

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "ZynqPsIp",
+    "doc": "Zynq UltraScale+ processing system (hard macro).",
+    "imports": [
+      {
+        "name": "FpgaLib::*"
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "ZynqPs",
+        "specializes": [
+          "HardMacro"
+        ],
+        "metadata": [
+          {
+            "type": "Provenance",
+            "values": {
+              "supplier": "AMD",
+              "version": "2024.2",
+              "license": "AMD"
+            }
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "csr",
+            "type": "AxiLite",
+            "doc": "Master."
+          },
+          {
+            "name": "irq",
+            "type": "BitIn",
+            "doc": "Interrupt input."
+          }
+        ]
+      }
+    ]
+  }
+}

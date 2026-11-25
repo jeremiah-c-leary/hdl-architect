@@ -1,0 +1,160 @@
+# SysML-shaped JSON (spike10, started 2026-11-22)
+
+> Historical note, copied from `sysmlpy_spike` at the move (2026-11-25). Paths
+> refer to that repository; the maintained code is in `src/hdl_architect/`.
+
+The model's data in JSON, following SysML v2: one JSON object is one SysML
+element, and relationship objects (memberships, typings, specializations) are
+folded into fields. Rule: **no concept that SysML does not have.** A need that
+SysML can't express becomes a SysML `metadata def`, not a new JSON field.
+
+Why not the OMG standard JSON (`SysML.json` in the Systems Modeling API)? It
+is an interchange format: `part def Uart :> Subsystem { doc ... }` is 4
+objects and 7 KB there (measured from SysON's REST API), mostly derived
+fields and UUID links. Not readable, not diffable, and writing it correctly
+needs the language's semantics.
+
+| File | Role |
+|---|---|
+| `../../layered/schema/sysml-json.schema.json` | The schema (JSON Schema 2020-12), version 0.4 (moved there at the switch, 2026-11-22) |
+| `../model-json/*.json` | Model data (hand-written for now; later written by the view tool) |
+| `../../layered/gen_sysml.py` | Generator: JSON -> SysML text (validates first); was `spike10/tools/json_to_sysml.py` |
+| `../tools/compare_defs.py` | Migration check (done): definitions in two sets of .sysml files, via sysmlpy |
+| `../tools/sysml_to_json_once.py` | One-off migration of our existing .sysml files (a subset reader, not a parser) |
+
+## Version 0.1: packages, attribute defs, port defs
+
+| JSON | SysML |
+|---|---|
+| `package {name, doc, imports}` | `package Name { doc /* */ private import X::*; }` |
+| `attributeDefs[] {name, doc, attributes}` | `attribute def Name { ... }` |
+| `portDefs[] {name, doc, attributes}` | `port def Name { ... }` |
+| `attributes[] {name, type}` | `attribute name : Type;` (a parameter) |
+| `... direction: in/out/inout` | `in attribute name : Type;` (a directed feature: a signal) |
+| `... default: v` | `attribute name : Type default v;` |
+| `... redefines: {width: 4}` | `attribute name : LogicVector { attribute :>> width = 4; }` |
+| `{expr: "lanes"}` | an expression (`lanes`), as opposed to a string literal |
+| `portDefs[] {name, doc, conjugateOf: X}` | SysML conjugation, written out: X's features with in/out swapped |
+
+`conjugateOf` keeps both roles of an interface in one place (as HA's
+protocols do) while the text keeps the convention of explicit role pairs
+(no `~`).
+
+Names must be legal VHDL identifiers too (`^[A-Za-z](_?[A-Za-z0-9])*$`).
+
+## Check (2026-11-22)
+
+`model-json/port_defs.json` was written from
+`spike8/part-library/lib/port_defs.sysml`. Generating SysML from it and
+comparing with the original: 27 definitions, 0 differences (direction, type,
+default and redefinitions of every attribute). The output is byte-identical
+across runs. A changed direction in a base port def shows up in its
+conjugate; invalid input (a name with a space, both `attributes` and
+`conjugateOf`, an unknown `conjugateOf`) is rejected with exit 1.
+
+## Version 0.2: part defs and metadata defs (2026-11-22)
+
+| JSON | SysML |
+|---|---|
+| `package.comments[]`, `partDef.comments[]` | `comment /* */` (a model element; `//` notes have no JSON form) |
+| `metadataDefs[] {name, doc, attributes}` | `metadata def Name { attribute ...; }` |
+| `partDefs[] {name, doc, isAbstract, specializes}` | `abstract part def Name :> A, B { ... }` |
+| `metadata[] {type, values}` | `@Datasheet { manufacturer = "..."; ... }` |
+| `parts[] {name, type, multiplicity, doc, redefines}` | `part name : Type[n] { doc; attribute :>> k = v; }` |
+| `ports[] {name, type, doc, redefines}` | `port name : PortDef { doc; attribute :>> lanes = 8; }` |
+| `bindings[] {ends: [a, b]}` | `bind a = b;` |
+| `connections[] {ends: [a, b]}` | `connect a to b;` |
+| `performs[] {name, type}` | `perform action name : ActionDef;` |
+| `allocations[] {from, to}` | `allocate from to to;` |
+
+Converted with `sysml_to_json_once.py`: PartKinds, PartMetadata, the four HW
+parts (AD9172, AD9208, HMC7044, TMP117), WifiPacketRouterSubsystems and
+WifiPacketRouterFpgaSys. `//` comments were dropped by the converter; the ones
+that matter (OPEN items, "not modelled", the HMC7044 channel pairing) were
+added back by hand as `comments`; section headers were not.
+
+Check: the original files against the generated ones (with the behaviour and
+interfaces files, not yet converted, on both sides): 47 definitions, 0
+differences. `gen_views.py` gives byte-identical PlantUML from the generated
+SysML. Generation is deterministic. A removed bind, a changed port value and a
+changed metadata value are each reported.
+
+## Version 0.3: items and actions (2026-11-22)
+
+| JSON | SysML |
+|---|---|
+| `itemDefs[] {name, doc, attributes}` | `item def Name { ... }` |
+| `portDefs[].items[] {name, direction, type, doc}` | `out item cmd : Command;` in a port def (what it carries) |
+| `conjugateOf` | now swaps items as well as attributes |
+| `actionDefs[] {name, doc, comments}` | `action def Name { ... }` |
+| `... parameters[]` (items) | `in item cmdFrame : EthFrame;` |
+| `... actions[] {name, type, doc, parameters}` | `action step { in item ...; }` or `action step : Def;` |
+| `... bindings[] {ends}` | `bind receiveFrame.ethFrame = cmdFrame;` |
+| `... flows[] {from, to, succession}` | `succession flow from a.x to b.y;` (`flow` without succession) |
+
+Converted: WifiPacketRouterBehavior and WifiPacketRouterInterfaces. The
+converter turns a port def that mirrors an earlier one into `conjugateOf`
+(CommandTarget, TempReadTarget). The `//` notes on the interfaces became
+their port defs' docs.
+
+The whole spike10 model is now JSON (11 files). Check: the original .sysml
+files against the SysML generated from JSON alone: 53 definitions, 0
+differences; `gen_views.py` run on the generated SysML only gives
+byte-identical PlantUML; generation is deterministic. A dropped flow, a flow
+that lost `succession`, a flipped step parameter and a changed item type
+(which also shows in the conjugate) are each reported.
+
+## SysON check (2026-11-22)
+
+The 11 generated files were inserted into a new SysON v2026.11 project,
+`spike10-json` (one root package `GeneratedFromJson`), through SysON's
+`insertTextualSysMLv2` mutation: all accepted. Read back with AQL and the REST
+API:
+
+- Counts match the JSON: 15 part defs, 28 port defs (SysON adds a conjugate
+  for each: 56), 5 item defs, 1 action def, 1 metadata def, 73 ports, 6 parts,
+  15 binds, 2 connects, 5 allocations, 4 succession flows, 1 perform, 4
+  metadata usages, 126 docs, 6 comments, 11 specializations; attributes 128 =
+  128, by name.
+- Everything resolved: no untyped port, part or item; no unresolved
+  specialization, redefinition, import (22), metadata def or perform; all 52
+  connector ends present, the 24 chained ones (`readTemperature.receiveFrame`)
+  fully resolved.
+- Values survived: e.g. `sys_clock` frequency 100000000.0 and duty cycle 0.5;
+  the AD9172's @Datasheet values.
+
+So the generated text is SysML that a second, independent implementation
+accepts and resolves in full.
+
+## Version 0.4: what layered/ uses (2026-11-22)
+
+| JSON | SysML |
+|---|---|
+| `ports[].conjugated: true` | `port csr : ~AxiLite;` |
+| `parts[] {isAbstract, multiplicity: "0..*", subsets: [children]}` | `abstract part children : FpgaComponent[0..*];`, `part regs : SerialCsr :> children;` |
+| `partDefs[].attributes[]` | `attribute baud : Integer default 115200;` (generics, parameters) |
+| `partDefs[].redefines` | `attribute :>> lut = 500;` (values for inherited attributes; may be an expression) |
+| `partDefs[].constraints[] {name, assert, expr}` | `assert constraint lutMargin { ... }` |
+| `attributes[].multiplicity` | `attribute files : String[1..*];` |
+| a list value `["a", "b"]` | `("a", "b")` |
+
+Converted: `layered/` FpgaLib, the five IPs, the serial subsystem and
+FpgaOne (8 JSON files next to their .sysml, so `@HdlSource` paths stay
+relative to the same directory).
+
+Check: a copy of `layered/` with every .sysml replaced by the one generated
+from its JSON, run through the unchanged pipeline (`fpga_ir.py` with
+sysmlpy, `gen_vhdl.py`, `gen_questa_compile.py`): `serial_subsystem.vhd`,
+`fpga_one.vhd` and `compile.do` are byte-identical to the originals' output;
+the IR (`ir.json`) is identical apart from the directory name; the warnings
+are the same.
+
+## JSON front end in layered/fpga_ir.py (2026-11-22)
+
+`load_ir(paths, top, source="json")`, or `--source json` on `fpga_ir.py`,
+`gen_vhdl.py` and `gen_questa_compile.py` (default: `sysml`). No parser: the
+files are validated against this schema, names are resolved through each
+package's imports, and the same elaboration rules build the IR. FpgaOne from
+JSON: the IR equals the sysmlpy IR except `source_file`; `compile.do` is
+byte-identical; the VHDL differs only in its header line ("generated ... from
+fpga_one.json"); Questa compiles it with 0 errors.

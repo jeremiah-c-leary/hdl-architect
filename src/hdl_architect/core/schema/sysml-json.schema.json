@@ -1,0 +1,772 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sysmlpy-spike.local/schema/sysml-json/0.5",
+  "title": "SysML-shaped JSON, version 0.5",
+  "description": "A compact JSON form of a SysML v2 subset for FPGA models. One JSON object is one SysML element; relationship objects (memberships, typings, specializations) are folded into fields. Rule: no concept that SysML does not have. Generated to SysML text by layered/gen_sysml.py. Version 0.5 covers packages, attribute defs, item defs, port defs (with attributes and items), metadata defs, part defs (attributes and values, constraints, ports incl. conjugated, parts incl. subsetting and multiplicity ranges, bind, connect, perform, allocate, metadata, comments) and action defs (parameters, steps, bind, flows). A port may be untyped (`port cmd;`): valid SysML, used while exploring; generating HDL needs a port def.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "package"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "enum": [
+        "0.4",
+        "0.5"
+      ]
+    },
+    "package": {
+      "$ref": "#/$defs/Package"
+    }
+  },
+  "$defs": {
+    "Name": {
+      "description": "A SysML name. Restricted to identifiers that are also legal in VHDL after lower-casing: a letter, then letters, digits and single underscores.",
+      "type": "string",
+      "pattern": "^[A-Za-z](_?[A-Za-z0-9])*$"
+    },
+    "QualifiedName": {
+      "description": "A name, or a qualified name such as ScalarValues::Integer.",
+      "type": "string",
+      "pattern": "^[A-Za-z]\\w*(::[A-Za-z]\\w*)*$"
+    },
+    "Doc": {
+      "description": "SysML `doc` text. Plain text; the generator wraps it in /* */.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Import": {
+      "description": "SysML `import`. `private import X::*;` by default.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "What is imported, e.g. ScalarValues::*",
+          "type": "string",
+          "pattern": "^[A-Za-z]\\w*(::[A-Za-z]\\w*)*(::\\*)?$"
+        },
+        "visibility": {
+          "enum": [
+            "private",
+            "public"
+          ],
+          "default": "private"
+        }
+      }
+    },
+    "Expression": {
+      "description": "A SysML expression, kept as text (e.g. a reference to another attribute: lanes).",
+      "type": "object",
+      "required": [
+        "expr"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "expr": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "Value": {
+      "description": "A literal (JSON boolean, number or string; a string is a SysML string literal) or an Expression.",
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/Expression"
+        },
+        {
+          "description": "A list of literals: `(\"a\", \"b\")`.",
+          "type": "array",
+          "items": {
+            "type": [
+              "boolean",
+              "number",
+              "string"
+            ]
+          },
+          "minItems": 1
+        }
+      ]
+    },
+    "Package": {
+      "description": "SysML `package`.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Comment"
+          }
+        },
+        "imports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Import"
+          }
+        },
+        "attributeDefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AttributeDef"
+          }
+        },
+        "itemDefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ItemDef"
+          }
+        },
+        "metadataDefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MetadataDef"
+          }
+        },
+        "portDefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PortDef"
+          }
+        },
+        "partDefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PartDef"
+          }
+        },
+        "actionDefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActionDef"
+          }
+        }
+      }
+    },
+    "AttributeDef": {
+      "description": "SysML `attribute def`: a value type (Logic, LogicVector, Analog).",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
+        },
+        "attributes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Attribute"
+          }
+        }
+      }
+    },
+    "Attribute": {
+      "description": "SysML `attribute` usage. With `direction` it is a directed feature: a signal of a port. Without it, a parameter.",
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "direction": {
+          "description": "SysML feature direction, from the owning port def's side.",
+          "enum": [
+            "in",
+            "out",
+            "inout"
+          ]
+        },
+        "type": {
+          "$ref": "#/$defs/QualifiedName"
+        },
+        "multiplicity": {
+          "$ref": "#/$defs/Multiplicity"
+        },
+        "default": {
+          "description": "SysML `default` value (may be overridden where the port is used).",
+          "$ref": "#/$defs/Value"
+        },
+        "redefines": {
+          "$ref": "#/$defs/Values"
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
+        }
+      }
+    },
+    "PortDef": {
+      "description": "SysML `port def`. Either lists its own attributes and items, or is the conjugate of another port def (`conjugateOf`).",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
+        },
+        "attributes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Attribute"
+          }
+        },
+        "conjugateOf": {
+          "description": "SysML conjugation: the same features (attributes and items) with in and out swapped (inout stays inout). The generator writes the features out explicitly (convention: no ~ in the text), so the two roles of an interface are kept in one place.",
+          "$ref": "#/$defs/Name"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "attributes"
+              ]
+            },
+            {
+              "required": [
+                "items"
+              ]
+            }
+          ],
+          "not": {
+            "required": [
+              "conjugateOf"
+            ]
+          }
+        },
+        {
+          "required": [
+            "conjugateOf"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "attributes"
+                ]
+              },
+              {
+                "required": [
+                  "items"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "FeatureChain": {
+      "description": "A feature or a chain of features: eth_rgmii, ethernet.eth_rgmii, readTemperature.receiveFrame.",
+      "type": "string",
+      "pattern": "^[A-Za-z]\\w*(\\.[A-Za-z]\\w*)*$"
+    },
+    "Comment": {
+      "description": "SysML `comment`: a note that is a model element (OPEN items, rationale). Plain // comments are not model elements and have no JSON form.",
+      "type": "string",
+      "minLength": 1
+    },
+    "Values": {
+      "description": "Values for features of the type, written `attribute :>> name = value;` (a port's lanes, a metadata field).",
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/Name"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Value"
+      }
+    },
+    "MetadataDef": {
+      "description": "SysML `metadata def`: a kind of fact recorded about an element (Datasheet, Resources).",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
+        },
+        "attributes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Attribute"
+          }
+        }
+      }
+    },
+    "MetadataUsage": {
+      "description": "SysML metadata applied to the owning element: `@Type { field = value; }`.",
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/QualifiedName"
+        },
+        "values": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/Name"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Value"
+          }
+        }
+      }
+    },
+    "PortUsage": {
+      "description": "SysML `port` usage, typed by a port def; untyped (`port name;`) while the interface is still open.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "type": {
+          "$ref": "#/$defs/QualifiedName"
+        },
+        "conjugated": {
+          "description": "`port p : ~PortDef;` (SysML conjugation). Our spike8/10 convention avoids it (explicit role pairs); layered/ uses it.",
+          "type": "boolean",
+          "default": false
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
+        },
+        "redefines": {
+          "$ref": "#/$defs/Values"
+        }
+      }
+    },
+    "PartUsage": {
+      "description": "SysML `part` usage, typed by a part def.",
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "isAbstract": {
+          "type": "boolean",
+          "default": false
+        },
+        "type": {
+          "$ref": "#/$defs/QualifiedName"
+        },
+        "multiplicity": {
+          "$ref": "#/$defs/Multiplicity"
+        },
+        "subsets": {
+          "description": "`part x : T :> children;` (SysML subsetting).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FeatureChain"
+          }
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
+        },
+        "redefines": {
+          "$ref": "#/$defs/Values"
+        }
+      }
+    },
+    "Binding": {
+      "description": "SysML `bind a = b;`: the two ends are the same thing (a part def's port and a child's port with the same port def).",
+      "type": "object",
+      "required": [
+        "ends"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ends": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FeatureChain"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "Connection": {
+      "description": "SysML `connect a to b;`: two child ports joined (the two roles of one interface).",
+      "type": "object",
+      "required": [
+        "ends"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ends": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FeatureChain"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "Perform": {
+      "description": "SysML `perform action name : ActionDef;`.",
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "type": {
+          "$ref": "#/$defs/QualifiedName"
+        }
+      }
+    },
+    "Allocation": {
+      "description": "SysML `allocate from to to;` (an action step to the part that does it).",
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/FeatureChain"
+        },
+        "to": {
+          "$ref": "#/$defs/FeatureChain"
+        }
+      }
+    },
+    "PartDef": {
+      "description": "SysML `part def`. Body order in the generated text: doc, comments, metadata, attributes, redefines, constraints, parts, bindings, connections, performs, allocations, ports.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
+        },
+        "isAbstract": {
+          "type": "boolean",
+          "default": false
+        },
+        "specializes": {
+          "description": "`:> A, B`",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QualifiedName"
+          }
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Comment"
+          }
+        },
+        "metadata": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MetadataUsage"
+          }
+        },
+        "attributes": {
+          "description": "Attribute usages of the part def (parameters, generics), with defaults.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Attribute"
+          }
+        },
+        "redefines": {
+          "description": "`attribute :>> name = value;` in the part def body (values for inherited attributes).",
+          "$ref": "#/$defs/Values"
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Constraint"
+          }
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PartUsage"
+          }
+        },
+        "bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Binding"
+          }
+        },
+        "connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Connection"
+          }
+        },
+        "performs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Perform"
+          }
+        },
+        "allocations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Allocation"
+          }
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PortUsage"
+          }
+        }
+      }
+    },
+    "ItemDef": {
+      "description": "SysML `item def`: something that moves (a frame, a command, a reading).",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
+        },
+        "attributes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Attribute"
+          }
+        }
+      }
+    },
+    "Item": {
+      "description": "SysML directed `item` usage: `in item name : ItemDef;`. In a port def, what the port carries; in an action, a parameter.",
+      "type": "object",
+      "required": [
+        "name",
+        "direction",
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "direction": {
+          "enum": [
+            "in",
+            "out",
+            "inout"
+          ]
+        },
+        "type": {
+          "$ref": "#/$defs/QualifiedName"
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
+        }
+      }
+    },
+    "ActionUsage": {
+      "description": "SysML `action` usage: a step of an action def. Either typed by an action def (`type`) or with its own parameters.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "type": {
+          "$ref": "#/$defs/QualifiedName"
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          }
+        }
+      }
+    },
+    "Flow": {
+      "description": "SysML `flow from a to b;`, or `succession flow from a to b;` when b starts after a ends (succession: true).",
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/FeatureChain"
+        },
+        "to": {
+          "$ref": "#/$defs/FeatureChain"
+        },
+        "succession": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "ActionDef": {
+      "description": "SysML `action def`: a behaviour. Body order in the generated text: doc, comments, parameters, actions (steps), bindings, flows.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Comment"
+          }
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActionUsage"
+          }
+        },
+        "bindings": {
+          "description": "`bind step.param = param;`: a step's parameter is the action def's parameter.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Binding"
+          }
+        },
+        "flows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Flow"
+          }
+        }
+      }
+    },
+    "Multiplicity": {
+      "description": "`[4]` (an integer) or a range `[0..*]`, `[1..*]`, `[2..4]` (a string).",
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "string",
+          "pattern": "^\\d+\\.\\.(\\d+|\\*)$"
+        }
+      ]
+    },
+    "Constraint": {
+      "description": "SysML `constraint name { expr }`, or `assert constraint` (assert: true).",
+      "type": "object",
+      "required": [
+        "name",
+        "expr"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Name"
+        },
+        "assert": {
+          "type": "boolean",
+          "default": false
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
+        },
+        "expr": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

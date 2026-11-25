@@ -1,0 +1,590 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "PortDefs",
+    "doc": "Signal types and port definitions. Every interface is a pair of port defs, one per role, named for the role (convention 6): ...Out/...In, ...Tx/...Rx, ...Controller/...Target. The two ports of a connect are the two roles of the same interface. Directed attributes are the signals; undirected ones are parameters. `differential`: the port's signals are differential pairs on the board.",
+    "imports": [
+      {
+        "name": "ScalarValues::*"
+      }
+    ],
+    "attributeDefs": [
+      {
+        "name": "Logic",
+        "doc": "One bit (std_logic)."
+      },
+      {
+        "name": "LogicVector",
+        "doc": "A bit vector (std_logic_vector).",
+        "attributes": [
+          {
+            "name": "width",
+            "type": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "Analog",
+        "doc": "An analog voltage or current (not an HDL signal)."
+      }
+    ],
+    "portDefs": [
+      {
+        "name": "ClockOut",
+        "doc": "Drives a clock (convention 2).",
+        "attributes": [
+          {
+            "name": "differential",
+            "type": "Boolean",
+            "default": false
+          },
+          {
+            "name": "frequency_hz",
+            "type": "Real"
+          },
+          {
+            "name": "duty_cycle",
+            "type": "Real",
+            "doc": "0.5 = 50 %"
+          },
+          {
+            "name": "clk",
+            "direction": "out",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "ClockIn",
+        "doc": "Receives a clock.",
+        "conjugateOf": "ClockOut"
+      },
+      {
+        "name": "ResetOut",
+        "doc": "Drives a reset (convention 3): synchronous to a named clock port, or not.",
+        "attributes": [
+          {
+            "name": "differential",
+            "type": "Boolean",
+            "default": false
+          },
+          {
+            "name": "active",
+            "type": "String",
+            "doc": "\"low\" or \"high\""
+          },
+          {
+            "name": "synchronous",
+            "type": "Boolean"
+          },
+          {
+            "name": "clock_port",
+            "type": "String",
+            "doc": "Name of the clock port, when synchronous."
+          },
+          {
+            "name": "rst",
+            "direction": "out",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "ResetIn",
+        "doc": "Receives a reset.",
+        "conjugateOf": "ResetOut"
+      },
+      {
+        "name": "SysrefOut",
+        "doc": "Drives JESD204B SYSREF (convention 4: its own interface, not a clock).",
+        "attributes": [
+          {
+            "name": "differential",
+            "type": "Boolean",
+            "default": false
+          },
+          {
+            "name": "frequency_hz",
+            "type": "Real",
+            "doc": "Optional: when periodic."
+          },
+          {
+            "name": "duty_cycle",
+            "type": "Real",
+            "doc": "Optional."
+          },
+          {
+            "name": "clock_port",
+            "type": "String",
+            "doc": "Name of the clock port that samples it (its device clock): SYSREF only means something with that clock."
+          },
+          {
+            "name": "sysref",
+            "direction": "out",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "SysrefIn",
+        "doc": "Receives JESD204B SYSREF.",
+        "conjugateOf": "SysrefOut"
+      },
+      {
+        "name": "BitOut",
+        "doc": "Drives one signal (interrupts, alerts).",
+        "attributes": [
+          {
+            "name": "differential",
+            "type": "Boolean",
+            "default": false
+          },
+          {
+            "name": "active",
+            "type": "String",
+            "doc": "\"low\" or \"high\""
+          },
+          {
+            "name": "val",
+            "direction": "out",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "BitIn",
+        "doc": "Receives one signal.",
+        "conjugateOf": "BitOut"
+      },
+      {
+        "name": "AnalogOut",
+        "doc": "An analog output (the AD9172's DAC outputs). Board-level: usually connects to the board, not the FPGA.",
+        "attributes": [
+          {
+            "name": "signal",
+            "direction": "out",
+            "type": "Analog"
+          }
+        ]
+      },
+      {
+        "name": "AnalogIn",
+        "doc": "An analog input (the AD9172's ISET).",
+        "conjugateOf": "AnalogOut"
+      },
+      {
+        "name": "Spi3WireController",
+        "doc": "SPI, 3-wire: SCLK, CSB, bidirectional SDIO (convention 4: SCLK is a signal inside).",
+        "attributes": [
+          {
+            "name": "sclk",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "csb",
+            "direction": "out",
+            "type": "Logic",
+            "doc": "Chip select, active low."
+          },
+          {
+            "name": "sdio",
+            "direction": "inout",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "Spi3WireTarget",
+        "doc": "SPI 3-wire target.",
+        "conjugateOf": "Spi3WireController"
+      },
+      {
+        "name": "Spi4WireController",
+        "doc": "SPI, 4-wire: SCLK, CSB, SDI into the target, SDO out of it.",
+        "attributes": [
+          {
+            "name": "sclk",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "csb",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "sdi",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "sdo",
+            "direction": "in",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "Spi4WireTarget",
+        "doc": "SPI 4-wire target.",
+        "conjugateOf": "Spi4WireController"
+      },
+      {
+        "name": "I2cController",
+        "doc": "I2C controller.",
+        "attributes": [
+          {
+            "name": "scl",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "sda",
+            "direction": "inout",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "I2cTarget",
+        "doc": "I2C target.",
+        "conjugateOf": "I2cController"
+      },
+      {
+        "name": "JesdTx",
+        "doc": "JESD204B link, transmit side (an ADC): data lanes and SYNC; SYSREF is separate.",
+        "attributes": [
+          {
+            "name": "differential",
+            "type": "Boolean",
+            "default": true,
+            "doc": "Lanes are always pairs."
+          },
+          {
+            "name": "lanes",
+            "type": "Integer"
+          },
+          {
+            "name": "data",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "lanes"
+              }
+            }
+          },
+          {
+            "name": "sync_n",
+            "direction": "in",
+            "type": "Logic",
+            "doc": "SYNC from the receiver."
+          }
+        ]
+      },
+      {
+        "name": "JesdRx",
+        "doc": "JESD204B link, receive side (a DAC).",
+        "conjugateOf": "JesdTx"
+      },
+      {
+        "name": "RgmiiMac",
+        "doc": "RGMII, the MAC side (an FPGA). Clocks are part of the interface: TXC from the MAC, RXC from the PHY, 125 MHz at 1G.",
+        "attributes": [
+          {
+            "name": "txc",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "tx_ctl",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "txd",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": 4
+            }
+          },
+          {
+            "name": "rxc",
+            "direction": "in",
+            "type": "Logic"
+          },
+          {
+            "name": "rx_ctl",
+            "direction": "in",
+            "type": "Logic"
+          },
+          {
+            "name": "rxd",
+            "direction": "in",
+            "type": "LogicVector",
+            "redefines": {
+              "width": 4
+            }
+          }
+        ]
+      },
+      {
+        "name": "RgmiiPhy",
+        "doc": "RGMII, the PHY side (an Ethernet PHY chip).",
+        "conjugateOf": "RgmiiMac"
+      },
+      {
+        "name": "MdioController",
+        "doc": "MDIO station management: MDC, MDIO.",
+        "attributes": [
+          {
+            "name": "mdc",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "mdio",
+            "direction": "inout",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "MdioTarget",
+        "doc": "MDIO, the PHY side.",
+        "conjugateOf": "MdioController"
+      },
+      {
+        "name": "UartDte",
+        "doc": "UART, the DTE side. Signal names from the DTE's side (RS-232): the DTE transmits on txd.",
+        "attributes": [
+          {
+            "name": "txd",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "rxd",
+            "direction": "in",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "UartDce",
+        "doc": "UART, the DCE side (a USB-UART bridge).",
+        "conjugateOf": "UartDte"
+      },
+      {
+        "name": "Axi4StreamTransmitter",
+        "doc": "AMBA AXI4-Stream, the transmitter side (drives TDATA). Synchronous to the block's ACLK; TKEEP marks the valid bytes, TLAST the end of a packet. TSTRB, TID, TDEST and TUSER are not included (add a variant if a design needs them).",
+        "attributes": [
+          {
+            "name": "data_width",
+            "type": "Integer",
+            "default": 32,
+            "doc": "TDATA width in bits: a multiple of 8."
+          },
+          {
+            "name": "tdata",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "data_width"
+              }
+            }
+          },
+          {
+            "name": "tvalid",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "tready",
+            "direction": "in",
+            "type": "Logic"
+          },
+          {
+            "name": "tlast",
+            "direction": "out",
+            "type": "Logic",
+            "doc": "End of a packet."
+          },
+          {
+            "name": "tkeep",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "data_width / 8"
+              }
+            },
+            "doc": "One bit per TDATA byte: the byte is part of the stream."
+          }
+        ]
+      },
+      {
+        "name": "Axi4StreamReceiver",
+        "doc": "AMBA AXI4-Stream, the receiver side.",
+        "conjugateOf": "Axi4StreamTransmitter"
+      },
+      {
+        "name": "Axi4LiteManager",
+        "doc": "AMBA AXI4-Lite, the manager side (issues reads and writes; AXI's old name: master). Synchronous to the block's ACLK. A register bus: one transfer per address, no bursts.",
+        "attributes": [
+          {
+            "name": "addr_width",
+            "type": "Integer",
+            "default": 32
+          },
+          {
+            "name": "data_width",
+            "type": "Integer",
+            "default": 32,
+            "doc": "32 or 64."
+          },
+          {
+            "name": "awaddr",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "addr_width"
+              }
+            }
+          },
+          {
+            "name": "awprot",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": 3
+            }
+          },
+          {
+            "name": "awvalid",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "awready",
+            "direction": "in",
+            "type": "Logic"
+          },
+          {
+            "name": "wdata",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "data_width"
+              }
+            }
+          },
+          {
+            "name": "wstrb",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "data_width / 8"
+              }
+            }
+          },
+          {
+            "name": "wvalid",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "wready",
+            "direction": "in",
+            "type": "Logic"
+          },
+          {
+            "name": "bresp",
+            "direction": "in",
+            "type": "LogicVector",
+            "redefines": {
+              "width": 2
+            }
+          },
+          {
+            "name": "bvalid",
+            "direction": "in",
+            "type": "Logic"
+          },
+          {
+            "name": "bready",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "araddr",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "addr_width"
+              }
+            }
+          },
+          {
+            "name": "arprot",
+            "direction": "out",
+            "type": "LogicVector",
+            "redefines": {
+              "width": 3
+            }
+          },
+          {
+            "name": "arvalid",
+            "direction": "out",
+            "type": "Logic"
+          },
+          {
+            "name": "arready",
+            "direction": "in",
+            "type": "Logic"
+          },
+          {
+            "name": "rdata",
+            "direction": "in",
+            "type": "LogicVector",
+            "redefines": {
+              "width": {
+                "expr": "data_width"
+              }
+            }
+          },
+          {
+            "name": "rresp",
+            "direction": "in",
+            "type": "LogicVector",
+            "redefines": {
+              "width": 2
+            }
+          },
+          {
+            "name": "rvalid",
+            "direction": "in",
+            "type": "Logic"
+          },
+          {
+            "name": "rready",
+            "direction": "out",
+            "type": "Logic"
+          }
+        ]
+      },
+      {
+        "name": "Axi4LiteSubordinate",
+        "doc": "AMBA AXI4-Lite, the subordinate side (a register file; AXI's old name: slave).",
+        "conjugateOf": "Axi4LiteManager"
+      }
+    ]
+  }
+}

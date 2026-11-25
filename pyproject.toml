@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hdl-architect"
+version = "0.2.0"
+description = "FPGA architecture as SysML-shaped JSON: drawn in HA 2, read by deterministic generators."
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.11"
+dependencies = ["jsonschema==4.25.1"]
+
+[project.optional-dependencies]
+scaffold = ["copier==9.19.1", "PyYAML==6.0.3"]
+flow = ["fusesoc==2.4.6"]
+test = ["pytest==8.4.2"]
+
+[project.scripts]
+ha = "hdl_architect.cli:main"
+
+[project.entry-points."hdl_architect.generators"]
+vhdl = "hdl_architect.generators.vhdl:main"
+sysml = "hdl_architect.generators.sysml:main"
+compile = "hdl_architect.generators.questa_compile:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+hdl_architect = ["core/schema/*.json", "editor/static/*"]

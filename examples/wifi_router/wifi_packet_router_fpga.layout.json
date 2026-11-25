@@ -1,0 +1,239 @@
+{
+  "layoutVersion": 1,
+  "ports": {
+    "CLKRSTCTRL": {
+      "rst": {
+        "offset": 72,
+        "side": "left"
+      },
+      "rst_out": {
+        "offset": 85,
+        "side": "right"
+      },
+      "sys_clk": {
+        "offset": 50,
+        "side": "left"
+      }
+    },
+    "Control": {
+      "adc_if": {
+        "offset": 186,
+        "side": "left"
+      },
+      "clk": {
+        "offset": 55,
+        "side": "left"
+      },
+      "clock_gen_spi": {
+        "offset": 101,
+        "side": "right"
+      },
+      "dac_if": {
+        "offset": 457,
+        "side": "left"
+      },
+      "dac_irq": {
+        "offset": 64,
+        "side": "right"
+      },
+      "ethernet": {
+        "offset": 227,
+        "side": "right"
+      },
+      "processing": {
+        "offset": 312,
+        "side": "left"
+      },
+      "rst": {
+        "offset": 82,
+        "side": "left"
+      },
+      "temp_if": {
+        "offset": 520,
+        "side": "right"
+      },
+      "uart": {
+        "offset": 655,
+        "side": "right"
+      }
+    },
+    "RSTSYNC": {
+      "clk": {
+        "offset": 72,
+        "side": "left"
+      },
+      "rst": {
+        "offset": 50,
+        "side": "left"
+      },
+      "rst_out": {
+        "offset": 50,
+        "side": "right"
+      }
+    },
+    "WifiPacketRouterFpga": {
+      "status_uart": {
+        "offset": 50,
+        "side": "right"
+      },
+      "temp_alert": {
+        "offset": 50,
+        "side": "right"
+      },
+      "temp_i2c": {
+        "offset": 50,
+        "side": "right"
+      }
+    }
+  },
+  "sheets": {
+    "CLKRSTCTRL": {
+      "columns": 3,
+      "edge": {
+        "rst": {
+          "side": "left",
+          "y": 130
+        },
+        "rst_out": {
+          "side": "left",
+          "y": 108
+        },
+        "sys_clk": {
+          "side": "left",
+          "y": 86
+        }
+      },
+      "parts": {
+        "RST_SYNC": {
+          "col": 1,
+          "h": 86,
+          "y": 237.453125
+        }
+      }
+    },
+    "WifiPacketRouterFpga": {
+      "columns": 4,
+      "edge": {
+        "adc_jesd": {
+          "side": "left",
+          "y": 286
+        },
+        "adc_spi": {
+          "side": "left",
+          "y": 308
+        },
+        "clock_gen_spi": {
+          "side": "right",
+          "y": 201
+        },
+        "dac_irq": {
+          "side": "right",
+          "y": 164
+        },
+        "dac_jesd": {
+          "side": "left",
+          "y": 484
+        },
+        "dac_reset": {
+          "side": "left",
+          "y": 551
+        },
+        "dac_spi": {
+          "side": "left",
+          "y": 506
+        },
+        "dac_tx_en": {
+          "side": "left",
+          "y": 528
+        },
+        "eth_mdio": {
+          "side": "right",
+          "y": 349
+        },
+        "eth_reset_f": {
+          "side": "right",
+          "y": 371
+        },
+        "eth_rgmii": {
+          "side": "right",
+          "y": 327
+        },
+        "jesd_refclk": {
+          "side": "left",
+          "y": 222
+        },
+        "jesd_sysref": {
+          "side": "left",
+          "y": 258
+        },
+        "status_uart": {
+          "side": "right",
+          "y": 754
+        },
+        "sys_clock": {
+          "side": "left",
+          "y": 136.453125
+        },
+        "sys_reset_f": {
+          "side": "left",
+          "y": 174
+        },
+        "temp_alert": {
+          "side": "right",
+          "y": 637
+        },
+        "temp_i2c": {
+          "side": "right",
+          "y": 615
+        }
+      },
+      "parts": {
+        "CLK_RST_CTRL": {
+          "col": 0,
+          "h": 123.546875,
+          "y": 88.453125
+        },
+        "Control": {
+          "col": 2,
+          "h": 690,
+          "y": 100
+        },
+        "adc_if": {
+          "col": 0,
+          "h": 174,
+          "y": 236
+        },
+        "dac_if": {
+          "col": 0,
+          "h": 220,
+          "y": 434
+        },
+        "ethernet": {
+          "col": 3,
+          "h": 188,
+          "y": 277
+        },
+        "hard_macro": {
+          "col": 0,
+          "h": 70,
+          "y": 744.453125
+        },
+        "processing": {
+          "col": 1,
+          "h": 242,
+          "y": 301
+        },
+        "temp_if": {
+          "col": 3,
+          "h": 113,
+          "y": 565
+        },
+        "uart": {
+          "col": 3,
+          "h": 109,
+          "y": 704
+        }
+      }
+    }
+  }
+}

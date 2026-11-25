@@ -1,0 +1,19 @@
+_answers_file: .copier-answers.yml
+project:
+  type: str
+  help: Project name
+vendor:
+  type: str
+  default: acme
+library:
+  type: str
+  default: "{{ project }}"
+fpga_part:
+  type: str
+  help: FPGA part number for synthesis targets
+  default: xczu19eg-ffvc1760-2-e
+# where each kind of block goes (the team's layout rules)
+rtl_dir:       {type: str, default: components}
+subsystem_dir: {type: str, default: subsystems}
+vendor_ip_dir: {type: str, default: ip}
+fpga_dir:      {type: str, default: fpga}
