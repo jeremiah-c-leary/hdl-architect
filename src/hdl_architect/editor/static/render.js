@@ -1,6 +1,6 @@
 // HA 2: Drawing a sheet, the side panel and the problem list.
 import { G, KIND_COLORS, S } from "./state.js";
-import { $, el, shown, tip, trunc } from "./util.js";
+import { $, el, tip, trunc } from "./svg.js";
 import {
   brokenEnds,
   counterpart,
@@ -14,6 +14,7 @@ import {
   portDef,
   portsOfDef,
   short,
+  shown,
   wiresOf,
 } from "./model.js";
 import {

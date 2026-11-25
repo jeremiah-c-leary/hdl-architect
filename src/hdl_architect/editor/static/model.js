@@ -136,3 +136,7 @@ export function wiresOf(D) {
   });
   return { wires: out, hidden };
 }
+/** A port's readable name, else its identifier. */
+export function shown(port) {
+  return port.label || port.name;
+}

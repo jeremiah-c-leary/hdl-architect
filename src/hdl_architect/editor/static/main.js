@@ -11,7 +11,9 @@
  *   ports[P]  = { port: {side, offset} }      (per part def: shared by its instances)
  */
 import * as stateMod from "./state.js";
-import * as utilMod from "./util.js";
+import * as svgMod from "./svg.js";
+import * as dialogsMod from "./dialogs.js";
+import * as statusbarMod from "./statusbar.js";
 import * as modelMod from "./model.js";
 import * as netsMod from "./nets.js";
 import * as layoutMod from "./layout.js";
@@ -23,10 +25,11 @@ import * as interactionMod from "./interaction.js";
 import * as clocktreeMod from "./clocktree.js";
 import * as exportMod from "./export.js";
 import { S } from "./state.js";
-import { $, hint } from "./util.js";
+import { $ } from "./svg.js";
+import { hint, setStatus } from "./statusbar.js";
 import { isSheet, kindOf, partDef, rebuildIndex } from "./model.js";
 import { settle } from "./layout.js";
-import { check, redo, setStatus, undo } from "./store.js";
+import { check, redo, undo } from "./store.js";
 import { render, renderSide } from "./render.js";
 import { goBack } from "./interaction.js";
 
@@ -35,7 +38,9 @@ import { goBack } from "./interaction.js";
 window.ha2 = Object.assign(
   {},
   stateMod,
-  utilMod,
+  svgMod,
+  dialogsMod,
+  statusbarMod,
   modelMod,
   netsMod,
   layoutMod,

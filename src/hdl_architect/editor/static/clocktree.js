@@ -11,7 +11,7 @@
  * Read-only: clock assignment stays on the sheets.
  */
 import { KIND_COLORS, S } from "./state.js";
-import { el, tip, trunc } from "./util.js";
+import { el, tip, trunc } from "./svg.js";
 import { kindOf, partDef, partType, partsOf, short } from "./model.js";
 import { NET_COLORS, fmtHz, netsOf, portUsage } from "./nets.js";
 

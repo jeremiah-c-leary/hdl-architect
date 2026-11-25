@@ -1,6 +1,7 @@
 // HA 2: Editing operations on the model and its layout.
 import { G, S } from "./state.js";
-import { askName, hint, snake } from "./util.js";
+import { hint } from "./statusbar.js";
+import { askName } from "./dialogs.js";
 import {
   endStr,
   partDef,
@@ -400,4 +401,7 @@ export function removeColumn(D, c) {
     for (const q of Object.values(sl.parts)) if (q.col > c) q.col--;
     sl.columns = Math.max(1, sl.columns - 1);
   });
+}
+export function snake(s) {
+  return s.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
 }

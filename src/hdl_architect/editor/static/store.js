@@ -1,6 +1,6 @@
 // HA 2: Changes, undo/redo, saving, the server check.
 import { COLLS, S } from "./state.js";
-import { $, hint } from "./util.js";
+import { hint, setStatus } from "./statusbar.js";
 import { ensureImport, partDef, rebuildIndex, short } from "./model.js";
 import { settle } from "./layout.js";
 import { render, renderProblems } from "./render.js";
@@ -207,9 +207,4 @@ export async function check() {
   const r = await fetch("/api/check");
   S.serverProblems = (await r.json()).errors || [];
   renderProblems();
-}
-export function setStatus(t, err) {
-  const s = $("status");
-  s.textContent = t;
-  s.className = err ? "err" : "";
 }

@@ -1,6 +1,7 @@
 // HA 2: Clocks, resets, SYSREF: global nets, their pairing and checks.
 import { G, S } from "./state.js";
-import { askName, hint } from "./util.js";
+import { hint } from "./statusbar.js";
+import { askName } from "./dialogs.js";
 import {
   endStr,
   partType,
