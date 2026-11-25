@@ -25,6 +25,7 @@ Usage:
                                --path fpgas --top FpgaOne --out sim/compile.do
   cd sim && vsim -c -do compile.do
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,8 +40,8 @@ LANGUAGES = {
     "VHDL-2019": ("vcom", "-2019"),
     "VHDL-2008": ("vcom", "-2008"),
     "VHDL-2002": ("vcom", "-2002"),
-    "VHDL-93":   ("vcom", "-93"),
-    "Verilog":   ("vlog", ""),
+    "VHDL-93": ("vcom", "-93"),
+    "Verilog": ("vlog", ""),
     "SystemVerilog": ("vlog", "-sv"),
 }
 
@@ -67,8 +68,10 @@ def compile_plan(top: Instance):
         if isinstance(files, str):
             files = [files]
         if lang not in LANGUAGES:
-            raise CompileError(f"{inst.definition}: unknown hdl_language {lang!r} "
-                               f"(known: {', '.join(LANGUAGES)})")
+            raise CompileError(
+                f"{inst.definition}: unknown hdl_language {lang!r} "
+                f"(known: {', '.join(LANGUAGES)})"
+            )
         if not lib:
             raise CompileError(f"{inst.definition}: @HdlSource has no vhdl_library")
         if not files:
@@ -79,8 +82,10 @@ def compile_plan(top: Instance):
         for f in files:
             if f in file_lib:
                 if file_lib[f] != lib:
-                    raise CompileError(f"{f} is listed in library '{file_lib[f]}' "
-                                       f"and in '{lib}' (by {inst.definition})")
+                    raise CompileError(
+                        f"{f} is listed in library '{file_lib[f]}' "
+                        f"and in '{lib}' (by {inst.definition})"
+                    )
                 continue
             file_lib[f] = lib
             plan.append((lib, tool, flags, f, inst.definition))
@@ -100,8 +105,7 @@ def render_do(top_def: str, plan, libraries, missing, root: str, repo: Path) -> 
         "# ---- libraries ----",
     ]
     for lib in libraries:
-        out += [f"if {{![file exists {lib}]}} {{ vlib {lib} }}",
-                f"vmap {lib} {lib}"]
+        out += [f"if {{![file exists {lib}]}} {{ vlib {lib} }}", f"vmap {lib} {lib}"]
     out += ["", "# ---- sources (dependency order) ----"]
     current = None
     for lib, tool, flags, f, defn in plan:
@@ -110,7 +114,7 @@ def render_do(top_def: str, plan, libraries, missing, root: str, repo: Path) -> 
             current = defn
         flag = f" {flags}" if flags else ""
         rel = Path(os.path.relpath(f, repo)).as_posix()
-        out.append(f"{tool}{flag} -work {lib} \"$ROOT/{rel}\"")
+        out.append(f'{tool}{flag} -work {lib} "$ROOT/{rel}"')
     if missing:
         out += ["", "# ---- no @HdlSource: compile vendor simulation models here ----"]
         for inst in missing:
@@ -122,20 +126,40 @@ def render_do(top_def: str, plan, libraries, missing, root: str, repo: Path) -> 
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="ha gen compile", description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--path", action="append", dest="paths", metavar="DIR",
-                    help="model search path directory; repeat for several "
-                         "(default: ./model)")
-    ap.add_argument("--top", required=True, help="top-level part definition, e.g. FpgaOne")
-    ap.add_argument("--out", default="compile.do", help="output .do file (default: compile.do)")
-    ap.add_argument("--repo", default=".",
-                    help="repo root that source paths are written relative to (default: .)")
-    ap.add_argument("--root", default=None,
-                    help="path from the .do file's directory to --repo "
-                         "(default: computed from --out and --repo)")
-    ap.add_argument("--check-files", action="store_true",
-                    help="warn about source files that do not exist")
+    ap = argparse.ArgumentParser(
+        prog="ha gen compile",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ap.add_argument(
+        "--path",
+        action="append",
+        dest="paths",
+        metavar="DIR",
+        help="model search path directory; repeat for several " "(default: ./model)",
+    )
+    ap.add_argument(
+        "--top", required=True, help="top-level part definition, e.g. FpgaOne"
+    )
+    ap.add_argument(
+        "--out", default="compile.do", help="output .do file (default: compile.do)"
+    )
+    ap.add_argument(
+        "--repo",
+        default=".",
+        help="repo root that source paths are written relative to (default: .)",
+    )
+    ap.add_argument(
+        "--root",
+        default=None,
+        help="path from the .do file's directory to --repo "
+        "(default: computed from --out and --repo)",
+    )
+    ap.add_argument(
+        "--check-files",
+        action="store_true",
+        help="warn about source files that do not exist",
+    )
     args = ap.parse_args(argv)
 
     repo = Path(args.repo).resolve()
@@ -156,7 +180,9 @@ def main(argv=None) -> int:
     for lib, _, _, f, defn in plan:
         print(f"  {lib:<14} {os.path.relpath(f, repo):<40} ({defn})")
     for inst in missing:
-        print(f"  warning: no @HdlSource for {inst.definition} ({inst.kind}) at {inst.path}")
+        print(
+            f"  warning: no @HdlSource for {inst.definition} ({inst.kind}) at {inst.path}"
+        )
     if args.check_files:
         for _, _, _, f, _ in plan:
             if not Path(f).exists():

@@ -1,4 +1,5 @@
 """ha.toml: paths relative to the file, unknown keys rejected, found from a subfolder."""
+
 import pytest
 
 from hdl_architect.core import config
@@ -6,7 +7,9 @@ from hdl_architect.core.model import ModelError
 
 
 def test_paths_are_relative_to_the_file(tmp_path):
-    (tmp_path / "ha.toml").write_text('[model]\npaths = ["m"]\ntop = "T"\n[scaffold]\nworkspace = "w"\n')
+    (tmp_path / "ha.toml").write_text(
+        '[model]\npaths = ["m"]\ntop = "T"\n[scaffold]\nworkspace = "w"\n'
+    )
     cfg, f = config.load(tmp_path / "ha.toml")
     assert cfg["model"]["paths"] == [str(tmp_path / "m")]
     assert cfg["scaffold"]["workspace"] == str(tmp_path / "w")

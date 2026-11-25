@@ -1,0 +1,5 @@
+# Formatting-only commits: git blame skips them, so a line still shows who
+# last changed what it does. GitHub reads this file automatically; locally:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# Black and Prettier, first run (2026-11-25)
+e131ef89d9a769f6fc02598dc6e633bec26a6e3f

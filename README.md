@@ -36,7 +36,8 @@ commands, activate it:
 Each design keeps its command settings in an `ha.toml` (model paths, top,
 workspace, templates); command-line options override it.
 
-Tests: `python -m pytest` (FpgaOne must regenerate byte-identical and
+Formatting: `black src tests` (Python) and `npm run format` (HA 2's browser
+code, after `npm install`). Tests: `python -m pytest` (FpgaOne must regenerate byte-identical and
 analyze with GHDL; the package's layering rules are checked).
 
 ## What's here

@@ -15,6 +15,7 @@ dependencies = ["jsonschema==4.25.1"]
 scaffold = ["copier==9.19.1", "PyYAML==6.0.3"]
 flow = ["fusesoc==2.4.6"]
 test = ["pytest==8.4.2"]
+dev = ["black==26.10.1"]
 
 [project.scripts]
 ha = "hdl_architect.cli:main"
@@ -29,3 +30,8 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 hdl_architect = ["core/schema/*.json", "editor/static/*"]
+
+[tool.black]
+# Black's defaults (88 columns); target the oldest Python the package supports
+target-version = ["py311"]
+include = '\.pyi?$'

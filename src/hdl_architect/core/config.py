@@ -14,6 +14,7 @@ look for ha.toml in the current directory and its parents. Command-line
 options override the file. Unknown sections or keys are errors (a typo must
 not be silently ignored).
 """
+
 from __future__ import annotations
 
 import tomllib
@@ -25,7 +26,11 @@ NAME = "ha.toml"
 # section -> key -> (type, is a path or list of paths)
 KEYS = {
     "model": {"paths": (list, True), "top": (str, False)},
-    "scaffold": {"workspace": (str, True), "templates": (str, True), "project": (str, False)},
+    "scaffold": {
+        "workspace": (str, True),
+        "templates": (str, True),
+        "project": (str, False),
+    },
 }
 
 
@@ -57,11 +62,17 @@ def load(path: Path | str | None = None) -> tuple[dict, Path | None]:
         out[section] = {}
         for key, v in values.items():
             if key not in KEYS[section]:
-                problems.append(f"[{section}] unknown key '{key}' (known: {', '.join(KEYS[section])})")
+                problems.append(
+                    f"[{section}] unknown key '{key}' (known: {', '.join(KEYS[section])})"
+                )
                 continue
             typ, is_path = KEYS[section][key]
-            if not isinstance(v, typ) or (typ is list and not all(isinstance(x, str) for x in v)):
-                problems.append(f"[{section}] {key} must be {'a list of strings' if typ is list else 'a string'}")
+            if not isinstance(v, typ) or (
+                typ is list and not all(isinstance(x, str) for x in v)
+            ):
+                problems.append(
+                    f"[{section}] {key} must be {'a list of strings' if typ is list else 'a string'}"
+                )
                 continue
             if is_path:
                 v = [str(base / x) for x in v] if typ is list else str(base / v)
