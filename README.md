@@ -17,6 +17,7 @@ only write the leaves.
 ## Getting started
 
     scripts/ha2                                   # HA 2 on the Wi-Fi example, in your browser
+                                                  # (run it again to restart HA 2 after an update)
 
 The first run creates `.venv` and installs everything. For the other
 commands, activate it:
