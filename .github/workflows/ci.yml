@@ -53,5 +53,7 @@ jobs:
         run: pip install -e .
       - name: Install the pinned tools (fails if package.json and the lock file disagree)
         run: npm ci
+      - name: Install headless Chromium for the behaviour tests (Playwright's pinned build)
+        run: npx playwright install --with-deps chromium
       - name: Check
         run: scripts/check js

@@ -96,7 +96,10 @@ frozen in `~/projects/sysmlpy_spike`).
   Procedure: `docs/history/schema-notes.md`, "SysON check".
 - After an HA 2 change: `npm run test:ha2` (in `scripts/check js`): a real
   `ha serve` on a scratch copy of `tests/ha2/fixtures/wifi_router` (a frozen
-  copy of the example; never the user's live `examples/`), the page in jsdom.
+  copy of the example; never the user's live `examples/`), the page in
+  headless Chromium (Playwright; `npx playwright install chromium` once).
+  Tests reach HA 2's functions through `E(page, expr)`, which looks names up in
+  `window.ha2` first, then the page's globals.
   The rendering goldens in `tests/ha2/golden/` (SVGs you can open) must stay
   byte-identical unless the drawing is meant to change: then
   `UPDATE_GOLDEN=1 npm run test:ha2` and say why in the PR. A new HA 2

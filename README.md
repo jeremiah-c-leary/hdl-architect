@@ -38,7 +38,8 @@ workspace, templates); command-line options override it.
 
 Formatting: `black src tests` (Python) and `npm run format` (HA 2's browser
 code, after `npm install`). Linting: `flake8` and `npm run lint`. Everything CI checks:
-`scripts/check`. HA 2's behaviour tests alone: `npm run test:ha2`. Tests: `python -m pytest` (FpgaOne must regenerate byte-identical and
+`scripts/check`. HA 2's behaviour tests alone: `npm run test:ha2`
+(after `npx playwright install chromium`, once). Tests: `python -m pytest` (FpgaOne must regenerate byte-identical and
 analyze with GHDL; the package's layering rules are checked).
 
 ## What's here

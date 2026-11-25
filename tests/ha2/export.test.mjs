@@ -3,18 +3,26 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { E, openPage, startServer } from "./harness.mjs";
 
-let server, w;
+let server, page;
 before(async () => {
   server = await startServer();
-  w = await openPage(server.url);
+  page = await openPage(server.url);
 });
-after(() => server.stop());
+after(async () => {
+  assert.deepEqual(page.errors, [], "no errors in the page");
+  await server.stop();
+});
 
-test("the export is a standalone light-theme SVG without editing marks", () => {
-  E(w, "S.sel = { kind: 'part', name: 'adc_if' }; render()");
-  const canvas = w.document.getElementById("canvas");
-  assert.ok(canvas.querySelector(".sel"), "the selection is drawn on screen");
-  const { text } = w.exportSvgText(canvas);
+test("the export is a standalone light-theme SVG without editing marks", async () => {
+  await E(page, "(S.sel = { kind: 'part', name: 'adc_if' }, render())");
+  assert.ok(
+    await E(page, "!!document.querySelector('#canvas .sel')"),
+    "the selection is drawn on screen",
+  );
+  const text = await E(
+    page,
+    "exportSvgText(document.getElementById('canvas')).text",
+  );
   assert.match(text, /^<\?xml /);
   assert.match(text, /<style>/, "styles are inside the file");
   assert.doesNotMatch(text, /var\(--/, "no CSS variable left unresolved");
