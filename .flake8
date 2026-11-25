@@ -1,0 +1,6 @@
+[flake8]
+# flake8 does not read pyproject.toml. Settings compatible with Black (88 columns;
+# E203 and E701 are spacing rules Black formats differently).
+max-line-length = 88
+extend-ignore = E203,E701
+exclude = .venv,build,ws,node_modules

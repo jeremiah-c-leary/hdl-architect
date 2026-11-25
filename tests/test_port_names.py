@@ -5,10 +5,8 @@ VHDL and references use the identifier; HA 2 edits {name: id, label: text}."""
 
 import copy
 import json
-from pathlib import Path
 
 import jsonschema
-import pytest
 
 from hdl_architect.core.model import JSON_SCHEMA, load_ir
 from hdl_architect.editor.server import Store, to_editor, to_file

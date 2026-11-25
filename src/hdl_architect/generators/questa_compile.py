@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-hdl_architect.generators.questa_compile (`ha gen compile`) - Generate a QuestaSim compile script from the SysML model.
+hdl_architect.generators.questa_compile (`ha gen compile`) - Generate a QuestaSim
+compile script from the SysML model.
 
 Elaborates the design from a top-level part definition and writes a .do
 file that creates every library and compiles every source file in
@@ -51,7 +52,8 @@ class CompileError(Exception):
 
 
 def compile_plan(top: Instance):
-    """Return (ordered [(library, compiler, flags, file, definition)], libraries, missing)."""
+    """Return (ordered [(library, compiler, flags, file, definition)], libraries,
+    missing)."""
     plan, seen_defs, file_lib, libraries, missing = [], set(), {}, [], []
     for inst in top.walk_post():
         if inst.definition in seen_defs:
@@ -181,7 +183,8 @@ def main(argv=None) -> int:
         print(f"  {lib:<14} {os.path.relpath(f, repo):<40} ({defn})")
     for inst in missing:
         print(
-            f"  warning: no @HdlSource for {inst.definition} ({inst.kind}) at {inst.path}"
+            f"  warning: no @HdlSource for {inst.definition} ({inst.kind}) at "
+            f"{inst.path}"
         )
     if args.check_files:
         for _, _, _, f, _ in plan:

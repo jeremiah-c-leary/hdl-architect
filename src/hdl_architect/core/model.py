@@ -200,7 +200,8 @@ class _JsonModel:
                 raise ModelError(
                     f"{f}: not valid SysML-shaped JSON:\n  "
                     + "\n  ".join(
-                        f"{'/'.join(map(str, e.absolute_path)) or '(root)'}: {e.message}"
+                        f"{'/'.join(map(str, e.absolute_path)) or '(root)'}: "
+                        f"{e.message}"
                         for e in errors
                     )
                 )
@@ -215,7 +216,8 @@ class _JsonModel:
                 for d in pkg.get(kind, []):
                     if d["name"] in self.defs:
                         raise ModelError(
-                            f"{d['name']} declared in both {self.defs[d['name']][3]} and {f}"
+                            f"{d['name']} declared in both {self.defs[d['name']][3]} "
+                            f"and {f}"
                         )
                     self.defs[d["name"]] = (kind, d, pkg["name"], f)
         if not self.packages:
@@ -233,7 +235,8 @@ class _JsonModel:
                 names |= {n for n, d in self.defs.items() if d[2] == target}
             elif target.split("::")[0] not in _STDLIB_PKGS:
                 raise ModelError(
-                    f"package {package}: import {imp['name']}: no such package on the search path"
+                    f"package {package}: import {imp['name']}: no such package on "
+                    "the search path"
                 )
         return names
 
@@ -327,10 +330,12 @@ def _jport(model: _JsonModel, usage: dict, owner_path: str) -> Port:
         if isinstance(w, dict):
             w = _eval_width(w["expr"], params)
         signals.append(Signal(n, _FLIP[d] if flip else d, w))
-    # a role port (Axi4StreamReceiver, conjugateOf Axi4StreamTransmitter) is reported as its
+    # a role port (Axi4StreamReceiver, conjugateOf Axi4StreamTransmitter) is reported
+    # as its
     # base type, conjugated, so both ends of a connection name the same port def
     declared = ("~" if usage.get("conjugated") else "") + pname
-    # SysML: with a short name, the short name is the identifier and the name is readable text
+    # SysML: with a short name, the short name is the identifier and the name is
+    # readable text
     ident = usage.get("shortName") or usage["name"]
     title = usage["name"] if "shortName" in usage else ""
     return Port(

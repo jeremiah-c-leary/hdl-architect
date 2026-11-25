@@ -15,7 +15,7 @@ dependencies = ["jsonschema==4.25.1"]
 scaffold = ["copier==9.19.1", "PyYAML==6.0.3"]
 flow = ["fusesoc==2.4.6"]
 test = ["pytest==8.4.2"]
-dev = ["black==26.10.1"]
+dev = ["black==26.10.1", "flake8==7.5.0"]
 
 [project.scripts]
 ha = "hdl_architect.cli:main"
