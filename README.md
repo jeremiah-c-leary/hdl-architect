@@ -1,77 +1,57 @@
 # hdl-architect
 
-A prototype tool to help with architecting HDL designs.
+Architect an FPGA by drawing it, and let programs do the routine work.
 
-It is a single, self-contained HTML file: no build step, no server, no
-dependencies to install. Open `editor/index.html` in a modern browser.
+The design is a set of **SysML-shaped JSON** files: SysML v2's concepts
+(part defs and parts, port defs and ports, conjugation, bind vs connect) in
+a plain JSON format with a JSON Schema, so any program can read it without a
+SysML parser. You draw it in **HA 2**, a browser editor with a planar
+column / gutter layout. Deterministic generators read the same JSON and
+write the rest: container VHDL, leaf skeletons, compile scripts, FuseSoC
+cores, SysML v2 text, and a scaffolded workspace for the designers, who then
+only write the leaves.
 
-> **Status: prototype.** Expect rough edges, changing data formats, and
-> features that are only partly built. See [Known issues](#known-issues).
-
-## What it does
-
-- **Hierarchical block diagrams.** Model a design from system level down:
-  System → CCA → FPGA → subsystems and leaf components (RTL, vendor IP, hard
-  macros, register files). Duplicated components share one definition, so an
-  edit to one instance applies to every instance, while each instance keeps
-  its own name (the VHDL `label : entity` split).
-- **Ports and interfaces.** Ports can carry an interface definition with
-  roles (e.g. Master / Slave) and signals, each with a direction chosen from
-  the roles and a bit width. Interfaces can be organized into an
-  arbitrary-depth group tree (e.g. SPI → 4 wire → SPI_4W_MODE_0).
-  *(In the tool and its files these are currently called "protocols"; they
-  are really interfaces. A rename is planned.)*
-- **Clocks.** Clock domains and clock-port assignment, with a live diagram.
-- **Resource utilization.** Per-component LUT / FF / DSP / RAM estimates
-  rolled up the hierarchy and compared against a device library.
-- **Deployment diagram.** A collapsible view of where components are
-  allocated (under **Visualizations**).
-- **Features and Feature Arcs.** Describe component behavior as ordered
-  steps (right-click a component → **Edit Features…**). **Feature Mapping**,
-  also under **Visualizations**, turns these into sequence diagrams that can
-  be expanded and collapsed with a click, level by level, so a feature can be
-  read at the FPGA level and drilled into on demand.
-- **JSON export / import** of the whole design, and of the component and
-  interface library separately.
+> **Status: proof of concept**, a personal project. Expect changing formats.
+> HA 1, the earlier single-file HTML prototype, is the git tag `ha1`.
 
 ## Getting started
 
-1. Open `editor/index.html` in a browser.
-2. Use **Import JSON** to load one of the designs in [`examples/`](examples/).
-3. Open **Visualizations ▾ → Feature Mapping** on
-   `examples/serial-dac-system.json`, pick a feature, and click a lifeline
-   marked ▸ to expand it.
+    python3 -m venv .venv && source .venv/bin/activate
+    pip install -e ".[scaffold,flow,test]"
 
-The [user guide](docs/user-guide.md) covers the editor in more detail.
+    ha serve --path examples/wifi_router          # HA 2: open http://127.0.0.1:8765
+    ha check --path examples/wifi_router          # check the model
 
-## Repository layout
+    cd examples/fpga_one
+    SP="--path lib --path ip --path subsystems --path fpgas"
+    ha gen vhdl $SP --top FpgaOne                 # container VHDL + leaf skeletons
+    ha gen compile $SP --top FpgaOne --out sim/compile.do
+    ha gen sysml $SP --out gen/sysml              # SysML v2 text (for SysON)
 
-```
-editor/     the tool (index.html)
-docs/       user guide, design notes, and the SDD mapping effort
-examples/   sample designs (see examples/README.md)
-data/       device resource library and a utilization sample
-```
+    ha scaffold --path examples/wifi_router --top WifiPacketRouterFpga \
+                --ws ws --templates templates --project wifi
 
-## SDD generation (work in progress)
+Tests: `python -m pytest` (FpgaOne must regenerate byte-identical and
+analyze with GHDL; the package's layering rules are checked).
 
-A longer-term goal is generating a per-FPGA Software Design Description from
-the design data, following DI-IPSC-81435. The working notes, section by
-section, are in [`docs/sdd-data-mapping.md`](docs/sdd-data-mapping.md): what
-each DID section asks for, which parts of the model already supply it, and
-what is still missing. Nothing in the tool generates an SDD yet.
+## What's here
 
-DI-IPSC-81435 is a US Government Data Item Description; quotations of it in
-the notes are from that public document.
+| Path | What |
+|---|---|
+| `src/hdl_architect/core/` | The schema and the model loader (the only code that reads model files) |
+| `src/hdl_architect/editor/` | HA 2: a small server plus the browser editor ([guide](docs/ha2.md)) |
+| `src/hdl_architect/generators/` | VHDL, compile script, SysML text; plugins found through an entry point |
+| `src/hdl_architect/flow/` | The scaffolder (Copier templates + FuseSoC cores) |
+| `templates/` | Example team templates for the scaffolder |
+| `examples/` | FpgaOne (small, with leaf RTL) and the Wi-Fi packet router (drawn in HA 2) |
+| `data/` | Device resource capacities (from HA 1; for the resource view to come) |
+| `docs/` | The HA 2 guide; `history/` holds the notes from the SysML spike; `ha1/` HA 1's docs |
 
-## Known issues
+## Why SysML-shaped JSON
 
-- **Import Library can orphan interface references.** It replaces the
-  interface registry wholesale while leaving the diagram untouched, so ports
-  that pointed at the old registry's ids can end up pointing at nothing.
-- **Entity names are not user-definable.** `entityName` is limited to the
-  built-in component kinds, so a specific reusable entity (for example a
-  particular AXI crossbar) cannot yet be named and tracked as its own type.
+A long spike tried SysML v2 text with a Python parser and the SysON
+viewer. SysML's concepts held up; its text and tools did not help people
+reason about an FPGA. See [docs/history/spike-conclusions.md](docs/history/spike-conclusions.md).
 
 ## License
 

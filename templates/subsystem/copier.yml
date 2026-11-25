@@ -1,0 +1,3 @@
+_answers_file: .copier-answers.yml
+name:   {type: str}
+entity: {type: str}

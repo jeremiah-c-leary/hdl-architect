@@ -218,3 +218,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# hdl-architect: generated output (regenerate, never edit)
+gen/
+ws/
+sim/work/
+*.layout.json.tmp
+*.json.tmp
+examples/*/sim/
+build/
