@@ -8,8 +8,11 @@ file next to each model file (`<file>.layout.json`), never in the model.
 
 ## Run
 
-    source .venv/bin/activate
-    # the Wi-Fi packet router
+    scripts/ha2                     # the Wi-Fi packet router; first run sets everything up
+    scripts/ha2 --path DIR ...      # another model; PORT=8800 scripts/ha2 for another port
+
+or, with the venv active:
+
     ha serve --path examples/wifi_router
     # or FpgaOne
     cd examples/fpga_one && ha serve --path lib --path ip --path subsystems --path fpgas
