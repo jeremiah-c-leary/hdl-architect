@@ -193,6 +193,13 @@ class Store:
         written: the browser reloads). Returns (HTTP status, response)."""
         ops = {
             "connect": lambda m, b: core_ops.connect(m, b["sheet"], b["a"], b["b"]),
+            "add_port": lambda m, b: core_ops.add_port(
+                m, b["def"], b["name"], b.get("type")
+            ),
+            "rename_port": lambda m, b: core_ops.rename_port(
+                m, b["def"], b["old"], b["new"]
+            ),
+            "delete_port": lambda m, b: core_ops.delete_port(m, b["def"], b["port"]),
             "set_interface": lambda m, b: core_ops.set_interface(
                 m,
                 [(x["def"], x["port"]) for x in b["ports"]],
@@ -236,7 +243,7 @@ class Store:
                     "version": version(self.files[fid]),
                 }
             )
-        return 200, {"changed": out, "notes": result.notes}
+        return 200, {"changed": out, "notes": result.notes, "data": result.data}
 
     def check(self) -> list[str]:
         try:

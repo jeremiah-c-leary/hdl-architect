@@ -26,8 +26,10 @@ frozen in `~/projects/sysmlpy_spike`).
   drawing rules (columns, port sides) and calls an operation through
   `POST /api/op` (`runOp` in `store.js`), which writes the files and returns
   them (`applyOp` in `store.js`: one undo step). Done: wiring two ports
-  (`connect`, `ha connect`), setting interfaces (`set_interface`,
-  `ha set-interface`). Known debt: the
+  (`connect`), setting interfaces (`set_interface`), adding, renaming and
+  deleting ports (`add_port`, `rename_port`, `delete_port`); each is also an
+  `ha` command (`ha connect`, `ha set-interface`, `ha add-port`, ...).
+  Known debt: the "new port + wire" gestures and the
   other edits are still in `edits.js`/`nets.js`, and `nets`, `edits` and
   `store` import `render`/`menus` (the core depends on the UI); moving each
   operation to `core/ops.py` fixes it, one at a time, each with Python tests.

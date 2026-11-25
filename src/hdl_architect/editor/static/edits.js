@@ -39,10 +39,16 @@ export function uniquePartName(D, base) {
   while (names.has(n)) n = `${base}_${i++}`;
   return n;
 }
+// Still used by the "new port + wire" gestures (quickConnect, connectArmed):
+// moving those to core.ops is the next step.
 export function addPort(P, name, type, side, offset) {
   const d = partDef(P);
   (d.ports = d.ports || []).push(type ? { name, type } : { name });
   rebuildIndex();
+  placePort(P, name, side, offset);
+}
+/** Where a new port is drawn: on `side`, below the ports already there. */
+export function placePort(P, name, side, offset) {
   const l = portLayout(P, name);
   l.side = side;
   const offs = portsOfDef(P)
@@ -259,28 +265,11 @@ export function renamePart(D, old, nu) {
     delete sl.parts[old];
   });
 }
+// Ports are model operations (core.ops: add_port, rename_port, delete_port,
+// via the server): the wires and clock pairings that refer to a port follow
+// it. The browser only moves or removes the port's place in the layout.
 export function renamePort(P, old, nu) {
-  mutate(() => {
-    portsOfDef(P).find((p) => p.name === old).name = nu;
-    for (const n in S.defs) {
-      // every sheet that uses P
-      const e = S.defs[n];
-      if (e.coll !== "partDefs") continue;
-      for (const part of e.def.parts || [])
-        if (short(part.type) === P) {
-          const from = `${part.name}.${old}`;
-          for (const c of [
-            ...(e.def.connections || []),
-            ...(e.def.bindings || []),
-          ])
-            c.ends = c.ends.map((s) => (s === from ? `${part.name}.${nu}` : s));
-        }
-    }
-    const d = partDef(P); // P's own binds (its edge)
-    for (const c of d.bindings || [])
-      c.ends = c.ends.map((s) =>
-        s === old ? nu : s.startsWith(old + ".") ? nu + s.slice(old.length) : s,
-      );
+  return applyOp("rename_port", { def: P, old, new: nu }, () => {
     const L = layoutOf(pkgOf(P));
     if (L.ports[P] && L.ports[P][old]) {
       L.ports[P][nu] = L.ports[P][old];
@@ -338,29 +327,16 @@ export function deletePart(D, name) {
   });
 }
 export function deletePort(P, name) {
-  mutate(() => {
-    const d = partDef(P);
-    d.ports = d.ports.filter((p) => p.name !== name);
-    if (!d.ports.length) delete d.ports;
-    for (const n in S.defs) {
-      const e = S.defs[n];
-      if (e.coll !== "partDefs") continue;
-      const refs = new Set(
-        (e.def.parts || [])
-          .filter((p) => short(p.type) === P)
-          .map((p) => `${p.name}.${name}`),
-      );
-      if (n === P) refs.add(name);
-      for (const k of ["connections", "bindings"]) {
-        if (!e.def[k]) continue;
-        e.def[k] = e.def[k].filter((c) => !c.ends.some((s) => refs.has(s)));
-        if (!e.def[k].length) delete e.def[k];
-      }
-    }
+  return applyOp("delete_port", { def: P, port: name }, () => {
     const L = layoutOf(pkgOf(P));
     if (L.ports[P]) delete L.ports[P][name];
     if (L.sheets[P]) delete L.sheets[P].edge[name];
   });
+}
+export function newPort(P, name, side) {
+  return applyOp("add_port", { def: P, name }, (res) =>
+    placePort(P, res.data.name, side),
+  );
 }
 export function deleteWire(D, w) {
   mutate(() => {
