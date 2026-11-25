@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Start HA 2 in one step: sets up the venv the first time, then serves the
+# model and opens the browser.
+#
+#   scripts/ha2                      # the Wi-Fi example
+#   scripts/ha2 --path DIR [...]     # any model (every argument goes to `ha serve`)
+#   PORT=8800 scripts/ha2            # another port
+set -euo pipefail
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO"
+PORT="${PORT:-8765}"
+
+if [ ! -x .venv/bin/ha ]; then
+  echo "First run: creating .venv and installing hdl-architect (about a minute)..."
+  python3 -m venv .venv
+  .venv/bin/pip install -q --upgrade pip
+  .venv/bin/pip install -q -e ".[scaffold,flow,test]"
+fi
+
+ARGS=("$@")
+[ ${#ARGS[@]} -eq 0 ] && ARGS=(--path examples/wifi_router)
+
+URL="http://127.0.0.1:${PORT}"
+if curl -s -o /dev/null "$URL/api/check"; then
+  echo "Something is already serving on port $PORT (another HA 2?). Stop it, or use PORT=<n> $0" >&2
+  exit 1
+fi
+
+open_browser() {
+  for _ in $(seq 1 50); do curl -s -o /dev/null "$URL/api/check" && break; sleep 0.1; done
+  if command -v wslview >/dev/null; then wslview "$URL"
+  elif command -v explorer.exe >/dev/null; then explorer.exe "$URL" || true   # WSL: the Windows browser
+  elif command -v xdg-open >/dev/null; then xdg-open "$URL"
+  else echo "Open $URL in your browser."; fi
+}
+open_browser >/dev/null 2>&1 &
+
+echo "HA 2 on $URL  (Ctrl+C to stop)"
+exec .venv/bin/ha serve --port "$PORT" "${ARGS[@]}"

@@ -16,10 +16,13 @@ only write the leaves.
 
 ## Getting started
 
-    python3 -m venv .venv && source .venv/bin/activate
-    pip install -e ".[scaffold,flow,test]"
+    scripts/ha2                                   # HA 2 on the Wi-Fi example, in your browser
 
-    ha serve --path examples/wifi_router          # HA 2: open http://127.0.0.1:8765
+The first run creates `.venv` and installs everything. For the other
+commands, activate it:
+
+    source .venv/bin/activate
+    ha serve --path examples/wifi_router          # HA 2 without the launcher
     ha check --path examples/wifi_router          # check the model
 
     cd examples/fpga_one
