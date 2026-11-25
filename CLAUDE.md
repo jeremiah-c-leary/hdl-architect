@@ -117,7 +117,8 @@ frozen in `~/projects/sysmlpy_spike`).
   byte-identical unless the drawing is meant to change: then
   `UPDATE_GOLDEN=1 npm run test:ha2` and say why in the PR. A new HA 2
   feature comes with a test in `tests/ha2/`. Ask the user to reload after a
-  change (and to restart `ha serve` if `server.py` changed).
+  change (and, if Python changed, to run `scripts/ha2` again: it restarts
+  a running HA 2).
 - The model JSON is the source of truth. Change the JSON, then regenerate.
   SysML text is an output, never edited or read back. The schema admits no
   concept SysML does not have: a new need becomes a SysML construct or a
