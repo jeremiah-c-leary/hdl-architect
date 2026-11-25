@@ -54,7 +54,7 @@ function snake(s) { return s.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase(
 function shown(port) { return port.label || port.name; }   // a port's readable name, else its identifier
 function trunc(s, n) { return s.length > n ? s.slice(0, n - 1) + '…' : s; }
 function hint(msg) { $('hint').textContent = msg || DEFAULT_HINT; }
-const DEFAULT_HINT = 'Filled port: has an interface; hollow: none yet. Drag a component\'s bottom edge to resize. Click a component, Ctrl+click another: two ports and a wire. Click a port, then a component (or the edge). Right-click anything for actions. Drag components between columns.';
+const DEFAULT_HINT = 'Filled port: has an interface; hollow: none yet. Drag a component\'s bottom edge to resize. Click a component, Ctrl+click another: two ports and a wire. Click a port, then another port to wire them (or a component / the edge for a new port). Right-click anything for actions. Drag components between columns.';
 function askName(question, def) {
   for (;;) {
     const v = prompt(question, def || '');
@@ -705,6 +705,59 @@ function connectArmed(target) {        // target: a part name on this sheet, or 
     }
   });
 }
+// Wire two ports that already exist: click one, then the other. Two component
+// ports make a connect (the two roles of one interface); a sheet port and a
+// component port make a bind (the same interface). An untyped end takes the
+// matching interface from the other; ports facing away are turned to face
+// each other when they have no other wire.
+function interfacesFit(ua, ub, isBind) {
+  const ta = short(ua.type), tb = short(ub.type);
+  if (isBind) return ta === tb && !!ua.conjugated === !!ub.conjugated;
+  return (counterpart(ta) === tb && !ua.conjugated && !ub.conjugated) || (ta === tb && !!ua.conjugated !== !!ub.conjugated);
+}
+function connectPorts(a, b) {
+  const D = S.sheet, sl = sheetLayout(D);
+  S.armed = null;
+  const say = (msg) => { render(); hint(msg); };
+  if (a.kind === 'edge' && b.kind === 'edge') return say('Two sheet ports cannot be wired to each other: wire each to a component.');
+  if (a.kind === 'part' && b.kind === 'part' && a.part === b.part) return say(`Both ports are on ${a.part}: wire ports of two different components.`);
+  if (globalInfo(D, a) || globalInfo(D, b)) return say('Clocks, resets and SYSREF are wired as nets: click such a port to choose its net.');
+  const isBind = a.kind === 'edge' || b.kind === 'edge';
+  if (!isBind && sl.parts[a.part].col === sl.parts[b.part].col) return say('Same column: move one of them first.');
+  const same = (w) => (endStr(w.a) === endStr(a) && endStr(w.b) === endStr(b)) || (endStr(w.a) === endStr(b) && endStr(w.b) === endStr(a));
+  if (drawnWires(D).some(same)) return say(`${endStr(a)} and ${endStr(b)} are already wired.`);
+  const ua = portUsage(D, a), ub = portUsage(D, b);
+  if (ua.type && ub.type && !interfacesFit(ua, ub, isBind)) {
+    const ta = short(ua.type) + (ua.conjugated ? '~' : ''), tb = short(ub.type) + (ub.conjugated ? '~' : '');
+    alert(`${endStr(a)} (${ta}) and ${endStr(b)} (${tb}) do not fit: `
+      + (isBind ? 'a sheet port and the component port it delegates to need the same interface.'
+                : `a connection joins the two roles of one interface (${ta} goes with ${counterpart(short(ua.type))}).`));
+    return say('');
+  }
+  const owner = (e) => e.kind === 'edge' ? D : partType(D, e.part);
+  const wiredElsewhere = (e) => drawnWires(D).some(w => endStr(w.a) === endStr(e) || endStr(w.b) === endStr(e));
+  const turned = [];
+  const face = (e, side) => {           // turn a component port to `side` if nothing else is wired to it
+    if (e.kind !== 'part' || portLayout(owner(e), e.port).side === side || wiredElsewhere(e)) return;
+    setPortSide(owner(e), e.port, side); turned.push(endStr(e));
+  };
+  mutate(() => {
+    if (ua.type && !ub.type) typePort(owner(b), b.port, isBind ? ua.type : counterpart(ua.type));
+    if (ub.type && !ua.type) typePort(owner(a), a.port, isBind ? ub.type : counterpart(ub.type));
+    const d = partDef(D);
+    if (isBind) {
+      const edge = a.kind === 'edge' ? a : b, part = a.kind === 'edge' ? b : a;
+      if (!wiredElsewhere(edge)) sl.edge[edge.port].side = sl.parts[part.part].col >= sl.columns / 2 ? 'right' : 'left';
+      face(part, sl.edge[edge.port].side);
+      (d.bindings = d.bindings || []).push({ ends: [edge.port, endStr(part)] });
+    } else {
+      const [left, right] = sl.parts[a.part].col < sl.parts[b.part].col ? [a, b] : [b, a];
+      face(left, 'right'); face(right, 'left');
+      (d.connections = d.connections || []).push({ ends: [endStr(left), endStr(right)] });
+    }
+  });
+  hint(`Wired ${endStr(a)} ${isBind ? '=' : '–'} ${endStr(b)}.` + (turned.length ? ` Turned ${turned.join(', ')} to face the wire.` : ''));
+}
 function addComponent(D, col, y, kindOrDef, isDef) {
   const pkg = pkgOf(D);
   const suggestion = isDef ? uniquePartName(D, snake(kindOrDef)) : uniquePartName(D, kindOrDef === 'HwPart' ? 'hw' : snake(kindOrDef));
@@ -810,9 +863,10 @@ function deleteWire(D, w) {
 function typePort(P, name, type) {
   const p = portsOfDef(P).find(x => x.name === name);
   if (type) { p.type = type; ensureImport(pkgOf(P), type); } else delete p.type;
-  const keyOrder = ['name', 'type', 'conjugated', 'doc', 'redefines'];
+  const keyOrder = ['name', 'label', 'type', 'conjugated', 'doc', 'redefines'];
   const copy = Object.assign({}, p); for (const k in p) delete p[k];
   for (const k of keyOrder) if (k in copy) p[k] = copy[k];
+  for (const k in copy) if (!(k in p)) p[k] = copy[k];   // never drop a key it does not know
 }
 function setPortType(P, name, type) {
   // Set a port's interface; on the open sheet, an untyped port at the other end of its
@@ -1303,6 +1357,9 @@ window.addEventListener('mouseup', (ev) => {
     S.sel = S.sel && S.sel.name === d.part ? null : { kind: 'part', name: d.part };
     render();
     hint(S.sel ? `Selected ${d.part}. Ctrl+click another component to connect them; F flips it; Ctrl+←/→ moves it a column; Delete removes it.` : '');
+  } else if ((d.kind === 'port' || d.kind === 'edge') && !d.shift && S.armed &&
+             endStr(S.armed) !== endStr(d.kind === 'edge' ? { kind: 'edge', port: d.port } : { kind: 'part', part: d.part, port: d.port })) {
+    connectPorts(S.armed, d.kind === 'edge' ? { kind: 'edge', port: d.port } : { kind: 'part', part: d.part, port: d.port });
   } else if ((d.kind === 'port' || d.kind === 'edge') && !d.shift && !S.armed &&
              globalInfo(S.sheet, d.kind === 'edge' ? { kind: 'edge', port: d.port } : { kind: 'part', part: d.part, port: d.port })) {
     const D = S.sheet, end = d.kind === 'edge' ? { kind: 'edge', port: d.port } : { kind: 'part', part: d.part, port: d.port };
@@ -1318,7 +1375,7 @@ window.addEventListener('mouseup', (ev) => {
     const end = d.kind === 'edge' ? { kind: 'edge', port: d.port } : { kind: 'part', part: d.part, port: d.port };
     S.armed = S.armed && endStr(S.armed) === endStr(end) ? null : end;
     render();
-    hint(S.armed ? `Wiring ${endStr(end)}: click a component (new port + wire)${end.kind === 'part' ? ' or a sheet edge (new sheet port + bind)' : ''}. Esc cancels.` : '');
+    hint(S.armed ? `Wiring ${endStr(end)}: click another port to wire the two, or a component (new port + wire)${end.kind === 'part' ? ' or a sheet edge (new sheet port + bind)' : ''}. Esc cancels.` : '');
   }
 });
 function edgeClick(ev, side) {
