@@ -19,8 +19,11 @@ frozen in `~/projects/sysmlpy_spike`).
   `connect`, shared by HA 2's server and the `ha` commands).
 - `src/hdl_architect/editor/`: HA 2 (`server.py` + `static/`). User guide:
   `docs/ha2.md`. The browser code is ES modules loaded from `static/main.js` (no build
-  step): `state`, `util`, `model`, `nets`, `layout`, `store`, `edits`, `menus`,
-  `render`, `interaction`, `clocktree`, `export`. `main.js` exposes every
+  step): `state`, `svg` (the
+  drawing toolkit), `statusbar` (hint and status), `dialogs` (asking for a
+  name or text), `model`, `nets`, `layout`, `store`, `edits`, `menus`,
+  `render`, `interaction`, `clocktree`, `export`. No `util`/grab-bag module:
+  a helper goes where its job is. `main.js` exposes every
   module's exports as `window.ha2` for the tests and the browser console.
   Model rules live in `core/ops.py`, never in the browser. Every model
   change is a named operation in `core.ops.OPERATIONS` (19: wiring,

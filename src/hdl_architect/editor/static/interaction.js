@@ -1,6 +1,7 @@
 // HA 2: Mouse, drag and drop, and keyboard.
 import { G, S } from "./state.js";
-import { $, hint } from "./util.js";
+import { $ } from "./svg.js";
+import { hint } from "./statusbar.js";
 import { endStr, isSheet, partDef, partType, portsOfDef } from "./model.js";
 import {
   assignNet,

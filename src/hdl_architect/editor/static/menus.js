@@ -1,6 +1,8 @@
 // HA 2: The context menu, every right-click menu, and the text dialogs.
 import { KIND_COLORS, S } from "./state.js";
-import { $, askName, hint, trunc } from "./util.js";
+import { $, trunc } from "./svg.js";
+import { hint } from "./statusbar.js";
+import { askName, askText } from "./dialogs.js";
 import { kindOf, partDef, partType, portsOfDef } from "./model.js";
 import { addGlobalPort, pairMenu, pairable, pairedClock } from "./nets.js";
 import { applyOp } from "./store.js";
@@ -282,27 +284,6 @@ export function compMenu(ev, D, name) {
   ]);
 }
 // ------------------------------------------------------------------ descriptions (SysML `doc`)
-export const DOC_HINT =
-  "Plain text for readers outside FPGA design. It goes into the VHDL comments and the documents. Empty removes it.";
-export function askText(title, value, hintText) {
-  const dlg = $("textDlg"),
-    ta = $("textDlgText");
-  $("textDlgTitle").textContent = title;
-  $("textDlgHint").textContent = hintText || DOC_HINT;
-  ta.value = value || "";
-  ta.onkeydown = (e) => {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      $("textDlgOk").click();
-    }
-  };
-  return new Promise((resolve) => {
-    dlg.onclose = () => resolve(dlg.returnValue === "ok" ? ta.value : null);
-    dlg.returnValue = "";
-    dlg.showModal();
-    ta.focus();
-  });
-}
 // A description (SysML doc) and a port's readable name are model operations
 // (core.ops.set_doc, set_port_name, via the server).
 export async function editDoc(title, target, hintText) {
