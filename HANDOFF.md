@@ -95,6 +95,15 @@ From the spike (2026-11-22) and [S] section A, confirmed by the user:
 
 ## Open proposals (not decided; details in [S])
 
+Interfaces on connections (2026-11-25, user: "may want to change it later"):
+SysML `interface def Axi4Lite { end manager : Axi4LiteManager; end
+subordinate : Axi4LiteSubordinate; }` and typed connections (`interface :
+Axi4Lite connect a to b`). HA 2 would label each wire once ("Axi4Lite") and
+port labels would show only the readable name (they truncate now); the
+protocol library gets a real "Axi4Lite"; a typed connection checks manager
+to subordinate. Needs: schema, loader, HA 2, SysON check. Interim option:
+show only the name on wired ports.
+
 Documents and reviews: modular docs with Sphinx + MyST [B1]; scaffolded vs
 generated doc pages [B2]; SDD section-by-section plan, coverage gates,
 document control, interface change report [B3]; SVD [B4]; DIDs applicable

@@ -83,6 +83,36 @@ def dump_layout(layout: dict) -> str:
     return json.dumps(layout, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
+# ---------------------------------------------------------------- editor form
+# In the file, a port with a readable name follows SysML: {"name": "Processing CSR",
+# "shortName": "processing"} (the short name is the identifier). The editor works
+# on identifiers, so it gets {"name": "processing", "label": "Processing CSR"};
+# saving turns it back. Only these two functions know about the difference.
+def _port_usages(doc: dict):
+    def walk(pkg):
+        for d in pkg.get("partDefs", []):
+            yield from d.get("ports", [])
+        for sub in pkg.get("packages", []):
+            yield from walk(sub)
+    if isinstance(doc, dict) and isinstance(doc.get("package"), dict):
+        yield from walk(doc["package"])
+
+
+def to_editor(doc: dict) -> dict:
+    for u in _port_usages(doc):
+        if "shortName" in u:
+            u["label"], u["name"] = u["name"], u.pop("shortName")
+    return doc
+
+
+def to_file(doc: dict) -> dict:
+    for u in _port_usages(doc):
+        label = u.pop("label", None) if isinstance(u, dict) else None
+        if isinstance(label, str) and label.strip() and label.strip() != u.get("name"):
+            u["shortName"], u["name"] = u["name"], label.strip()
+    return doc
+
+
 # ---------------------------------------------------------------- the model on disk
 class Store:
     def __init__(self, paths: list[Path]):
@@ -108,7 +138,7 @@ class Store:
                 self.files[fid] = f
                 lf = layout_file(f)
                 layout = json.loads(lf.read_text(encoding="utf-8")) if lf.is_file() else None
-                out.append({"file": fid, "model": doc, "layout": layout,
+                out.append({"file": fid, "model": to_editor(doc), "layout": layout,
                             "version": version(f), "layoutVersion": version(lf)})
         return out
 
@@ -122,6 +152,7 @@ class Store:
             return [f"{fid}: not a model file this server loaded"], None
         if stale(f, base):
             return [STALE], None
+        doc = to_file(doc)
         errs = self.errors(doc)
         if errs:
             return errs, None
@@ -243,7 +274,7 @@ def main(argv=None) -> int:
         changed = 0
         for pkg in store.scan():
             f = store.files[pkg["file"]]
-            text = dump_model(pkg["model"])
+            text = dump_model(to_file(pkg["model"]))
             if f.read_text(encoding="utf-8") != text:
                 f.write_text(text, encoding="utf-8")
                 print(f"normalized {pkg['file']}")

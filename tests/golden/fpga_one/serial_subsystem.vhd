@@ -9,7 +9,10 @@ library uart_lib;
 
 entity serial_subsystem is
   port (
+    -- clk : ClockIn
     clk         : in    std_logic;
+
+    -- csr : ~AxiLite
     csr_awaddr  : in    std_logic_vector(31 downto 0);
     csr_awprot  : in    std_logic_vector(2 downto 0);
     csr_awvalid : in    std_logic;
@@ -29,16 +32,25 @@ entity serial_subsystem is
     csr_rresp   : out   std_logic_vector(1 downto 0);
     csr_rvalid  : out   std_logic;
     csr_rready  : in    std_logic;
+
+    -- uart_tx : ~BitIn
     uart_tx     : out   std_logic;
+
+    -- uart_rx : BitIn
     uart_rx     : in    std_logic;
+
+    -- irq : ~BitIn
     irq         : out   std_logic
   );
 end entity;
 
 architecture structural of serial_subsystem is
 
+  -- regs.tx_data <-> tx_core.data : ~DataIn
   signal regs_tx_data_data  : std_logic_vector(7 downto 0);
   signal regs_tx_data_valid : std_logic;
+
+  -- rx_core.data <-> regs.rx_data : ~DataIn
   signal rx_core_data_data  : std_logic_vector(7 downto 0);
   signal rx_core_data_valid : std_logic;
 
@@ -47,6 +59,7 @@ begin
   u_regs : entity serial_lib.serial_csr
     port map (
       clk           => clk,
+      -- csr : ~AxiLite
       csr_awaddr    => csr_awaddr,
       csr_awprot    => csr_awprot,
       csr_awvalid   => csr_awvalid,
@@ -66,8 +79,10 @@ begin
       csr_rresp     => csr_rresp,
       csr_rvalid    => csr_rvalid,
       csr_rready    => csr_rready,
+      -- tx_data : ~DataIn
       tx_data_data  => regs_tx_data_data,
       tx_data_valid => regs_tx_data_valid,
+      -- rx_data : DataIn
       rx_data_data  => rx_core_data_data,
       rx_data_valid => rx_core_data_valid
     );
@@ -79,6 +94,7 @@ begin
     )
     port map (
       clk        => clk,
+      -- data : DataIn
       data_data  => regs_tx_data_data,
       data_valid => regs_tx_data_valid,
       serial     => uart_tx
@@ -91,6 +107,7 @@ begin
     )
     port map (
       clk        => clk,
+      -- data : ~DataIn
       data_data  => rx_core_data_data,
       data_valid => rx_core_data_valid,
       serial     => uart_rx,

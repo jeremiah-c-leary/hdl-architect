@@ -38,6 +38,9 @@ class Port:
     conjugated: bool
     signals: list[Signal] = field(default_factory=list)
     params: dict[str, object] = field(default_factory=dict)   # e.g. frequency_hz
+    doc: str = ""                   # the port's `doc` in the model
+    declared: str = ""              # the interface as written: "AxiLite", "~AxiLite", "Axi4StreamReceiver"
+    title: str = ""                 # the readable SysML name when the port has a shortName ("Processing CSR")
 
     def hdl_names(self) -> list[tuple[str, Signal]]:
         """(HDL port name, signal): 'clk' for one-signal ports, else 'csr_awaddr'."""
@@ -263,7 +266,12 @@ def _jport(model: _JsonModel, usage: dict, owner_path: str) -> Port:
         signals.append(Signal(n, _FLIP[d] if flip else d, w))
     # a role port (Axi4StreamReceiver, conjugateOf Axi4StreamTransmitter) is reported as its
     # base type, conjugated, so both ends of a connection name the same port def
-    return Port(usage["name"], base, flip, signals, params)
+    declared = ("~" if usage.get("conjugated") else "") + pname
+    # SysML: with a short name, the short name is the identifier and the name is readable text
+    ident = usage.get("shortName") or usage["name"]
+    title = usage["name"] if "shortName" in usage else ""
+    return Port(ident, base, flip, signals, params,
+                doc=usage.get("doc", ""), declared=declared, title=title)
 
 
 def _jvalue(v):
@@ -324,6 +332,7 @@ def to_dict(inst: Instance) -> dict:
         "generic_defaults": inst.generic_defaults,
         "generic_types": inst.generic_types,
         "ports": [{"name": p.name, "type": p.type, "conjugated": p.conjugated,
+                   "declared": p.declared, "title": p.title, "doc": p.doc,
                    "params": p.params, "signals": [vars(s) for s in p.signals]}
                   for p in inst.ports],
         "connections": [list(c) for c in inst.connections],

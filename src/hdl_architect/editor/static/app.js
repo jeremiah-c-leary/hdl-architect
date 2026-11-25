@@ -51,6 +51,7 @@ function el(tag, attrs, parent, text) {
 function tip(e, text) { el('title', {}, e, text); return e; }
 function pascal(s) { return s.split(/[_\W]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(''); }
 function snake(s) { return s.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase(); }
+function shown(port) { return port.label || port.name; }   // a port's readable name, else its identifier
 function trunc(s, n) { return s.length > n ? s.slice(0, n - 1) + '…' : s; }
 function hint(msg) { $('hint').textContent = msg || DEFAULT_HINT; }
 const DEFAULT_HINT = 'Filled port: has an interface; hollow: none yet. Drag a component\'s bottom edge to resize. Click a component, Ctrl+click another: two ports and a wire. Click a port, then a component (or the edge). Right-click anything for actions. Drag components between columns.';
@@ -978,10 +979,10 @@ function render() {
     const gEnd = { kind: 'edge', port: port.name }, gi = globalInfo(D, gEnd), net = byEnd[port.name];
     const r = el('rect', { x, y: e.y - G.PORT_H / 2, width: G.PORT_W, height: G.PORT_H, class: 'edge-port' + (port.type ? '' : ' untyped') + (armed ? ' armed' : '') + (isPicked(D, port.name) ? ' picked' : '') + (gi ? ' gport ' + gi.cat : ''), 'data-edge': port.name }, svg);
     if (gi) r.style.fill = net ? net.color : '#b0b6bf';
-    tip(r, `${port.name} : ${port.type || '(no interface yet)'}${port.doc ? '\n' + port.doc : ''}${gi ? `\n${gi.cat}${net ? ' net ' + net.name + ' (' + net.members.length + ' ports)' : ', on no net'}. Click for its net.` : ''}`);
+    tip(r, `${port.label ? port.label + '\n' : ''}${port.name} : ${port.type || '(no interface yet)'}${port.doc ? '\n' + port.doc : ''}${gi ? `\n${gi.cat}${net ? ' net ' + net.name + ' (' + net.members.length + ' ports)' : ', on no net'}. Click for its net.` : ''}`);
     const tx = e.side === 'left' ? geo.edgeL.x1 - G.PORT_W - 4 : geo.edgeR.x0 + G.PORT_W + 4;
     const anchor = e.side === 'left' ? 'end' : 'start';
-    el('text', { x: tx, y: e.y - 1, 'text-anchor': anchor, class: 'port-label' }, svg, trunc(port.name, 17));
+    el('text', { x: tx, y: e.y - 1, 'text-anchor': anchor, class: 'port-label' }, svg, trunc(shown(port), 17));
     const sub = (gi && net && net.freq ? `${short(port.type)} · ${fmtHz(net.freq)}` : port.type) + (pairedClock(port) ? ` @${pairedClock(port)}` : '');
     if (sub) el('text', { x: tx, y: e.y + 10, 'text-anchor': anchor, class: 'port-type' }, svg, trunc(sub, 21));
     r.onmousedown = (ev) => startDrag(ev, { kind: 'edge', port: port.name, y0: e.y });
@@ -1029,13 +1030,13 @@ function render() {
           el('path', { d: `M${bx},${py} H${bx + (l.side === 'left' ? 3 : -3)} V${cy} H${bx}`, class: 'pair', style: `stroke:${net ? net.color : '#8a8f98'}`, 'pointer-events': 'none' }, g);
         }
       }
-      tip(pr, `${part.name}.${port.name} : ${port.type || '(no interface yet)'}${port.doc ? '\n' + port.doc : ''}` + (pc ? `\nsampled by ${pc}` : '') + (gi
+      tip(pr, `${port.label ? port.label + '\n' : ''}${part.name}.${port.name} : ${port.type || '(no interface yet)'}${port.doc ? '\n' + port.doc : ''}` + (pc ? `\nsampled by ${pc}` : '') + (gi
         ? `\n${gi.cat}${net ? ' net ' + net.name + (net.freq ? ', ' + fmtHz(net.freq) : '') : ', on no net'}. Click to choose its net.`
         : '\nClick, then click a component or the edge to wire it.'));
       const lx = l.side === 'left' ? c.x0 + 8 : c.x1 - 8, anchor = l.side === 'left' ? 'start' : 'end';
       // a port facing it on the other side at about the same height: half the width each
       const crowded = portsOfDef(P).some(o => o.name !== port.name && portLayout(P, o.name).side !== l.side && Math.abs(portLayout(P, o.name).offset - l.offset) < G.PGAP);
-      const label = port.type && !crowded && !gi ? `${port.name} · ${short(port.type)}` : (pc ? `${port.name} @${pc}` : port.name);
+      const label = port.type && !crowded && !gi ? `${shown(port)} · ${short(port.type)}` : (pc ? `${shown(port)} @${pc}` : shown(port));
       el('text', { x: lx, y: py + 4, 'text-anchor': anchor, class: 'port-label on-kind', 'pointer-events': 'none' }, g, trunc(label, crowded ? 13 : 25));
       pr.onmousedown = (ev) => startDrag(ev, { kind: 'port', part: part.name, P, port: port.name, off0: l.offset });
       pr.oncontextmenu = (ev) => { ev.preventDefault(); ev.stopPropagation(); portMenu(ev, P, port.name, false); };
@@ -1342,6 +1343,7 @@ function colMenu(ev, col) {
   const items = [{ head: `Column ${col + 1}` }];
   for (const k of kindsAvailable()) items.push({ label: `Add ${k}…`, act: () => addComponent(D, col, y, k, false) });
   items.push({ label: 'Add an instance of a library part…', act: () => libraryMenu(ev.clientX, ev.clientY, D, col, y) });
+  items.push({ label: `Description of this sheet (${D})${partDef(D) && partDef(D).doc ? ' ✓' : ''}…`, act: () => editDoc(`Description of ${D}`, () => partDef(D)) });
   items.push({ sep: true }, { label: 'Add column to the left', act: () => insertColumn(D, col) },
     { label: 'Add column to the right', act: () => insertColumn(D, col + 1) },
     { label: 'Remove this column', danger: true, act: () => removeColumn(D, col) });
@@ -1366,6 +1368,7 @@ function compMenu(ev, D, name) {
       mutate(() => addPort(P, n, undefined, 'left'));
     } },
     { sep: true },
+    { label: `Description of ${P}${partDef(P) && partDef(P).doc ? ' ✓' : ''}…`, act: () => editDoc(`Description of ${P} (every instance)`, () => partDef(P)) },
     { label: 'Rename instance…', act: () => { const n = askName('Instance name', name); if (n && n !== name) renamePart(D, name, n); } },
     { label: `Rename definition ${P}…`, act: () => { const n = askName('Definition name', P); if (n && n !== P) { if (S.defs[n]) alert(`${n} already exists.`); else renameDef(P, n); } } },
     { label: `Kind: ${kindOf(P) || 'none'}…`, act: () => {
@@ -1393,6 +1396,43 @@ function compMenu(ev, D, name) {
     { label: 'Delete', danger: true, act: () => deletePart(D, name) },
   ]);
 }
+// ------------------------------------------------------------------ descriptions (SysML `doc`)
+const DOC_HINT = 'Plain text for readers outside FPGA design. It goes into the VHDL comments and the documents. Empty removes it.';
+function askText(title, value, hintText) {
+  const dlg = $('textDlg'), ta = $('textDlgText');
+  $('textDlgTitle').textContent = title;
+  $('textDlgHint').textContent = hintText || DOC_HINT;
+  ta.value = value || '';
+  ta.onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $('textDlgOk').click(); } };
+  return new Promise(resolve => {
+    dlg.onclose = () => resolve(dlg.returnValue === 'ok' ? ta.value : null);
+    dlg.returnValue = '';
+    dlg.showModal();
+    ta.focus();
+  });
+}
+async function editDoc(title, getObj, hintText) {
+  const obj = getObj();
+  if (!obj) return;
+  const text = await askText(title, obj.doc, hintText);
+  if (text === null) return;
+  const t = text.split('\n').map(l => l.trim()).join('\n').trim();
+  if ((obj.doc || '') === t) return;
+  mutate(() => { const o = getObj(); if (t) o.doc = t; else delete o.doc; });
+}
+// A port's readable SysML name ("Processing CSR"); its identifier stays `name`
+// (in the file: name = the readable text, shortName = the identifier).
+function editLabel(P, name) {
+  const port = portsOfDef(P).find(p => p.name === name);
+  if (!port) return;
+  const v = prompt(`Name of port ${P}.${name}: a readable name for the interface, e.g. "Processing CSR". `
+    + 'It heads the port in the generated VHDL and the documents; the VHDL name stays ' + name + '. Empty removes it.',
+    port.label || '');
+  if (v === null) return;
+  const t = v.replace(/['\\\r\n]/g, '').trim();
+  if ((port.label || '') === t) return;
+  mutate(() => { const p = portsOfDef(P).find(q => q.name === name); if (t && t !== name) p.label = t; else delete p.label; });
+}
 function portMenu(ev, P, name, isEdge) {
   const port = portsOfDef(P).find(p => p.name === name);
   if (S.picked.length > 1 && isPicked(P, name)) {
@@ -1416,7 +1456,9 @@ function portMenu(ev, P, name, isEdge) {
     pairable(port) ? { label: `Sampled by: ${pairedClock(port) || '(no clock)'}…`, act: () => pairMenu(ev, P, name) } : null,
     { label: 'Move to the other side', act: () => flipPorts([{ P, port: name, isEdge }]) },
     { label: 'Pick it (Shift+click) to move several', act: () => togglePick(P, name, isEdge) },
-    { label: 'Rename…', act: () => { const n = askName('Port name', name); if (n && n !== name) { if (portsOfDef(P).some(p => p.name === n)) alert(`${P} already has ${n}.`); else renamePort(P, name, n); } } },
+    { label: `Name${port.label ? ': ' + trunc(port.label, 28) : ''}…`, act: () => editLabel(P, name) },
+    { label: `Description${port.doc ? ' ✓' : ''}…`, act: () => editDoc(`Description of port ${P}.${name}`, () => portsOfDef(P).find(p => p.name === name)) },
+    { label: 'Rename (VHDL name)…', act: () => { const n = askName('Port name', name); if (n && n !== name) { if (portsOfDef(P).some(p => p.name === n)) alert(`${P} already has ${n}.`); else renamePort(P, name, n); } } },
     { sep: true },
     { label: `Delete (from ${P}, every instance)`, danger: true, act: () => deletePort(P, name) },
   ]);
@@ -1441,7 +1483,7 @@ canvas.addEventListener('drop', (e) => {
 });
 document.addEventListener('click', (e) => { if (!$('menu').contains(e.target)) hideMenu(); });
 document.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT') return;
+  if (['INPUT', 'TEXTAREA'].includes(e.target.tagName) || $('textDlg').open) return;   // typing, or a dialog is open
   const mod = e.ctrlKey || e.metaKey;
   if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
   else if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
