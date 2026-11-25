@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "WifiPacketRouterInterfaces",
+    "doc": "The Wi-Fi packet router FPGA's internal interfaces: one role pair per pair of subsystems that exchange items in a scenario (the flows that cross subsystems in WifiPacketRouterBehavior). They carry items, not signals yet: how each is built in HDL (a stream, a register bus) is decided later.",
+    "imports": [
+      {
+        "name": "WifiPacketRouterBehavior::*"
+      }
+    ],
+    "portDefs": [
+      {
+        "name": "CommandController",
+        "doc": "Ethernet to processing: commands in, responses back (ReadTemperature: receiveFrame -> decodeCommand, buildResponse -> sendFrame).",
+        "items": [
+          {
+            "name": "cmd",
+            "direction": "out",
+            "type": "Command"
+          },
+          {
+            "name": "response",
+            "direction": "in",
+            "type": "Response"
+          }
+        ]
+      },
+      {
+        "name": "CommandTarget",
+        "doc": "Processing's side of CommandController.",
+        "conjugateOf": "CommandController"
+      },
+      {
+        "name": "TempReadController",
+        "doc": "Processing to temp_if: a reading requested, the temperature back (ReadTemperature: decodeCommand -> readSensor -> buildResponse).",
+        "items": [
+          {
+            "name": "request",
+            "direction": "out",
+            "type": "TemperatureRequest"
+          },
+          {
+            "name": "temperature",
+            "direction": "in",
+            "type": "Temperature"
+          }
+        ]
+      },
+      {
+        "name": "TempReadTarget",
+        "doc": "temp_if's side of TempReadController.",
+        "conjugateOf": "TempReadController"
+      }
+    ]
+  }
+}

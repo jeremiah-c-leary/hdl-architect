@@ -1,0 +1,1 @@
+wires inside one column (not planar): CLK_RST_CTRL.rst_out–adc_if.rst, CLK_RST_CTRL.rst_out–dac_if.rst

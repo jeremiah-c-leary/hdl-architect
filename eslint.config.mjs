@@ -56,4 +56,13 @@ export default [
       },
     },
   },
+  // HA 2's behaviour tests run in Node (ES modules), not in the browser
+  {
+    files: ["tests/ha2/**/*.mjs"],
+    languageOptions: {
+      sourceType: "module",
+      ecmaVersion: 2023,
+      globals: { ...globals.node },
+    },
+  },
 ];
