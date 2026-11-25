@@ -395,3 +395,32 @@ def delete_port(model: Model, def_name: str, port: str) -> Result:
     if removed:
         notes.insert(0, f"Removed {removed} wire(s) to {def_name}.{port}.")
     return Result(changed, notes)
+
+
+def connect_new(model: Model, sheet_name: str, a, b) -> Result:
+    """Like connect, but either end may be a new port: {"new": part name, or
+    None for a sheet port, "name": base name}. The new ports are added (unique
+    names), then connect() wires them with all its rules: an untyped new port
+    takes the interface matching the other end. A refusal leaves the model as
+    it was for the caller (the server writes nothing). Result.data gives the
+    new ports' names under "a" and "b"."""
+    _, _, sheet = model.part_def(sheet_name)
+    refs, data, changed = [], {}, set()
+    for key, end in (("a", a), ("b", b)):
+        if isinstance(end, str):
+            refs.append(end)
+            continue
+        part = end.get("new")
+        if part:
+            p = next((x for x in sheet.get("parts", []) if x["name"] == part), None)
+            if p is None:
+                raise OpError("not_found", f"{sheet_name} has no part {part}")
+            def_name = short(p.get("type"))
+        else:
+            def_name = sheet_name
+        r = add_port(model, def_name, end["name"])
+        changed |= set(r.changed)
+        data[key] = r.data["name"]
+        refs.append(f"{part}.{data[key]}" if part else data[key])
+    res = connect(model, sheet_name, refs[0], refs[1])
+    return Result(changed | set(res.changed), res.notes, data)

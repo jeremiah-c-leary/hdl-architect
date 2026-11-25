@@ -358,3 +358,54 @@ def test_ha_port_commands(wifi, capsys):
     )
     assert ha(["serve", "--path", str(wifi), "--normalize"]) == 0
     assert "0 changed" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------- new port + wire
+def test_connect_new_two_new_ports_named_after_each_other(wifi):
+    docs, m = load(wifi)
+    r = ops.connect_new(
+        m, TOP, {"new": "uart", "name": "temp_if"}, {"new": "temp_if", "name": "uart"}
+    )
+    assert r.data == {"a": "temp_if", "b": "uart"}
+    assert top(m)["connections"][-1] == {"ends": ["uart.temp_if", "temp_if.uart"]}
+    assert "type" not in port_of(
+        m, "Uart", "temp_if"
+    )  # both untyped: an interface later
+
+
+def test_connect_new_port_takes_the_matching_role(wifi):
+    docs, m = load(wifi)
+    add_port(m, "AdcInterface", "x", "Axi4LiteManager")
+    r = ops.connect_new(m, TOP, "adc_if.x", {"new": "ethernet", "name": "adc_if"})
+    assert port_of(m, "Ethernet", r.data["b"])["type"] == "Axi4LiteSubordinate"
+    assert top(m)["connections"][-1] == {
+        "ends": ["adc_if.x", f"ethernet.{r.data['b']}"]
+    }
+
+
+def test_connect_new_sheet_port_binds_with_the_same_interface(wifi):
+    docs, m = load(wifi)
+    add_port(m, "Uart", "x", "BitIn")
+    r = ops.connect_new(m, TOP, {"new": None, "name": "x"}, "uart.x")
+    assert port_of(m, TOP, r.data["a"])["type"] == "BitIn"
+    assert top(m)["bindings"][-1] == {"ends": [r.data["a"], "uart.x"]}
+
+
+def test_connect_new_refused_writes_nothing(wifi):
+    """A refused gesture leaves no half-made port behind on disk."""
+    docs, m = load(wifi)
+    store = Store([wifi])
+    pkgs = {p["file"]: p for p in store.scan()}
+    bases = {f: p["version"] for f, p in pkgs.items()}
+    before = {f: Path(f).read_text() for f in docs}
+    code, res = store.apply_op(
+        {
+            "op": "connect_new",
+            "sheet": TOP,
+            "a": "sys_clock",  # a clock: a net, not a wire
+            "b": {"new": "uart", "name": "clk2"},
+            "bases": bases,
+        }
+    )
+    assert (code, res["error"]["code"]) == (422, "net")
+    assert {f: Path(f).read_text() for f in docs} == before

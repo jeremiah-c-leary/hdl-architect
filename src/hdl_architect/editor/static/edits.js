@@ -2,7 +2,6 @@
 import { COLLS, G, S } from "./state.js";
 import { askName, hint, pascal, snake } from "./util.js";
 import {
-  counterpart,
   endStr,
   ensureImport,
   partDef,
@@ -10,7 +9,6 @@ import {
   partsOf,
   pkgOf,
   portsOfDef,
-  rebuildIndex,
   short,
 } from "./model.js";
 import { drawnWires } from "./nets.js";
@@ -39,14 +37,6 @@ export function uniquePartName(D, base) {
   while (names.has(n)) n = `${base}_${i++}`;
   return n;
 }
-// Still used by the "new port + wire" gestures (quickConnect, connectArmed):
-// moving those to core.ops is the next step.
-export function addPort(P, name, type, side, offset) {
-  const d = partDef(P);
-  (d.ports = d.ports || []).push(type ? { name, type } : { name });
-  rebuildIndex();
-  placePort(P, name, side, offset);
-}
 /** Where a new port is drawn: on `side`, below the ports already there. */
 export function placePort(P, name, side, offset) {
   const l = portLayout(P, name);
@@ -63,7 +53,13 @@ export function placePort(P, name, side, offset) {
         ? Math.max(...offs) + G.PGAP
         : G.PMT;
 }
-export function quickConnect(a, b) {
+// "New port + wire" gestures: a model operation (core.ops.connect_new, via the
+// server) adds the port(s) and wires them with connect's rules (a new port
+// takes the matching interface). The browser keeps the drawing rules: no
+// wire within one column, and where the new ports are drawn.
+
+/** Ctrl+click two components: a new port on each, named after the other, wired. */
+export async function quickConnect(a, b) {
   const D = S.sheet,
     sl = sheetLayout(D);
   if (sl.parts[a].col === sl.parts[b].col) {
@@ -72,23 +68,25 @@ export function quickConnect(a, b) {
     );
     return;
   }
-  mutate(() => {
-    const A = partType(D, a),
-      B = partType(D, b);
-    const aLeft = sl.parts[a].col < sl.parts[b].col;
-    const pa = uniquePortName(A, b);
-    addPort(A, pa, undefined, aLeft ? "right" : "left");
-    const pb = uniquePortName(B, a);
-    addPort(B, pb, undefined, aLeft ? "left" : "right");
-    const d = partDef(D);
-    (d.connections = d.connections || []).push({
-      ends: [`${a}.${pa}`, `${b}.${pb}`],
-    });
-  });
-  hint(`Connected ${a} and ${b}. Right-click a port to give it an interface.`);
+  // the left component's end first (the end that anchors the wire)
+  const [l, r] = sl.parts[a].col < sl.parts[b].col ? [a, b] : [b, a];
+  const res = await applyOp(
+    "connect_new",
+    { sheet: D, a: { new: l, name: r }, b: { new: r, name: l } },
+    (res) => {
+      placePort(partType(D, l), res.data.a, "right");
+      placePort(partType(D, r), res.data.b, "left");
+    },
+  );
+  if (res)
+    hint(
+      `Connected ${a} and ${b}. Right-click a port to give it an interface.`,
+    );
 }
-export function connectArmed(target) {
-  // target: a part name on this sheet, or {edge:'left'|'right'}
+
+/** Click a port, then a component (a new port there) or the sheet edge (a new sheet port). */
+export async function connectArmed(target) {
+  // target: a part name on this sheet, or {edge:'left'|'right', y}
   const D = S.sheet,
     sl = sheetLayout(D),
     armed = S.armed;
@@ -101,53 +99,54 @@ export function connectArmed(target) {
     render();
     return;
   }
-  const armedType = armedPort.type;
-  mutate(() => {
-    const d = partDef(D);
-    if (target.edge) {
-      if (armed.kind !== "part") return false;
-      const name = uniquePortName(D, armed.port);
-      (d.ports = d.ports || []).push(
-        armedType ? { name, type: armedType } : { name },
-      );
-      rebuildIndex();
-      const ys = Object.values(sl.edge)
-        .filter((e) => e.side === target.edge)
-        .map((e) => e.y);
-      sl.edge[name] = {
-        side: target.edge,
-        y: target.y || (ys.length ? Math.max(...ys) + G.PGAP : G.TOP + G.PGAP),
-      };
-      (d.bindings = d.bindings || []).push({
-        ends: [name, `${armed.part}.${armed.port}`],
-      });
-      return;
-    }
-    const part = target.part,
-      P = partType(D, part);
-    if (armed.kind === "part" && armed.part === part) return false;
-    if (armed.kind === "edge") {
-      // the sheet port moves to the edge nearer the component, so the wire need not cross the sheet
-      const side = sl.parts[part].col >= sl.columns / 2 ? "right" : "left";
-      sl.edge[armed.port].side = side;
-      const name = uniquePortName(P, armed.port);
-      addPort(P, name, armedType, side);
-      (d.bindings = d.bindings || []).push({
-        ends: [armed.port, `${part}.${name}`],
-      });
-    } else {
-      if (sl.parts[armed.part].col === sl.parts[part].col) {
-        hint("Same column: move one of them first.");
-        return false;
-      }
-      const aLeft = sl.parts[armed.part].col < sl.parts[part].col;
-      const name = uniquePortName(P, armed.part);
-      addPort(P, name, counterpart(armedType), aLeft ? "left" : "right");
-      (d.connections = d.connections || []).push({
-        ends: [`${armed.part}.${armed.port}`, `${part}.${name}`],
-      });
-    }
-  });
+  if (target.edge) {
+    if (armed.kind !== "part") return render(); // a sheet port to the edge: nothing to do
+    // a new sheet port on the clicked edge, bound to the armed component port
+    await applyOp(
+      "connect_new",
+      { sheet: D, a: { new: null, name: armed.port }, b: endStr(armed) },
+      (res) => {
+        const ys = Object.values(sl.edge)
+          .filter((e) => e.side === target.edge)
+          .map((e) => e.y);
+        sl.edge[res.data.a] = {
+          side: target.edge,
+          y:
+            target.y || (ys.length ? Math.max(...ys) + G.PGAP : G.TOP + G.PGAP),
+        };
+      },
+    );
+    return;
+  }
+  const part = target.part,
+    P = partType(D, part);
+  if (armed.kind === "part" && armed.part === part) return render();
+  if (armed.kind === "edge") {
+    // the sheet port moves to the edge nearer the component, so the wire need not cross the sheet
+    const side = sl.parts[part].col >= sl.columns / 2 ? "right" : "left";
+    await applyOp(
+      "connect_new",
+      { sheet: D, a: armed.port, b: { new: part, name: armed.port } },
+      (res) => {
+        sl.edge[armed.port].side = side;
+        placePort(P, res.data.b, side);
+      },
+    );
+    return;
+  }
+  if (sl.parts[armed.part].col === sl.parts[part].col) {
+    hint("Same column: move one of them first.");
+    return render();
+  }
+  const aLeft = sl.parts[armed.part].col < sl.parts[part].col;
+  const mine = endStr(armed),
+    fresh = { new: part, name: armed.part };
+  await applyOp(
+    "connect_new",
+    { sheet: D, a: aLeft ? mine : fresh, b: aLeft ? fresh : mine },
+    (res) =>
+      placePort(P, aLeft ? res.data.b : res.data.a, aLeft ? "left" : "right"),
+  );
 }
 // Wire two ports that already exist: click one, then the other. Two component
 // ports make a connect (the two roles of one interface); a sheet port and a

@@ -193,6 +193,9 @@ class Store:
         written: the browser reloads). Returns (HTTP status, response)."""
         ops = {
             "connect": lambda m, b: core_ops.connect(m, b["sheet"], b["a"], b["b"]),
+            "connect_new": lambda m, b: core_ops.connect_new(
+                m, b["sheet"], b["a"], b["b"]
+            ),
             "add_port": lambda m, b: core_ops.add_port(
                 m, b["def"], b["name"], b.get("type")
             ),
