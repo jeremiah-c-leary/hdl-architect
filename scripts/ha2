@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Start HA 2 in one step: sets up the venv the first time, then serves the
-# model and opens the browser.
+# model and opens the browser. If HA 2 is already running on the port, it is
+# restarted (stopped, then started again with the current code); reload the
+# HA 2 tab you have. Anything else on the port is left alone.
 #
 #   scripts/ha2                      # the Wi-Fi example
 #   scripts/ha2 --path DIR [...]     # any model (every argument goes to `ha serve`)
@@ -21,19 +23,43 @@ ARGS=("$@")
 [ ${#ARGS[@]} -eq 0 ] && ARGS=(--path examples/wifi_router)
 
 URL="http://127.0.0.1:${PORT}"
-if curl -s -o /dev/null "$URL/api/check"; then
-  echo "Something is already serving on port $PORT (another HA 2?). Stop it, or use PORT=<n> $0" >&2
+
+# Already something on the port? Restart it if it is HA 2 (`ha serve`), found by
+# the port it listens on; refuse otherwise.
+pid_on_port() { ss -ltnpH "( sport = :$PORT )" 2>/dev/null | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2 || true; }
+RESTARTED=""
+PID="$(pid_on_port)"
+if [ -n "$PID" ]; then
+  CMD="$(tr '\0' ' ' < "/proc/$PID/cmdline" 2>/dev/null || true)"
+  case "$CMD" in
+    *"ha serve"*|*"hdl_architect.cli serve"*) ;;
+    *)
+      echo "Port $PORT is in use by another program (pid $PID: ${CMD:-unknown}); not stopping it." >&2
+      echo "Use another port: PORT=<n> $0" >&2
+      exit 1 ;;
+  esac
+  echo "Restarting HA 2: stopping the server already on port $PORT (pid $PID)."
+  kill "$PID"
+  for _ in $(seq 1 50); do [ -z "$(pid_on_port)" ] && break; sleep 0.1; done
+  if [ -n "$(pid_on_port)" ]; then kill -9 "$PID" 2>/dev/null || true; sleep 0.5; fi
+  RESTARTED=1
+elif curl -s -o /dev/null --max-time 1 "$URL/api/check"; then
+  echo "Something answers on port $PORT, but it is not a process of yours to stop." >&2
+  echo "Use another port: PORT=<n> $0" >&2
   exit 1
 fi
 
 open_browser() {
-  for _ in $(seq 1 50); do curl -s -o /dev/null "$URL/api/check" && break; sleep 0.1; done
+  for _ in $(seq 1 50); do curl -s -o /dev/null --max-time 1 "$URL/api/check" && break; sleep 0.1; done
   if command -v wslview >/dev/null; then wslview "$URL"
   elif command -v explorer.exe >/dev/null; then explorer.exe "$URL" || true   # WSL: the Windows browser
   elif command -v xdg-open >/dev/null; then xdg-open "$URL"
   else echo "Open $URL in your browser."; fi
 }
-open_browser >/dev/null 2>&1 &
-
-echo "HA 2 on $URL  (Ctrl+C to stop)"
+if [ -n "$RESTARTED" ]; then
+  echo "HA 2 restarted on $URL: reload your HA 2 tab.  (Ctrl+C to stop)"
+else
+  open_browser >/dev/null 2>&1 &
+  echo "HA 2 on $URL  (Ctrl+C to stop)"
+fi
 exec .venv/bin/ha serve --port "$PORT" "${ARGS[@]}"

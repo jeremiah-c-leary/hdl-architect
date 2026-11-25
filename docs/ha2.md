@@ -8,7 +8,8 @@ file next to each model file (`<file>.layout.json`), never in the model.
 
 ## Run
 
-    scripts/ha2                     # the Wi-Fi packet router; first run sets everything up
+    scripts/ha2                     # the Wi-Fi packet router; first run sets everything up;
+                                    # if HA 2 is already running, it restarts it (reload your tab)
     scripts/ha2 --path DIR ...      # another model; PORT=8800 scripts/ha2 for another port
 
 or, with the venv active:
