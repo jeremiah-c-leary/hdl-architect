@@ -54,6 +54,33 @@ test("two roles of one interface connect, and the ports turn to face each other"
   );
 });
 
+test("the model operation runs on the server: the wire is on disk at once", async () => {
+  // HA 2 itself saves 350 ms after an edit; core.ops writes during the call
+  const top = readModel(
+    server.dir,
+    "wifi_packet_router_fpga.json",
+  ).package.partDefs.find((d) => d.name === TOP);
+  assert.ok(
+    top.connections.some((c) => c.ends.join(" ") === `${L}.t_m ${R}.t_s`),
+  );
+});
+
+test("undo takes a wire back, and the undo is saved", async () => {
+  await addPort(L, "t_x", "Axi4LiteManager");
+  await addPort(R, "t_y", "Axi4LiteSubordinate");
+  const n = await conns();
+  await connect(end(L, "t_x"), end(R, "t_y"));
+  assert.equal(await conns(), n + 1);
+  await E(page, "undo()");
+  assert.equal(await conns(), n);
+  await saved(page);
+  const top = readModel(
+    server.dir,
+    "wifi_packet_router_fpga.json",
+  ).package.partDefs.find((d) => d.name === TOP);
+  assert.ok(!top.connections.some((c) => c.ends.join(" ").includes("t_x")));
+});
+
 test("a wire that already exists is refused", async () => {
   const n = await conns();
   await connect(end(L, "t_m"), end(R, "t_s"));

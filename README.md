@@ -32,6 +32,7 @@ commands, activate it:
     ha gen sysml $SP --out gen/sysml              # SysML v2 text (for SysON)
 
     cd examples/wifi_router && ha scaffold        # settings from its ha.toml; workspace in ws/wifi
+    ha connect adc_if.cfg Control.adc_cfg         # wire two ports (from a design folder)
 
 Each design keeps its command settings in an `ha.toml` (model paths, top,
 workspace, templates); command-line options override it.

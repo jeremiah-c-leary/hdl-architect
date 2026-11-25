@@ -9,7 +9,8 @@ this server is an editor for them, like SysON is for its model. It:
   - on save, validates a file against the schema and writes it in one canonical
     form (keys in schema order, 2-space indent), so an unchanged model saves
     byte-identical and diffs show only real changes;
-  - checks the whole model with the core model loader (schema, names, imports).
+  - checks the whole model with the core model loader (schema, names, imports);
+  - runs model operations (core.ops, POST /api/op) on the files and writes them.
 It listens on 127.0.0.1 only and writes only the files it loaded (and their
 sidecars).
 """
@@ -17,6 +18,7 @@ sidecars).
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import sys
@@ -25,44 +27,18 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from hdl_architect.core import model as core_model
+from hdl_architect.core import ops as core_ops
+from hdl_architect.core.files import dump_model, write_model_file
 
 ROOT = Path.cwd()  # file ids are shown relative to where the server was started
 STATIC = Path(__file__).resolve().parent / "static"
 
 SCHEMA = json.loads(core_model.JSON_SCHEMA.read_text(encoding="utf-8"))
-DEFS = SCHEMA["$defs"]
 LOCK = threading.Lock()
 
 
 # ---------------------------------------------------------------- canonical form
-def _target(prop_schema: dict) -> str | None:
-    """The $def a property's value (or its array items) refers to."""
-    ref = prop_schema.get("$ref") or (prop_schema.get("items") or {}).get("$ref")
-    return ref.rsplit("/", 1)[-1] if ref else None
-
-
-def canonical(obj, def_name: str):
-    """Reorder an object's keys into the schema's property order, recursively."""
-    if isinstance(obj, list):
-        return [canonical(x, def_name) for x in obj]
-    if not isinstance(obj, dict):
-        return obj
-    props = DEFS.get(def_name, {}).get("properties")
-    if not props:  # a map (values, redefines): keep the user's order
-        return obj
-    out = {}
-    for k, s in props.items():
-        if k in obj:
-            t = _target(s)
-            out[k] = (
-                canonical(obj[k], t)
-                if t in DEFS and DEFS[t].get("properties")
-                else obj[k]
-            )
-    for k in obj:  # anything the schema does not know (rejected by validation)
-        if k not in out:
-            out[k] = obj[k]
-    return out
+# (core.files: shared with the `ha` commands)
 
 
 def keep_floats(new, old):
@@ -86,14 +62,6 @@ def keep_floats(new, old):
     if isinstance(new, int) and not isinstance(new, bool) and isinstance(old, float):
         return float(new)  # it was a Real: it stays one, changed or not
     return new
-
-
-def dump_model(doc: dict) -> str:
-    doc = {
-        "schemaVersion": doc.get("schemaVersion"),
-        "package": canonical(doc.get("package"), "Package"),
-    }
-    return json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
 
 
 def dump_layout(layout: dict) -> str:
@@ -218,6 +186,49 @@ class Store:
             tmp.replace(lf)
         return [], version(lf)
 
+    def apply_op(self, body: dict) -> tuple[int, dict]:
+        """Run a model operation (core.ops) on the files on disk and write the
+        files it changed. `bases`: {file id: version} as the browser last saw
+        them; a changed file must still be at that version (else nothing is
+        written: the browser reloads). Returns (HTTP status, response)."""
+        ops = {"connect": lambda m, b: core_ops.connect(m, b["sheet"], b["a"], b["b"])}
+        name = body.get("op")
+        if name not in ops:
+            return 404, {
+                "error": {"code": "unknown_op", "message": f"no operation {name!r}"}
+            }
+        docs = {
+            fid: json.loads(f.read_text(encoding="utf-8"))
+            for fid, f in self.files.items()
+        }
+        try:
+            changed = ops[name](core_ops.Model(docs), body)
+        except (core_ops.OpError, KeyError) as e:
+            err = (
+                e
+                if isinstance(e, core_ops.OpError)
+                else core_ops.OpError("bad_request", f"missing {e}")
+            )
+            return 422, {"error": {"code": err.code, "message": err.message}}
+        bases = body.get("bases") or {}
+        if any(stale(self.files[fid], bases.get(fid)) for fid in changed):
+            return 409, {"error": {"code": "stale", "message": STALE}, "stale": True}
+        for fid in changed:
+            errs = self.errors(docs[fid])
+            if errs:
+                return 422, {"error": {"code": "invalid", "message": "; ".join(errs)}}
+        out = []
+        for fid in changed:
+            write_model_file(self.files[fid], docs[fid])
+            out.append(
+                {
+                    "file": fid,
+                    "model": to_editor(copy.deepcopy(docs[fid])),
+                    "version": version(self.files[fid]),
+                }
+            )
+        return 200, {"changed": out}
+
     def check(self) -> list[str]:
         try:
             core_model.check_model(self.paths)
@@ -311,6 +322,28 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"errors": ["unknown endpoint"]}, 404)
         code = 200 if not errs else 409 if errs == [STALE] else 422
         self._json({"errors": errs, "version": ver, "stale": errs == [STALE]}, code)
+
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length", "0"))
+        try:
+            body = json.loads(self.rfile.read(n).decode("utf-8"))
+        except json.JSONDecodeError:
+            return self._json(
+                {
+                    "error": {
+                        "code": "bad_request",
+                        "message": "the request is not JSON",
+                    }
+                },
+                400,
+            )
+        if self.path != "/api/op":
+            return self._json(
+                {"error": {"code": "unknown", "message": "unknown endpoint"}}, 404
+            )
+        with LOCK:
+            code, res = self.store.apply_op(body)
+        self._json(res, code)
 
 
 def main(argv=None) -> int:

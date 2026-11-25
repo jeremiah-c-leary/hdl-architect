@@ -13,9 +13,16 @@ import {
   rebuildIndex,
   short,
 } from "./model.js";
-import { drawnWires, globalInfo, portUsage } from "./nets.js";
+import { drawnWires, portUsage } from "./nets.js";
 import { hasPortLayout, layoutOf, portLayout, sheetLayout } from "./layout.js";
-import { mutate } from "./store.js";
+import {
+  changed,
+  flushSave,
+  mutate,
+  runOp,
+  snapshot,
+  takeChanged,
+} from "./store.js";
 import { render } from "./render.js";
 
 // ------------------------------------------------------------------ edits
@@ -148,16 +155,12 @@ export function connectArmed(target) {
 // component port make a bind (the same interface). An untyped end takes the
 // matching interface from the other; ports facing away are turned to face
 // each other when they have no other wire.
-export function interfacesFit(ua, ub, isBind) {
-  const ta = short(ua.type),
-    tb = short(ub.type);
-  if (isBind) return ta === tb && !!ua.conjugated === !!ub.conjugated;
-  return (
-    (counterpart(ta) === tb && !ua.conjugated && !ub.conjugated) ||
-    (ta === tb && !!ua.conjugated !== !!ub.conjugated)
-  );
-}
-export function connectPorts(a, b) {
+export async function connectPorts(a, b) {
+  // The model rules (ports exist, interfaces fit, untyped ends take the
+  // matching role, no duplicate wire, clocks/resets/SYSREF are nets) are a
+  // model operation in Python (core.ops.connect, via the server). The drawing
+  // rules stay here: two components in one column cannot be wired, and ports
+  // turn to face their wire.
   const D = S.sheet,
     sl = sheetLayout(D);
   S.armed = null;
@@ -165,80 +168,63 @@ export function connectPorts(a, b) {
     render();
     hint(msg);
   };
-  if (a.kind === "edge" && b.kind === "edge")
-    return say(
-      "Two sheet ports cannot be wired to each other: wire each to a component.",
-    );
-  if (a.kind === "part" && b.kind === "part" && a.part === b.part)
-    return say(
-      `Both ports are on ${a.part}: wire ports of two different components.`,
-    );
-  if (globalInfo(D, a) || globalInfo(D, b))
-    return say(
-      "Clocks, resets and SYSREF are wired as nets: click such a port to choose its net.",
-    );
   const isBind = a.kind === "edge" || b.kind === "edge";
-  if (!isBind && sl.parts[a.part].col === sl.parts[b.part].col)
+  if (
+    !isBind &&
+    a.part !== b.part &&
+    sl.parts[a.part].col === sl.parts[b.part].col
+  )
     return say("Same column: move one of them first.");
-  const same = (w) =>
-    (endStr(w.a) === endStr(a) && endStr(w.b) === endStr(b)) ||
-    (endStr(w.a) === endStr(b) && endStr(w.b) === endStr(a));
-  if (drawnWires(D).some(same))
-    return say(`${endStr(a)} and ${endStr(b)} are already wired.`);
-  const ua = portUsage(D, a),
-    ub = portUsage(D, b);
-  if (ua.type && ub.type && !interfacesFit(ua, ub, isBind)) {
-    const ta = short(ua.type) + (ua.conjugated ? "~" : ""),
-      tb = short(ub.type) + (ub.conjugated ? "~" : "");
-    alert(
-      `${endStr(a)} (${ta}) and ${endStr(b)} (${tb}) do not fit: ` +
-        (isBind
-          ? "a sheet port and the component port it delegates to need the same interface."
-          : `a connection joins the two roles of one interface (${ta} goes with ${counterpart(short(ua.type))}).`),
-    );
-    return say("");
-  }
+  // a connect is written left component first (the end that anchors the wire)
+  const [first, second] =
+    !isBind && sl.parts[a.part].col > sl.parts[b.part].col ? [b, a] : [a, b];
   const owner = (e) => (e.kind === "edge" ? D : partType(D, e.part));
   const wiredElsewhere = (e) =>
     drawnWires(D).some(
       (w) => endStr(w.a) === endStr(e) || endStr(w.b) === endStr(e),
     );
+  const before = { a: wiredElsewhere(a), b: wiredElsewhere(b) };
+  const snap = snapshot();
+  if (!(await flushSave()))
+    return say("Not wired: save the open changes first.");
+  const res = await runOp("connect", {
+    sheet: D,
+    a: endStr(first),
+    b: endStr(second),
+  });
+  if (res.error) {
+    if (res.error.code === "interfaces") alert(res.error.message);
+    return say(res.error.code === "interfaces" ? "" : res.error.message);
+  }
+  takeChanged(res.changed);
   const turned = [];
-  const face = (e, side) => {
-    // turn a component port to `side` if nothing else is wired to it
+  const face = (e, side, wasWired) => {
+    // turn a component port to `side` if nothing else was wired to it
     if (
       e.kind !== "part" ||
       portLayout(owner(e), e.port).side === side ||
-      wiredElsewhere(e)
+      wasWired
     )
       return;
     setPortSide(owner(e), e.port, side);
     turned.push(endStr(e));
   };
-  mutate(() => {
-    if (ua.type && !ub.type)
-      typePort(owner(b), b.port, isBind ? ua.type : counterpart(ua.type));
-    if (ub.type && !ua.type)
-      typePort(owner(a), a.port, isBind ? ub.type : counterpart(ub.type));
-    const d = partDef(D);
-    if (isBind) {
-      const edge = a.kind === "edge" ? a : b,
-        part = a.kind === "edge" ? b : a;
-      if (!wiredElsewhere(edge))
-        sl.edge[edge.port].side =
-          sl.parts[part.part].col >= sl.columns / 2 ? "right" : "left";
-      face(part, sl.edge[edge.port].side);
-      (d.bindings = d.bindings || []).push({ ends: [edge.port, endStr(part)] });
-    } else {
-      const [left, right] =
-        sl.parts[a.part].col < sl.parts[b.part].col ? [a, b] : [b, a];
-      face(left, "right");
-      face(right, "left");
-      (d.connections = d.connections || []).push({
-        ends: [endStr(left), endStr(right)],
-      });
-    }
-  });
+  const wired = (e) => (e === a ? before.a : before.b);
+  if (isBind) {
+    const edge = a.kind === "edge" ? a : b,
+      part = a.kind === "edge" ? b : a;
+    if (!wired(edge))
+      sl.edge[edge.port].side =
+        sl.parts[part.part].col >= sl.columns / 2 ? "right" : "left";
+    face(part, sl.edge[edge.port].side, wired(part));
+  } else {
+    face(first, "right", wired(first));
+    face(second, "left", wired(second));
+  }
+  S.undo.push(snap);
+  if (S.undo.length > 200) S.undo.shift();
+  S.redo = [];
+  changed();
   hint(
     `Wired ${endStr(a)} ${isBind ? "=" : "–"} ${endStr(b)}.` +
       (turned.length ? ` Turned ${turned.join(", ")} to face the wire.` : ""),
