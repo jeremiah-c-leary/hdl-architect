@@ -29,6 +29,7 @@ import {
   renamePart,
   renamePort,
   setPortType,
+  setPortsType,
   togglePick,
   uniquePortName,
 } from "./edits.js";
@@ -392,14 +393,7 @@ export function portMenu(ev, P, name, isEdge) {
             if (S.defs[t].coll === "portDefs")
               items.push({
                 label: t,
-                act: () =>
-                  mutate(() => {
-                    for (const x of S.picked) {
-                      const p = portsOfDef(x.P).find((q) => q.name === x.port);
-                      p.type = t;
-                      ensureImport(pkgOf(x.P), t);
-                    }
-                  }),
+                act: () => setPortsType(S.picked, t),
               });
           menu(ev.clientX, ev.clientY, items);
         },

@@ -191,7 +191,15 @@ class Store:
         files it changed. `bases`: {file id: version} as the browser last saw
         them; a changed file must still be at that version (else nothing is
         written: the browser reloads). Returns (HTTP status, response)."""
-        ops = {"connect": lambda m, b: core_ops.connect(m, b["sheet"], b["a"], b["b"])}
+        ops = {
+            "connect": lambda m, b: core_ops.connect(m, b["sheet"], b["a"], b["b"]),
+            "set_interface": lambda m, b: core_ops.set_interface(
+                m,
+                [(x["def"], x["port"]) for x in b["ports"]],
+                b.get("type"),
+                b.get("sheet"),
+            ),
+        }
         name = body.get("op")
         if name not in ops:
             return 404, {
@@ -202,7 +210,8 @@ class Store:
             for fid, f in self.files.items()
         }
         try:
-            changed = ops[name](core_ops.Model(docs), body)
+            result = ops[name](core_ops.Model(docs), body)
+            changed = result.changed
         except (core_ops.OpError, KeyError) as e:
             err = (
                 e
@@ -227,7 +236,7 @@ class Store:
                     "version": version(self.files[fid]),
                 }
             )
-        return 200, {"changed": out}
+        return 200, {"changed": out, "notes": result.notes}
 
     def check(self) -> list[str]:
         try:

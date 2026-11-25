@@ -34,6 +34,7 @@ commands, activate it:
 
     cd examples/wifi_router && ha scaffold        # settings from its ha.toml; workspace in ws/wifi
     ha connect adc_if.cfg Control.adc_cfg         # wire two ports (from a design folder)
+    ha set-interface Uart.irq --type BitIn        # set a port's interface
 
 Each design keeps its command settings in an `ha.toml` (model paths, top,
 workspace, templates); command-line options override it.

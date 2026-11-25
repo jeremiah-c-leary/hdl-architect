@@ -17,6 +17,15 @@ from __future__ import annotations
 GLOBAL_DEFS = {"ClockIn", "ClockOut", "ResetIn", "ResetOut", "SysrefIn", "SysrefOut"}
 
 
+class Result:
+    """What an operation did: the ids of the files it changed (sorted), and
+    notes for the person (e.g. what else it did on their behalf)."""
+
+    def __init__(self, changed, notes=()):
+        self.changed = sorted(changed)
+        self.notes = list(notes)
+
+
 class OpError(Exception):
     def __init__(self, code: str, message: str):
         super().__init__(message)
@@ -118,6 +127,27 @@ class End:
         return short(self.usage["type"]) + ("~" if self.usage.get("conjugated") else "")
 
 
+def matching(model: Model, usage: dict, is_bind: bool) -> tuple[str, bool]:
+    """The interface (type, conjugated) the other end of a wire from `usage`
+    needs: the same across a bind; across a connect the other role (named
+    roles via conjugateOf), or the same def conjugated when it has no named
+    roles (Bus goes with ~Bus)."""
+    t, conj = usage["type"], bool(usage.get("conjugated"))
+    if is_bind:
+        return t, conj
+    other = model.counterpart(t)
+    return other, (not conj) if short(other) == short(t) else conj
+
+
+def give_type(model: Model, end: "End", type_: str, conjugated: bool) -> None:
+    end.usage["type"] = type_
+    if conjugated:
+        end.usage["conjugated"] = True
+    else:
+        end.usage.pop("conjugated", None)
+    model.ensure_import(end.pkg, type_)
+
+
 def interfaces_fit(model: Model, ua: dict, ub: dict, is_bind: bool) -> bool:
     """A bind joins the same interface; a connect joins the two roles of one
     (named roles via conjugateOf, or the same def with one end conjugated)."""
@@ -130,13 +160,13 @@ def interfaces_fit(model: Model, ua: dict, ub: dict, is_bind: bool) -> bool:
     )
 
 
-def connect(model: Model, sheet_name: str, a: str, b: str) -> list[str]:
+def connect(model: Model, sheet_name: str, a: str, b: str) -> Result:
     """Wire two existing ports on sheet `sheet_name`: two component ports
     (`part.port`) get a connect, a sheet port and a component port a bind.
 
     The ends' interfaces must fit; an end without an interface takes the
     matching one. A connect keeps the ends in the order given (HA 2 passes the
-    left component first). Returns the ids of the files changed."""
+    left component first)."""
     sheet_file, _, sheet = model.part_def(sheet_name)
     ea, eb = End(model, sheet, a), End(model, sheet, b)
     if ea.is_edge and eb.is_edge:
@@ -174,19 +204,64 @@ def connect(model: Model, sheet_name: str, a: str, b: str) -> list[str]:
     changed = {sheet_file}
     for typed, untyped in ((ea, eb), (eb, ea)):
         if typed.usage.get("type") and not untyped.usage.get("type"):
-            t = typed.usage["type"]
-            other = t if is_bind else model.counterpart(t)
-            untyped.usage["type"] = other
-            conj = bool(typed.usage.get("conjugated"))
-            if not is_bind and short(other) == short(t):
-                conj = not conj  # no named roles: the other end is ~t
-            if conj:
-                untyped.usage["conjugated"] = True
-            model.ensure_import(untyped.pkg, other)
+            give_type(model, untyped, *matching(model, typed.usage, is_bind))
             changed.add(untyped.file)
     if is_bind:
         edge, part = (ea, eb) if ea.is_edge else (eb, ea)
         sheet.setdefault("bindings", []).append({"ends": [edge.ref, part.ref]})
     else:
         sheet.setdefault("connections", []).append({"ends": [a, b]})
-    return sorted(changed)
+    return Result(changed)
+
+
+def set_interface(
+    model: Model,
+    ports: list[tuple[str, str]],
+    type_: str | None,
+    sheet_name: str | None = None,
+) -> Result:
+    """Set the interface of ports, given as (part def, port identifier); None
+    clears it. With `sheet_name`, an untyped port at the other end of a wire on
+    that sheet gets the matching interface too (see `matching`)."""
+    if type_ is not None and short(type_) not in model.port_defs:
+        raise OpError("not_found", f"no port def {type_}")
+    sheet = model.part_def(sheet_name)[2] if sheet_name else None
+    changed, notes = set(), []
+    for def_name, port in ports:
+        file, pkg, owner = model.part_def(def_name)
+        usage = next((u for u in owner.get("ports", []) if ident(u) == port), None)
+        if usage is None:
+            raise OpError("not_found", f"{def_name} has no port {port}")
+        changed.add(file)
+        if type_ is None:
+            usage.pop("type", None)
+            usage.pop("conjugated", None)
+            continue
+        usage["type"] = type_
+        usage.pop("conjugated", None)
+        model.ensure_import(pkg, type_)
+        if sheet is None:
+            continue
+        for kind, wires in (
+            ("connect", sheet.get("connections", [])),
+            ("bind", sheet.get("bindings", [])),
+        ):
+            for w in wires:
+                try:
+                    ends = [End(model, sheet, r) for r in w["ends"]]
+                except OpError:
+                    continue  # a wire HA 2 does not draw here (e.g. a deeper chain)
+                for me, other in ((ends[0], ends[1]), (ends[1], ends[0])):
+                    if (
+                        me.owner is not owner
+                        or ident(me.usage) != port
+                        or other.usage.get("type")
+                    ):
+                        continue
+                    t, conj = matching(model, usage, kind == "bind")
+                    give_type(model, other, t, conj)
+                    changed.add(other.file)
+                    notes.append(f"{other.ref} : {'~' if conj else ''}{short(t)}")
+    if notes:
+        notes = [f"Also typed the other end: {', '.join(notes)}."]
+    return Result(changed, notes)
