@@ -3,8 +3,7 @@ import { KIND_COLORS, S } from "./state.js";
 import { $, askName, hint, trunc } from "./util.js";
 import { kindOf, partDef, partType, portsOfDef } from "./model.js";
 import { addGlobalPort, pairMenu, pairable, pairedClock } from "./nets.js";
-import { sheetLayout } from "./layout.js";
-import { mutate } from "./store.js";
+import { applyOp } from "./store.js";
 import {
   addComponent,
   deletePart,
@@ -15,6 +14,7 @@ import {
   isPicked,
   moveColumn,
   newPort,
+  newSheetPort,
   removeColumn,
   renameDef,
   renamePart,
@@ -125,11 +125,7 @@ export function edgeMenu(ev, side) {
           alert(`${D} already has a port ${name}.`);
           return;
         }
-        mutate(() => {
-          const d = partDef(D);
-          (d.ports = d.ports || []).push({ name });
-          sheetLayout(D).edge[name] = { side, y };
-        });
+        newSheetPort(D, name, side, y);
       },
     },
     {
@@ -162,7 +158,7 @@ export function colMenu(ev, col) {
   });
   items.push({
     label: `Description of this sheet (${D})${partDef(D) && partDef(D).doc ? " ✓" : ""}…`,
-    act: () => editDoc(`Description of ${D}`, () => partDef(D)),
+    act: () => editDoc(`Description of ${D}`, { def: D }),
   });
   items.push(
     { sep: true },
@@ -228,8 +224,7 @@ export function compMenu(ev, D, name) {
     { sep: true },
     {
       label: `Description of ${P}${partDef(P) && partDef(P).doc ? " ✓" : ""}…`,
-      act: () =>
-        editDoc(`Description of ${P} (every instance)`, () => partDef(P)),
+      act: () => editDoc(`Description of ${P} (every instance)`, { def: P }),
     },
     {
       label: "Rename instance…",
@@ -308,8 +303,13 @@ export function askText(title, value, hintText) {
     ta.focus();
   });
 }
-export async function editDoc(title, getObj, hintText) {
-  const obj = getObj();
+// A description (SysML doc) and a port's readable name are model operations
+// (core.ops.set_doc, set_port_name, via the server).
+export async function editDoc(title, target, hintText) {
+  // target: { def } or { def, port }
+  const obj = target.port
+    ? portsOfDef(target.def).find((p) => p.name === target.port)
+    : S.defs[target.def] && S.defs[target.def].def;
   if (!obj) return;
   const text = await askText(title, obj.doc, hintText);
   if (text === null) return;
@@ -319,15 +319,15 @@ export async function editDoc(title, getObj, hintText) {
     .join("\n")
     .trim();
   if ((obj.doc || "") === t) return;
-  mutate(() => {
-    const o = getObj();
-    if (t) o.doc = t;
-    else delete o.doc;
+  return applyOp("set_doc", {
+    def: target.def,
+    port: target.port || null,
+    text: t,
   });
 }
 // A port's readable SysML name ("Processing CSR"); its identifier stays `name`
 // (in the file: name = the readable text, shortName = the identifier).
-export function editLabel(P, name) {
+export async function editLabel(P, name) {
   const port = portsOfDef(P).find((p) => p.name === name);
   if (!port) return;
   const v = prompt(
@@ -340,11 +340,7 @@ export function editLabel(P, name) {
   if (v === null) return;
   const t = v.replace(/['\\\r\n]/g, "").trim();
   if ((port.label || "") === t) return;
-  mutate(() => {
-    const p = portsOfDef(P).find((q) => q.name === name);
-    if (t && t !== name) p.label = t;
-    else delete p.label;
-  });
+  return applyOp("set_port_name", { def: P, port: name, name: t || null });
 }
 export function portMenu(ev, P, name, isEdge) {
   const port = portsOfDef(P).find((p) => p.name === name);
@@ -411,9 +407,7 @@ export function portMenu(ev, P, name, isEdge) {
     {
       label: `Description${port.doc ? " ✓" : ""}…`,
       act: () =>
-        editDoc(`Description of port ${P}.${name}`, () =>
-          portsOfDef(P).find((p) => p.name === name),
-        ),
+        editDoc(`Description of port ${P}.${name}`, { def: P, port: name }),
     },
     {
       label: "Rename (VHDL name)…",

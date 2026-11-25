@@ -22,20 +22,17 @@ frozen in `~/projects/sysmlpy_spike`).
   step): `state`, `util`, `model`, `nets`, `layout`, `store`, `edits`, `menus`,
   `render`, `interaction`, `clocktree`, `export`. `main.js` exposes every
   module's exports as `window.ha2` for the tests and the browser console.
-  Model rules belong in `core/ops.py`, not in the browser: HA 2 keeps only
-  drawing rules (columns, port sides) and calls an operation through
-  `POST /api/op` (`runOp` in `store.js`), which writes the files and returns
-  them (`applyOp` in `store.js`: one undo step). Done: wiring two ports
-  (`connect`), setting interfaces (`set_interface`), adding, renaming and
-  deleting ports (`add_port`, `rename_port`, `delete_port`), the "new port +
-  wire" gestures (`connect_new`); each but `connect_new` is also an `ha`
-  command (`ha connect`, `ha set-interface`, `ha add-port`, ...). No browser
-  code adds a port or wire to the model itself any more. Parts and
-  definitions too: `add_part`, `rename_part`, `delete_part`, `rename_def`,
-  `set_part_def`, `set_kind` (each an `ha` command). Known debt: the global
-  nets (clocks, resets, SYSREF) are still edited in `nets.js`, and `nets`, `edits` and
-  `store` import `render`/`menus` (the core depends on the UI); moving each
-  operation to `core/ops.py` fixes it, one at a time, each with Python tests.
+  Model rules live in `core/ops.py`, never in the browser. Every model
+  change is a named operation in `core.ops.OPERATIONS` (19: wiring,
+  interfaces, ports, parts, definitions, nets, wires, descriptions, names),
+  run by the same table from HA 2 (`POST /api/op`; `applyOp` in `store.js`:
+  save pending edits, run, take the files, one undo step), from `ha op NAME
+  key=value ...` (`ha op --list`; the most used also as `ha connect`,
+  `ha set-interface`, `ha add-port`, ...) and later an MCP server. The
+  browser's own `mutate` changes only the layout (columns, port sides). A new
+  model change is a new operation with Python tests (it must leave the model
+  checking) and a browser test. Known debt (UI-internal now): `nets`, `edits`
+  and `store` still import `render`/`menus`.
 - `src/hdl_architect/generators/`: one module per generator, each with
   `main(argv)`, registered under the `hdl_architect.generators` entry point
   in `pyproject.toml` (plugins, the PeakRDL pattern).

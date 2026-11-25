@@ -3,20 +3,15 @@ import { G, S } from "./state.js";
 import { askName, hint } from "./util.js";
 import {
   endStr,
-  ensureImport,
-  parseEnd,
-  partDef,
   partType,
   partsOf,
-  pkgOf,
   portDef,
   portsOfDef,
-  rebuildIndex,
   short,
   wiresOf,
 } from "./model.js";
 import { hasPortLayout, portLayout, sheetLayout } from "./layout.js";
-import { mutate } from "./store.js";
+import { applyOp } from "./store.js";
 import { setPortSide, uniquePortName } from "./edits.js";
 import { menu, portMenu } from "./menus.js";
 import { render } from "./render.js";
@@ -178,22 +173,11 @@ export function needsPair(u) {
       : paramOf(u.type, "synchronous");
   return sync === true;
 }
-export function pairWith(u, clock) {
-  // a reset paired with a clock is synchronous; unpaired, asynchronous
-  if (clock)
-    u.redefines = Object.assign(u.redefines || {}, { clock_port: clock });
-  else if (u.redefines) delete u.redefines.clock_port;
-  if (catOfUsage(u) === "reset" && hasAttr(u.type, "synchronous"))
-    u.redefines = Object.assign(u.redefines || {}, { synchronous: !!clock });
-  if (u.redefines && !Object.keys(u.redefines).length) delete u.redefines;
-}
+// The nets' model changes are operations (core.ops: pair_clock, assign_net,
+// set_frequency, add_global_port, via the server); the browser keeps the
+// menus, the net view and where a new port is drawn.
 export function setPairing(P, port, clock) {
-  mutate(() =>
-    pairWith(
-      portsOfDef(P).find((x) => x.name === port),
-      clock,
-    ),
-  );
+  return applyOp("pair_clock", { def: P, port, clock: clock || null });
 }
 export function isAsyncReset(u) {
   // a reset that is not synchronous to a clock
@@ -236,63 +220,27 @@ export function pairMenu(ev, P, port) {
   menu(ev.clientX, ev.clientY, items);
 }
 export function assignNet(D, end, net) {
-  mutate(() => assignNetRaw(D, end, net));
-}
-export function retypeAndAssign(D, end, net) {
-  // a port of the wrong kind (a clock on a SYSREF net): change its type, then assign
-  mutate(() => {
-    const u = portUsage(D, end),
-      t = clockDefFor(D, net.cat, "in");
-    if (!t) throw new Error(`The model has no ${net.cat} input port def.`);
-    const P = end.kind === "edge" ? D : partType(D, end.part);
-    u.type = t.type;
-    if (t.conjugated) u.conjugated = true;
-    else delete u.conjugated;
-    ensureImport(pkgOf(P), t.type);
-    rebuildIndex();
-    const clocks = clockPortsOf(P);
-    if (
-      catOfUsage(u) === "sysref" &&
-      pairable(u) &&
-      !pairedClock(u) &&
-      clocks.length === 1
-    )
-      pairWith(u, clocks[0].name);
-    assignNetRaw(D, end, net);
+  if (net && !net.src) {
+    hint(`${net.name} has no source to connect to.`);
+    return;
+  }
+  return applyOp("assign_net", {
+    sheet: D,
+    end: endStr(end),
+    source: net ? endStr(net.src) : null,
   });
 }
-export function assignNetRaw(D, end, net) {
-  // put a sink on a net (or on none); the wire is a bind or a connect
-  {
-    const d = partDef(D),
-      me = endStr(end);
-    for (const k of ["connections", "bindings"]) {
-      if (!d[k]) continue;
-      d[k] = d[k].filter((c) => {
-        if (!c.ends.includes(me)) return true;
-        const a = parseEnd(D, c.ends[0]),
-          b = parseEnd(D, c.ends[1]);
-        return !(a && b && isGlobalWire(D, { a, b }));
-      });
-      if (!d[k].length) delete d[k];
-    }
-    if (!net) return;
-    if (!net.src) throw new Error(`${net.name} has no source to connect to.`);
-    if (net.src.kind === "edge" || end.kind === "edge")
-      (d.bindings = d.bindings || []).push({
-        ends: [
-          endStr(net.src.kind === "edge" ? net.src : end),
-          endStr(net.src.kind === "edge" ? end : net.src),
-        ],
-      });
-    else
-      (d.connections = d.connections || []).push({
-        ends: [endStr(net.src), me],
-      });
-  }
+export function retypeAndAssign(D, end, net) {
+  // a port of the wrong kind (a clock on a SYSREF net): it becomes an input of
+  // the net's kind, then joins it
+  return applyOp("assign_net", {
+    sheet: D,
+    end: endStr(end),
+    source: endStr(net.src),
+    retype: true,
+  });
 }
 export function setNetFrequency(D, net) {
-  const u = portUsage(D, net.src);
   const mhz = prompt(
     `Frequency of ${net.name} in MHz`,
     net.freq ? String(net.freq / 1e6) : "",
@@ -303,8 +251,10 @@ export function setNetFrequency(D, net) {
     alert("A positive number of MHz, please.");
     return;
   }
-  mutate(() => {
-    u.redefines = Object.assign(u.redefines || {}, { frequency_hz: v * 1e6 });
+  return applyOp("set_frequency", {
+    sheet: D,
+    source: endStr(net.src),
+    hz: v * 1e6,
   });
 }
 export function netMenu(ev, D, end) {
@@ -376,28 +326,7 @@ export function armNet(net) {
       : "",
   );
 }
-export function clockDefFor(D, cat, dir) {
-  // the port def to use for a new clock/reset port, if the model has it
-  const want = Object.keys(GLOBAL_DEFS).find(
-    (n) => GLOBAL_DEFS[n][0] === cat && GLOBAL_DEFS[n][1] === dir,
-  );
-  if (portDef(want)) return { type: want };
-  const other = Object.keys(GLOBAL_DEFS).find(
-    (n) => GLOBAL_DEFS[n][0] === cat && GLOBAL_DEFS[n][1] !== dir,
-  );
-  if (portDef(other)) return { type: other, conjugated: true }; // e.g. FpgaLib has only ClockIn: ~ClockIn
-  return null;
-}
 export function addGlobalPort(P, cat, dir, base, edgeSide) {
-  const t = clockDefFor(P, cat, dir);
-  if (!t) {
-    alert(
-      `The model has no ${cat} port def (${Object.keys(GLOBAL_DEFS)
-        .filter((n) => GLOBAL_DEFS[n][0] === cat)
-        .join(" / ")}).`,
-    );
-    return;
-  }
   const name = askName(
     `New ${cat} ${dir === "in" ? "input" : "output"} of ${P}`,
     uniquePortName(P, base),
@@ -407,39 +336,20 @@ export function addGlobalPort(P, cat, dir, base, edgeSide) {
     alert(`${P} already has a port ${name}.`);
     return;
   }
-  mutate(() => {
-    const d = partDef(P);
-    (d.ports = d.ports || []).push(Object.assign({ name }, t));
-    ensureImport(pkgOf(P), t.type);
-    rebuildIndex();
+  // core.ops.add_global_port: the port def (e.g. ~ClockIn if there is no
+  // ClockOut), a SYSREF paired with the only clock; notes say what to pair
+  return applyOp("add_global_port", { def: P, cat, dir, name }, (res) => {
+    const n = res.data.name;
     if (edgeSide) {
       const sl = sheetLayout(P);
       const ys = Object.values(sl.edge).map((e) => e.y);
-      sl.edge[name] = {
+      sl.edge[n] = {
         side: edgeSide,
         y: (ys.length ? Math.max(...ys) : G.TOP) + G.PGAP,
       };
-      setPortSide(P, name, edgeSide);
-    } else addPortLayout(P, name, dir === "in" ? "left" : "right");
-    const u = portsOfDef(P).find((x) => x.name === name),
-      clocks = clockPortsOf(P);
-    if (catOfUsage(u) === "sysref" && pairable(u) && clocks.length === 1)
-      pairWith(u, clocks[0].name); // SYSREF: the only clock
+      setPortSide(P, n, edgeSide);
+    } else addPortLayout(P, n, dir === "in" ? "left" : "right");
   });
-  const u = portsOfDef(P).find((x) => x.name === name);
-  if (
-    u &&
-    catOfUsage(u) === "sysref" &&
-    !pairedClock(u) &&
-    clockPortsOf(P).length > 1
-  )
-    hint(
-      `${P}.${name}: click it (or right-click it), "Sampled by…", to pick its device clock.`,
-    );
-  else if (u && catOfUsage(u) === "reset" && pairable(u))
-    hint(
-      `${P}.${name} is asynchronous. If it is synchronous to a clock, click it, "Sampled by…", and pick the clock.`,
-    );
 }
 export function addPortLayout(P, name, side) {
   const l = portLayout(P, name);

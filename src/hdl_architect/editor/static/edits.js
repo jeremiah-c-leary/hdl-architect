@@ -300,18 +300,19 @@ export function deletePort(P, name) {
     if (L.sheets[P]) delete L.sheets[P].edge[name];
   });
 }
+/** A new port of the sheet itself, drawn on its `side` edge at height `y`. */
+export function newSheetPort(D, name, side, y) {
+  return applyOp("add_port", { def: D, name }, (res) => {
+    sheetLayout(D).edge[res.data.name] = { side, y };
+  });
+}
 export function newPort(P, name, side) {
   return applyOp("add_port", { def: P, name }, (res) =>
     placePort(P, res.data.name, side),
   );
 }
 export function deleteWire(D, w) {
-  mutate(() => {
-    const d = partDef(D),
-      k = w.kind === "connect" ? "connections" : "bindings";
-    d[k].splice(w.idx, 1);
-    if (!d[k].length) delete d[k];
-  });
+  return applyOp("delete_wire", { sheet: D, a: endStr(w.a), b: endStr(w.b) });
 }
 // A port's interface is a model operation (core.ops.set_interface, via the
 // server): it also gives an untyped port at the other end of a wire on the

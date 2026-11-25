@@ -23,15 +23,14 @@ const portIn = (file, def, ident) =>
 
 /** Open the Description dialog for `target`, type `text`, click Save. */
 async function describe(title, target, text) {
-  const done = E(page, `editDoc(${JSON.stringify(title)}, () => ${target})`);
+  const done = E(page, `editDoc(${JSON.stringify(title)}, ${target})`);
   await page.waitForSelector("#textDlg[open]");
   await page.fill("#textDlgText", text);
   await page.click("#textDlgOk");
   await done;
 }
 
-const ADC_PROCESSING =
-  "portsOfDef('AdcInterface').find(p => p.name === 'processing')";
+const ADC_PROCESSING = "{ def: 'AdcInterface', port: 'processing' }";
 
 test("a description is saved as SysML doc, trimmed; an empty one removes it", async () => {
   await describe(
@@ -50,7 +49,7 @@ test("a description is saved as SysML doc, trimmed; an empty one removes it", as
 });
 
 test("a component's description goes on its definition", async () => {
-  await describe("t", "partDef('AdcInterface')", "Receives the ADC samples.");
+  await describe("t", "{ def: 'AdcInterface' }", "Receives the ADC samples.");
   await saved(page);
   assert.equal(defIn(SUBS, "AdcInterface").doc, "Receives the ADC samples.");
 });
