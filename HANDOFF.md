@@ -128,7 +128,9 @@ VHDL importer, schema migrations, maintainability, adoption, licences
 
 ## Tasks
 
-Recommended order: phase 0, then phase 2, phase 1 items as friction shows.
+The roadmap as a table, every capability against the data it needs:
+`docs/roadmap.md`. Recommended order: phase 0, then phase 2, phase 1 items
+as friction shows.
 [S] task numbers in brackets.
 
 **Phase 0: consolidate**
