@@ -10,6 +10,12 @@
     ha add-port DEF.PORT [--type T]            add a port
     ha rename-port DEF.OLD NEW                 rename a port, and its wires and pairings
     ha delete-port DEF.PORT                    delete a port, its wires and pairings
+    ha add-part SHEET.PART --kind K|--def D    add a part (a new def of kind K, or of D)
+    ha rename-part SHEET.OLD NEW               rename a part, and its wires
+    ha delete-part SHEET.PART                  delete a part and its wires
+    ha rename-def OLD NEW                      rename a definition everywhere
+    ha set-def SHEET.PART DEF                  make a part another def
+    ha set-kind DEF KIND                       make a def another kind
 
 Generators are plugins: any installed package can add one through the
 `hdl_architect.generators` entry point group (name = module:main), the way
@@ -170,10 +176,79 @@ def _op_command(cmd: str, argv) -> int:
         a = ap.parse_args(argv)
         d, port = _def_port(ap, a.port)
         return _run_op(a, lambda m, a, cfg: ops.delete_port(m, d, port))
+    if cmd == "add-part":
+        ap = _op_parser(
+            "add-part",
+            "Add a part to a sheet: of an existing part def (--def), or of a new part "
+            "def of a kind (--kind Rtl, Subsystem, ...), named after the part.",
+        )
+        ap.add_argument("part", metavar="SHEET.PART")
+        k = ap.add_mutually_exclusive_group(required=True)
+        k.add_argument("--kind")
+        k.add_argument("--def", dest="def_name")
+        a = ap.parse_args(argv)
+        sh, name = _def_port(ap, a.part)
+        return _run_op(
+            a, lambda m, a, cfg: ops.add_part(m, sh, name, a.kind, a.def_name)
+        )
+    if cmd == "rename-part":
+        ap = _op_parser(
+            "rename-part", "Rename a part (SHEET.OLD -> new) and its wires."
+        )
+        ap.add_argument("part", metavar="SHEET.OLD")
+        ap.add_argument("new")
+        a = ap.parse_args(argv)
+        sh, old = _def_port(ap, a.part)
+        return _run_op(a, lambda m, a, cfg: ops.rename_part(m, sh, old, a.new))
+    if cmd == "delete-part":
+        ap = _op_parser("delete-part", "Delete a part (SHEET.PART) and its wires.")
+        ap.add_argument("part", metavar="SHEET.PART")
+        a = ap.parse_args(argv)
+        sh, name = _def_port(ap, a.part)
+        return _run_op(a, lambda m, a, cfg: ops.delete_part(m, sh, name))
+    if cmd == "rename-def":
+        ap = _op_parser(
+            "rename-def", "Rename a definition and every reference to it in the model."
+        )
+        ap.add_argument("old")
+        ap.add_argument("new")
+        a = ap.parse_args(argv)
+        return _run_op(a, lambda m, a, cfg: ops.rename_def(m, a.old, a.new))
+    if cmd == "set-def":
+        ap = _op_parser(
+            "set-def",
+            "Make a part (SHEET.PART) another part def; wires to ports the new def "
+            "lacks are removed.",
+        )
+        ap.add_argument("part", metavar="SHEET.PART")
+        ap.add_argument("def_name", metavar="DEF")
+        a = ap.parse_args(argv)
+        sh, name = _def_port(ap, a.part)
+        return _run_op(a, lambda m, a, cfg: ops.set_part_def(m, sh, name, a.def_name))
+    if cmd == "set-kind":
+        ap = _op_parser(
+            "set-kind", "Make a part def of another kind (Rtl, Subsystem, ...)."
+        )
+        ap.add_argument("def_name", metavar="DEF")
+        ap.add_argument("kind")
+        a = ap.parse_args(argv)
+        return _run_op(a, lambda m, a, cfg: ops.set_kind(m, a.def_name, a.kind))
     raise KeyError(cmd)
 
 
-OP_COMMANDS = ("connect", "set-interface", "add-port", "rename-port", "delete-port")
+OP_COMMANDS = (
+    "connect",
+    "set-interface",
+    "add-port",
+    "rename-port",
+    "delete-port",
+    "add-part",
+    "rename-part",
+    "delete-part",
+    "rename-def",
+    "set-def",
+    "set-kind",
+)
 
 
 def main(argv=None) -> int:

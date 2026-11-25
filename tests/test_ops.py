@@ -409,3 +409,109 @@ def test_connect_new_refused_writes_nothing(wifi):
     )
     assert (code, res["error"]["code"]) == (422, "net")
     assert {f: Path(f).read_text() for f in docs} == before
+
+
+# ---------------------------------------------------------------- parts and definitions
+def still_checks(docs, d):
+    """Write every file back; the whole model must still load and check."""
+    from hdl_architect.core.model import check_model
+
+    for f, doc in docs.items():
+        write_model_file(f, doc)
+    check_model([d])
+
+
+def part_types(m, sheet=TOP):
+    return {p["name"]: p["type"] for p in m.part_def(sheet)[2].get("parts", [])}
+
+
+def test_add_part_of_a_new_kind_and_of_an_existing_def(wifi):
+    docs, m = load(wifi)
+    r = ops.add_part(m, TOP, "dma_ctrl", kind="Rtl")
+    assert r.data == {"type": "DmaCtrl"} and part_types(m)["dma_ctrl"] == "DmaCtrl"
+    assert m.part_def("DmaCtrl")[2]["specializes"] == ["Rtl"]
+    assert ops.add_part(m, TOP, "dma2", kind="Rtl").data == {"type": "Dma2"}
+    assert ops.add_part(m, TOP, "uart2", def_name="Uart").data == {"type": "Uart"}
+    for args, code in (
+        (("uart", "Rtl", None), "exists"),
+        (("2x", "Rtl", None), "bad_name"),
+        (("y", "NoKind", None), "not_found"),
+        (("y", None, "NoDef"), "not_found"),
+        (("y", None, None), "bad_request"),
+    ):
+        with pytest.raises(ops.OpError) as e:
+            ops.add_part(m, TOP, args[0], kind=args[1], def_name=args[2])
+        assert e.value.code == code, args
+    still_checks(docs, wifi)
+
+
+def test_rename_part_updates_its_wires(wifi):
+    docs, m = load(wifi)
+    ops.rename_part(m, TOP, "adc_if", "adc")
+    assert "adc" in part_types(m) and "adc_if" not in part_types(m)
+    assert ["adc_jesd", "adc.adc_jesd"] in wires(m)
+    assert not any(e.startswith("adc_if.") for w in wires(m) for e in w)
+    with pytest.raises(ops.OpError) as e:
+        ops.rename_part(m, TOP, "adc", "uart")
+    assert e.value.code == "exists"
+    still_checks(docs, wifi)
+
+
+def test_delete_part_removes_its_wires(wifi):
+    docs, m = load(wifi)
+    n = len(wires(m))
+    r = ops.delete_part(m, TOP, "adc_if")
+    assert "adc_if" not in part_types(m)
+    assert len(wires(m)) == n - 8 and r.notes == ["Removed 8 wire(s) to adc_if."]
+    still_checks(docs, wifi)
+
+
+def test_rename_def_updates_every_reference(wifi):
+    docs, m = load(wifi)
+    r = ops.rename_def(m, "Uart", "UartStatus")
+    assert part_types(m)["uart"] == "UartStatus"
+    assert m.part_def("UartStatus")
+    assert str(wifi / FPGA) in r.changed  # where the part is
+    ops.rename_def(m, "Axi4LiteManager", "AxiLiteMgr")  # a port def, with a named role
+    assert m.port_defs["Axi4LiteSubordinate"][2]["conjugateOf"] == "AxiLiteMgr"
+    assert port_of(m, "Control", "uart")["type"] == "AxiLiteMgr"
+    for new, code in (("Ethernet", "exists"), ("bad name", "bad_name")):
+        with pytest.raises(ops.OpError) as e:
+            ops.rename_def(m, "UartStatus", new)
+        assert e.value.code == code
+    still_checks(docs, wifi)
+
+
+def test_set_part_def_removes_wires_to_ports_the_new_def_lacks(wifi):
+    docs, m = load(wifi)
+    r = ops.set_part_def(m, TOP, "uart", "TempSensorInterface")
+    assert part_types(m)["uart"] == "TempSensorInterface"
+    left = [e for w in wires(m) for e in w if e.startswith("uart.")]
+    have = {ops.ident(u) for u in m.part_def("TempSensorInterface")[2]["ports"]}
+    assert all(e.split(".")[1] in have for e in left)
+    assert r.notes and r.notes[0].startswith("Removed ")
+    still_checks(docs, wifi)
+
+
+def test_set_kind_replaces_the_kind(wifi):
+    docs, m = load(wifi)
+    ops.set_kind(m, "Uart", "Subsystem")
+    assert m.part_def("Uart")[2]["specializes"] == ["Subsystem"]
+    with pytest.raises(ops.OpError) as e:
+        ops.set_kind(m, "Uart", "Ethernet")  # a def, but not a kind
+    assert e.value.code == "not_found"
+    still_checks(docs, wifi)
+
+
+def test_ha_part_commands(wifi, capsys):
+    path = ["--path", str(wifi)]
+    assert ha(["add-part", f"{TOP}.dbg", "--kind", "Rtl", *path]) == 0
+    assert ha(["rename-part", f"{TOP}.dbg", "debug", *path]) == 0
+    assert ha(["rename-def", "Dbg", "DebugCore", *path]) == 0
+    assert ha(["set-kind", "DebugCore", "VendorIp", *path]) == 0
+    assert ha(["delete-part", f"{TOP}.debug", *path]) == 0
+    assert ha(["delete-part", f"{TOP}.nope", *path]) == 1
+    _, m = load(wifi)
+    assert "debug" not in part_types(m)
+    assert m.part_def("DebugCore")[2]["specializes"] == ["VendorIp"]
+    assert ha(["check", "--path", str(wifi)]) == 0

@@ -1,16 +1,7 @@
 // HA 2: The context menu, every right-click menu, and the text dialogs.
 import { KIND_COLORS, S } from "./state.js";
 import { $, askName, hint, trunc } from "./util.js";
-import {
-  ensureImport,
-  kindOf,
-  partDef,
-  partType,
-  partsOf,
-  pkgOf,
-  portsOfDef,
-  short,
-} from "./model.js";
+import { kindOf, partDef, partType, portsOfDef } from "./model.js";
 import { addGlobalPort, pairMenu, pairable, pairedClock } from "./nets.js";
 import { sheetLayout } from "./layout.js";
 import { mutate } from "./store.js";
@@ -28,6 +19,8 @@ import {
   renameDef,
   renamePart,
   renamePort,
+  setKind,
+  setPartDef,
   setPortType,
   setPortsType,
   togglePick,
@@ -262,21 +255,7 @@ export function compMenu(ev, D, name) {
         for (const k of kindsAvailable())
           items.push({
             label: (k === kindOf(P) ? "✓ " : "") + k,
-            act: () =>
-              mutate(() => {
-                const d = partDef(P),
-                  cur = kindOf(P);
-                d.specializes = (d.specializes || []).filter(
-                  (x) => short(x) !== cur,
-                );
-                d.specializes.unshift(k);
-                ensureImport(pkgOf(P), k);
-                const order = ["name", "doc", "isAbstract", "specializes"]; // keep schema key order
-                const copy = Object.assign({}, d);
-                for (const x in d) delete d[x];
-                for (const x of order) if (x in copy) d[x] = copy[x];
-                for (const x in copy) if (!(x in d)) d[x] = copy[x];
-              }),
+            act: () => setKind(P, k),
           });
         if (items.length === 1)
           items.push({
@@ -298,11 +277,7 @@ export function compMenu(ev, D, name) {
           )
             items.push({
               label: (n === P ? "✓ " : "") + n,
-              act: () =>
-                mutate(() => {
-                  partsOf(D).find((p) => p.name === name).type = n;
-                  ensureImport(pkgOf(D), n);
-                }),
+              act: () => setPartDef(D, name, n),
             });
         menu(ev.clientX, ev.clientY, items);
       },
