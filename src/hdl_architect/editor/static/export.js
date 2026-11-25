@@ -10,8 +10,8 @@ function exportCss() {
     let list;
     try {
       list = sheet.cssRules;
-    } catch (e) {
-      continue;
+    } catch {
+      continue; // a stylesheet from another origin cannot be read
     }
     for (const r of list) {
       if (!(r instanceof CSSStyleRule)) continue; // skips @media (the dark theme)

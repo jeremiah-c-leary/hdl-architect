@@ -70,7 +70,8 @@ def main(argv=None) -> int:
             return 0
         if rest[0] not in gens:
             print(
-                f"error: no generator '{rest[0]}' (installed: {', '.join(sorted(gens))})",
+                f"error: no generator '{rest[0]}' (installed: "
+                f"{', '.join(sorted(gens))})",
                 file=sys.stderr,
             )
             return 2

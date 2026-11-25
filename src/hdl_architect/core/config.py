@@ -63,7 +63,8 @@ def load(path: Path | str | None = None) -> tuple[dict, Path | None]:
         for key, v in values.items():
             if key not in KEYS[section]:
                 problems.append(
-                    f"[{section}] unknown key '{key}' (known: {', '.join(KEYS[section])})"
+                    f"[{section}] unknown key '{key}' (known: "
+                    f"{', '.join(KEYS[section])})"
                 )
                 continue
             typ, is_path = KEYS[section][key]
@@ -71,7 +72,8 @@ def load(path: Path | str | None = None) -> tuple[dict, Path | None]:
                 typ is list and not all(isinstance(x, str) for x in v)
             ):
                 problems.append(
-                    f"[{section}] {key} must be {'a list of strings' if typ is list else 'a string'}"
+                    f"[{section}] {key} must be "
+                    f"{'a list of strings' if typ is list else 'a string'}"
                 )
                 continue
             if is_path:

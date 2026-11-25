@@ -37,7 +37,7 @@ Each design keeps its command settings in an `ha.toml` (model paths, top,
 workspace, templates); command-line options override it.
 
 Formatting: `black src tests` (Python) and `npm run format` (HA 2's browser
-code, after `npm install`). Tests: `python -m pytest` (FpgaOne must regenerate byte-identical and
+code, after `npm install`). Linting: `flake8` and `npm run lint`. Tests: `python -m pytest` (FpgaOne must regenerate byte-identical and
 analyze with GHDL; the package's layering rules are checked).
 
 ## What's here

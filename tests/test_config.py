@@ -1,4 +1,4 @@
-"""ha.toml: paths relative to the file, unknown keys rejected, found from a subfolder."""
+"""ha.toml: paths relative to the file; unknown keys rejected; found from below."""
 
 import pytest
 

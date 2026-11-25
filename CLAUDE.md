@@ -60,12 +60,18 @@ frozen in `~/projects/sysmlpy_spike`).
 - Hosting: GitHub (`origin`), like the user's other projects. Work happens
   on branches; commit and push only when the user asks.
 
-## Formatting
+## Formatting and linting
 
 - Python: Black 26.10.1 (`pip install -e ".[dev]"`; `black src tests`),
   Black's defaults (88 columns).
 - HA 2's browser code (`editor/static`: JS, CSS, HTML): Prettier 3.10.1
   (`npm install` once; `npm run format`), Prettier's defaults.
+- Linters: flake8 7.5.0 for Python (`flake8`; settings in `.flake8`, Black
+  compatible) and ESLint 10.15.0 for HA 2's browser code (`npm run lint`;
+  `eslint.config.mjs`, the recommended rules only). HA 2's scripts share
+  functions through the page's global scope: a name one script uses from
+  another is listed in `eslint.config.mjs` for that file. Fix findings;
+  do not switch rules off without asking.
 - Never format files with their own writer: model JSON and layouts (HA 2's
   canonical form), `tests/golden/`, templates, docs (`.prettierignore`).
 - A formatting-only commit goes in `.git-blame-ignore-revs`. Never mix

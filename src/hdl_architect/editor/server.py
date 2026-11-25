@@ -1,4 +1,4 @@
-"""HA 2 server (`ha serve`): serves the editor and reads/writes the model's SysML-shaped JSON.
+"""HA 2 server (`ha serve`): the editor, reading and writing the model's JSON.
 
     ha serve --path examples/wifi_router            # then open http://127.0.0.1:8765
 
@@ -223,23 +223,27 @@ class Store:
             core_model.check_model(self.paths)
         except core_model.ModelError as e:
             return [
-                l.strip()
-                for l in str(e).splitlines()
-                if l.strip() and not l.strip().endswith(":")
+                line.strip()
+                for line in str(e).splitlines()
+                if line.strip() and not line.strip().endswith(":")
             ] or [str(e)]
         return []
 
 
-STALE = "changed on disk since HA 2 loaded it (another program or tab wrote it); not saved. Reload HA 2 to pick up the change."
+STALE = (
+    "changed on disk since HA 2 loaded it (another program or tab wrote it); not "
+    "saved. Reload HA 2 to pick up the change."
+)
 
 
 def version(f: Path) -> str:
-    """What the browser last saw of a file: a hash of its bytes ("" if it does not exist)."""
+    """What the browser last saw of a file: a hash of its bytes ("" if none)."""
     return hashlib.sha256(f.read_bytes()).hexdigest() if f.is_file() else ""
 
 
 def stale(f: Path, base) -> bool:
-    """A save is stale unless it says which version it edits and that is still the one on disk."""
+    """A save is stale unless it names the version it edits, and that version
+    is still the one on disk."""
     return not isinstance(base, str) or base != version(f)
 
 
@@ -322,7 +326,8 @@ def main(argv=None) -> int:
     ap.add_argument(
         "--normalize",
         action="store_true",
-        help="rewrite every model file in canonical form, then exit (prints what changed)",
+        help="rewrite every model file in canonical form, then exit (prints what "
+        "changed)",
     )
     args = ap.parse_args(argv)
     paths = [Path(p).resolve() for p in args.path]
