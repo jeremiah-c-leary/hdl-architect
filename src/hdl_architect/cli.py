@@ -16,6 +16,7 @@
     ha rename-def OLD NEW                      rename a definition everywhere
     ha set-def SHEET.PART DEF                  make a part another def
     ha set-kind DEF KIND                       make a def another kind
+    ha op NAME key=value ...                   any model operation (ha op --list)
 
 Generators are plugins: any installed package can add one through the
 `hdl_architect.generators` entry point group (name = module:main), the way
@@ -236,6 +237,46 @@ def _op_command(cmd: str, argv) -> int:
     raise KeyError(cmd)
 
 
+def _op_generic(argv) -> int:
+    """`ha op NAME key=value ...`: any model operation, by name (core.ops)."""
+    import json
+
+    from hdl_architect.core import ops
+
+    ap = _op_parser(
+        "op",
+        "Run any model operation by name (the operations HA 2 uses): "
+        "ha op NAME key=value ... A value is read as JSON when it parses (numbers, "
+        "true, null, lists), else as text; a missing `sheet` is [model] top. "
+        "ha op --list lists the operations and their arguments.",
+    )
+    ap.add_argument("name", nargs="?")
+    ap.add_argument("args", nargs="*", metavar="KEY=VALUE")
+    ap.add_argument("--list", action="store_true", help="list the operations")
+    a = ap.parse_args(argv)
+    if a.list or not a.name:
+        for n, (_, req, opt) in sorted(ops.OPERATIONS.items()):
+            print(f"  {n:16} {' '.join(req + ['[' + o + ']' for o in opt])}")
+        return 0
+    args = {}
+    for kv in a.args:
+        k, eq, v = kv.partition("=")
+        if not eq:
+            ap.error(f"{kv}: give arguments as key=value")
+        try:
+            args[k] = json.loads(v)
+        except json.JSONDecodeError:
+            args[k] = v
+
+    def call(m, _a, cfg):
+        required = ops.OPERATIONS.get(a.name, (None, [], []))[1]
+        if "sheet" in required and "sheet" not in args and cfg.get("top"):
+            args["sheet"] = cfg["top"]
+        return ops.run(m, a.name, args)
+
+    return _run_op(a, call)
+
+
 OP_COMMANDS = (
     "connect",
     "set-interface",
@@ -269,6 +310,8 @@ def main(argv=None) -> int:
         return run(rest)
     if cmd in OP_COMMANDS:
         return _op_command(cmd, rest)
+    if cmd == "op":
+        return _op_generic(rest)
     if cmd == "scaffold":
         from hdl_architect.flow.scaffold import main as run
 
