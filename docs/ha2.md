@@ -39,7 +39,15 @@ edit saves within half a second; the status at the top right says when.
   from the Library panel onto a column.
 - **Connect two components:** click one, Ctrl+click the other. Each gets a
   new port named after the other, facing it, and a wire joins them.
-- **Wire an existing port:** click the port (it turns orange), then click a
+- **Wire two existing ports:** click one port (it turns orange), then click
+  the other. Two component ports get a connect; a sheet port and a component
+  port get a bind. The interfaces must fit (a connect joins the two roles of
+  one interface, e.g. Axi4LiteManager and Axi4LiteSubordinate; a bind the same
+  one); if one end has no interface yet it takes the matching one. Refused,
+  with a reason: two ports on one component, two components in one column,
+  two sheet ports, a wire that already exists, clocks/resets/SYSREF (those are
+  nets). A port with no other wire is turned to face the wire.
+- **Wire an existing port to a new one:** click the port, then click a
   component (a new port there, of the mirror interface if the port has one)
   or a sheet edge (a new sheet port, bound to it). Esc cancels.
 - **Edge ports:** right-click an edge band, "Add a port". Click it, then a
