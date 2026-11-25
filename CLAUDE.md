@@ -94,13 +94,14 @@ frozen in `~/projects/sysmlpy_spike`).
   chained end's target must be a member of the first element's type (on
   2026-11-25 all `Control.x` ends resolved, every one to the wrong element).
   Procedure: `docs/history/schema-notes.md`, "SysON check".
-- After an HA 2 change: reload the page; test headlessly on a scratch copy
-  of a model, never on the user's live files (the user may be editing
-  `examples/wifi_router` in HA 2; ask them to reload after any model-file
-  change).
-
-## Rules
-
+- After an HA 2 change: `npm run test:ha2` (in `scripts/check js`): a real
+  `ha serve` on a scratch copy of `tests/ha2/fixtures/wifi_router` (a frozen
+  copy of the example; never the user's live `examples/`), the page in jsdom.
+  The rendering goldens in `tests/ha2/golden/` (SVGs you can open) must stay
+  byte-identical unless the drawing is meant to change: then
+  `UPDATE_GOLDEN=1 npm run test:ha2` and say why in the PR. A new HA 2
+  feature comes with a test in `tests/ha2/`. Ask the user to reload after a
+  change (and to restart `ha serve` if `server.py` changed).
 - The model JSON is the source of truth. Change the JSON, then regenerate.
   SysML text is an output, never edited or read back. The schema admits no
   concept SysML does not have: a new need becomes a SysML construct or a

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1022" height="420" viewBox="0 0 1022 420"><style>svg { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+* { box-sizing: border-box; }
+html, body { margin: 0px; height: 100%; background: #f6f7f9; color: #1d2430; font: 13px / 1.35 system-ui, -apple-system, Segoe UI, sans-serif; }
+body { display: flex; flex-direction: column; }
+header#top { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #ffffff; border-bottom: 1px solid #d8dde5; }
+.brand { font-weight: 700; margin-right: 6px; }
+.spacer { flex: 1 1 0%; }
+button { font: inherit; color: #1d2430; background: #f6f7f9; border: 1px solid #d8dde5; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
+button:hover { border-color: #2f6fde; }
+#crumbs a { color: #2f6fde; cursor: pointer; text-decoration: none; }
+#crumbs .cur { font-weight: 600; }
+#status { color: #6b7686; min-width: 70px; text-align: right; }
+#status.err { color: #c0392b; font-weight: 600; }
+main { flex: 1 1 0%; display: flex; min-height: 0px; }
+aside#side { width: 240px; overflow: auto; background: #ffffff; border-right: 1px solid #d8dde5; padding: 8px; }
+aside h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7686; margin: 10px 0px 4px; }
+aside h2 small { text-transform: none; letter-spacing: 0px; font-weight: 400; }
+aside input { width: 100%; padding: 3px 6px; border: 1px solid #d8dde5; border-radius: 4px; background: #f6f7f9; color: #1d2430; }
+.item { padding: 2px 6px; border-radius: 3px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid transparent; }
+.item:hover { background: #f6f7f9; }
+.item.cur { background: #f6f7f9; font-weight: 600; }
+.group { color: #6b7686; font-size: 11px; margin-top: 6px; }
+#canvasWrap { flex: 1 1 0%; overflow: auto; position: relative; }
+#hint { position: absolute; left: 12px; bottom: 8px; color: #6b7686; pointer-events: none; }
+footer#problems { max-height: 22vh; overflow: auto; background: #ffffff; border-top: 1px solid #d8dde5; padding: 4px 12px; }
+footer .p { padding: 1px 0px; }
+footer .p.err { color: #c0392b; }
+footer .p.warn { color: #b8571b; }
+footer .p.info { color: #6b7686; }
+#menu { position: fixed; z-index: 10; background: #ffffff; border: 1px solid #d8dde5; border-radius: 6px; box-shadow: rgba(0, 0, 0, 0.18) 0px 6px 20px; padding: 4px 0px; min-width: 190px; }
+#menu .mi { padding: 4px 14px; cursor: pointer; }
+#menu .mi:hover { background: #f6f7f9; }
+#menu .mi.danger { color: #c0392b; }
+#menu .sep { border-top: 1px solid #d8dde5; margin: 4px 0px; }
+#menu .hd { padding: 2px 14px; color: #6b7686; font-size: 11px; }
+svg text { fill: #1d2430; font-size: 12px; user-select: none; }
+.band-edge { fill: #e9edf3; }
+.band-col { fill: #ffffff; stroke: #d8dde5; }
+.band-gutter { fill: #f1f3f6; }
+.band-col.drop { fill: rgb(232, 240, 254); }
+.title { font-size: 15px; font-weight: 600; }
+.subtitle { fill: #6b7686; font-size: 11px; }
+.comp { stroke: rgb(135, 149, 168); stroke-width: 1; cursor: grab; }
+.comp.sel { stroke: #2f6fde; stroke-width: 3; }
+.on-kind { fill: rgb(255, 255, 255); }
+.comp-type.on-kind { fill: rgba(255, 255, 255, 0.85); }
+.comp-name { font-weight: 600; }
+.comp-type { fill: #6b7686; font-size: 11px; }
+.port { fill: rgb(43, 52, 64); stroke: rgb(255, 255, 255); stroke-width: 1; cursor: pointer; }
+.port.untyped { fill: rgb(255, 255, 255); stroke: rgb(43, 52, 64); }
+.port.armed { fill: #e67e22; stroke: #e67e22; }
+.port-label { font-size: 11px; }
+.port-type { fill: #6b7686; font-size: 10px; }
+.wire { fill: none; stroke: #34495e; stroke-width: 1.6; cursor: pointer; }
+.wire.bind { stroke: #7f8c9d; stroke-dasharray: 5 3; }
+.wire:hover { stroke: #2f6fde; stroke-width: 3; }
+.edge-port { fill: rgb(93, 109, 126); cursor: pointer; }
+.edge-port.untyped { fill: #ffffff; stroke: rgb(93, 109, 126); }
+.edge-port.armed { fill: #e67e22; }
+.grip { fill: transparent; cursor: ns-resize; }
+.grip:hover { fill: #2f6fde; opacity: 0.35; }
+.port.picked, .edge-port.picked { stroke: #2f6fde; stroke-width: 3; }
+.gport { stroke: rgb(255, 255, 255); stroke-width: 1; }
+.gport.reset { stroke-dasharray: 2 1; }
+.net-tag { font-size: 10px; font-weight: 600; }
+.net { display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 3px; cursor: pointer; }
+.net:hover { background: #f6f7f9; }
+.net.armed { outline: 2px solid #e67e22; }
+.net .swatch { width: 10px; height: 10px; border-radius: 2px; flex: 0 0 auto; }
+.net .freq { margin-left: auto; color: #6b7686; font-size: 11px; }
+.net-m { padding-left: 22px; color: #6b7686; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.net-m.loose { padding-left: 8px; }
+.hint-s { color: #6b7686; font-size: 11px; }
+.pair { fill: none; stroke-width: 1.5; }
+.pairlink { color: #2f6fde; cursor: pointer; font-size: 11px; text-decoration: underline; white-space: nowrap; }
+#clockTree { position: fixed; inset: 40px 30px; z-index: 5; background: #ffffff; border: 1px solid #d8dde5; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.25) 0px 10px 40px; display: flex; flex-direction: column; }
+#clockTree[hidden] { display: none; }
+.ct-bar { display: flex; align-items: center; gap: 14px; padding: 8px 12px; border-bottom: 1px solid #d8dde5; }
+.ct-body { flex: 1 1 0%; overflow: auto; background: #f6f7f9; }
+.ct-node { stroke: rgb(135, 149, 168); }
+.ct-edge { fill: none; stroke-width: 2; }
+.ct-edge.reset { stroke-dasharray: 6 3; }
+.ct-edge.sysref { stroke-dasharray: 2 3; }
+.ct-edge:hover { stroke-width: 4; }
+#textDlg { border: 1px solid #d8dde5; border-radius: 8px; background: #ffffff; color: #1d2430; box-shadow: rgba(0, 0, 0, 0.25) 0px 10px 40px; width: min(560px, 90vw); padding: 14px; }
+#textDlg::backdrop { background: rgba(0, 0, 0, 0.25); }
+#textDlg form { display: flex; flex-direction: column; gap: 8px; }
+#textDlg textarea { font: inherit; width: 100%; resize: vertical; padding: 6px; border: 1px solid #d8dde5; border-radius: 4px; background: #f6f7f9; color: #1d2430; }
+.dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; }</style><rect x="0" y="0" width="1022" height="420" fill="#f6f7f9"/><rect x="16" y="44" width="120" height="366" class="band-edge"/><rect x="886" y="44" width="120" height="366" class="band-edge"/><rect x="136" y="44" width="60" height="366" class="band-gutter"/><rect x="366" y="44" width="60" height="366" class="band-gutter"/><rect x="596" y="44" width="60" height="366" class="band-gutter"/><rect x="826" y="44" width="60" height="366" class="band-gutter"/><rect x="196" y="44" width="170" height="366" class="band-col" data-col="0"/><rect x="426" y="44" width="170" height="366" class="band-col" data-col="1"/><rect x="656" y="44" width="170" height="366" class="band-col" data-col="2"/><text x="16" y="22" class="title">Control</text><text x="16" y="38" class="subtitle">Subsystem · package WifiPacketRouterFpgaSys</text><text x="20" y="58" class="subtitle">ports</text><text x="890" y="58" class="subtitle">ports</text><rect x="128" y="80" width="8" height="12" class="edge-port" data-edge="uart"><title>UART CSR
+uart : Axi4LiteManager</title></rect><text x="124" y="85" text-anchor="end" class="port-label">UART CSR</text><text x="124" y="96" text-anchor="end" class="port-type">Axi4LiteManager</text><rect x="128" y="102" width="8" height="12" class="edge-port" data-edge="ethernet"><title>ETH CSR
+ethernet : Axi4LiteManager</title></rect><text x="124" y="107" text-anchor="end" class="port-label">ETH CSR</text><text x="124" y="118" text-anchor="end" class="port-type">Axi4LiteManager</text><rect x="128" y="124" width="8" height="12" class="edge-port" data-edge="adc_if"><title>ADC_CSR
+adc_if : Axi4LiteManager</title></rect><text x="124" y="129" text-anchor="end" class="port-label">ADC_CSR</text><text x="124" y="140" text-anchor="end" class="port-type">Axi4LiteManager</text><rect x="128" y="146" width="8" height="12" class="edge-port" data-edge="temp_if"><title>TEMP_CSR
+temp_if : Axi4LiteManager</title></rect><text x="124" y="151" text-anchor="end" class="port-label">TEMP_CSR</text><text x="124" y="162" text-anchor="end" class="port-type">Axi4LiteManager</text><rect x="128" y="168" width="8" height="12" class="edge-port" data-edge="dac_if"><title>DAC_CSR
+dac_if : Axi4LiteManager</title></rect><text x="124" y="173" text-anchor="end" class="port-label">DAC_CSR</text><text x="124" y="184" text-anchor="end" class="port-type">Axi4LiteManager</text><rect x="128" y="190" width="8" height="12" class="edge-port" data-edge="processing"><title>PROCESSING CSR
+processing : Axi4LiteManager</title></rect><text x="124" y="195" text-anchor="end" class="port-label">PROCESSING CSR</text><text x="124" y="206" text-anchor="end" class="port-type">Axi4LiteManager</text><rect x="128" y="212" width="8" height="12" class="edge-port" data-edge="dac_irq"><title>DAC DISCRETES
+dac_irq : BitIn</title></rect><text x="124" y="217" text-anchor="end" class="port-label">DAC DISCRETES</text><text x="124" y="228" text-anchor="end" class="port-type">BitIn</text><rect x="128" y="234" width="8" height="12" class="edge-port gport clock" data-edge="clk" style="fill: rgb(31, 119, 180);"><title>clk : ClockIn
+clock net clk (1 ports). Click for its net.</title></rect><text x="124" y="239" text-anchor="end" class="port-label">clk</text><text x="124" y="250" text-anchor="end" class="port-type">ClockIn</text><rect x="128" y="256" width="8" height="12" class="edge-port gport reset" data-edge="rst" style="fill: rgb(214, 39, 40);"><title>rst : ResetIn
+reset net rst (1 ports). Click for its net.</title></rect><text x="124" y="261" text-anchor="end" class="port-label">rst</text><text x="124" y="272" text-anchor="end" class="port-type">ResetIn</text><rect x="128" y="278" width="8" height="12" class="edge-port" data-edge="CLK_GEN_CTRL"><title>CLK_GEN_CTRL_CSR
+CLK_GEN_CTRL : Axi4LiteManager</title></rect><text x="124" y="283" text-anchor="end" class="port-label">CLK_GEN_CTRL_CSR</text><text x="124" y="294" text-anchor="end" class="port-type">Axi4LiteManager</text></svg>

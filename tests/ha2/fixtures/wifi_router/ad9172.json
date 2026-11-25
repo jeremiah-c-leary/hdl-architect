@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "Ad9172Lib",
+    "imports": [
+      {
+        "name": "PartKinds::*"
+      },
+      {
+        "name": "PartMetadata::*"
+      },
+      {
+        "name": "PortDefs::*"
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "Ad9172",
+        "specializes": [
+          "HwPart"
+        ],
+        "metadata": [
+          {
+            "type": "Datasheet",
+            "values": {
+              "manufacturer": "Analog Devices",
+              "partNumber": "AD9172",
+              "revision": "C",
+              "url": "https://www.analog.com/media/en/technical-documentation/data-sheets/ad9172.pdf"
+            }
+          }
+        ],
+        "ports": [
+          {
+            "name": "clkout",
+            "type": "ClockOut"
+          },
+          {
+            "name": "clkin",
+            "type": "ClockIn"
+          },
+          {
+            "name": "reset_f",
+            "type": "ResetIn",
+            "redefines": {
+              "active": "low",
+              "synchronous": false
+            }
+          },
+          {
+            "name": "sysref",
+            "type": "SysrefIn"
+          },
+          {
+            "name": "txen0",
+            "type": "BitIn",
+            "redefines": {
+              "active": "high"
+            }
+          },
+          {
+            "name": "txen1",
+            "type": "BitIn",
+            "redefines": {
+              "active": "high"
+            }
+          },
+          {
+            "name": "irq0",
+            "type": "BitOut",
+            "redefines": {
+              "active": "low"
+            }
+          },
+          {
+            "name": "irq1",
+            "type": "BitOut",
+            "redefines": {
+              "active": "low"
+            }
+          },
+          {
+            "name": "serdin",
+            "type": "JesdRx",
+            "redefines": {
+              "lanes": 8
+            }
+          },
+          {
+            "name": "iset",
+            "type": "AnalogIn"
+          },
+          {
+            "name": "syncout0",
+            "type": "BitOut",
+            "redefines": {
+              "active": "low"
+            }
+          },
+          {
+            "name": "syncout1",
+            "type": "BitOut",
+            "redefines": {
+              "active": "low"
+            }
+          },
+          {
+            "name": "DAC0",
+            "type": "AnalogOut"
+          },
+          {
+            "name": "DAC1",
+            "type": "AnalogOut"
+          },
+          {
+            "name": "serial_port_interface",
+            "type": "Spi3WireTarget"
+          }
+        ]
+      }
+    ]
+  }
+}

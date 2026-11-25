@@ -1,0 +1,279 @@
+{
+  "layoutVersion": 1,
+  "ports": {
+    "CLKGENCTRL": {
+      "Control": {
+        "offset": 118.546875,
+        "side": "left"
+      },
+      "clk": {
+        "offset": 50,
+        "side": "left"
+      },
+      "clock_gen_spi": {
+        "offset": 50,
+        "side": "right"
+      },
+      "rst": {
+        "offset": 72,
+        "side": "left"
+      }
+    },
+    "CLKRSTCTRL": {
+      "rst": {
+        "offset": 72,
+        "side": "left"
+      },
+      "rst_out": {
+        "offset": 85,
+        "side": "right"
+      },
+      "sys_clk": {
+        "offset": 50,
+        "side": "left"
+      }
+    },
+    "ClockGenCtrl": {
+      "CSR": {
+        "offset": 94,
+        "side": "left"
+      },
+      "SPI": {
+        "offset": 75,
+        "side": "right"
+      },
+      "clk": {
+        "offset": 50,
+        "side": "left"
+      },
+      "rst": {
+        "offset": 72,
+        "side": "left"
+      }
+    },
+    "Control": {
+      "CLK_GEN_CTRL": {
+        "offset": 222,
+        "side": "right"
+      },
+      "adc_if": {
+        "offset": 186,
+        "side": "left"
+      },
+      "clk": {
+        "offset": 55,
+        "side": "left"
+      },
+      "clock_gen_csr": {
+        "offset": 211,
+        "side": "right"
+      },
+      "dac_if": {
+        "offset": 457,
+        "side": "left"
+      },
+      "dac_irq": {
+        "offset": 50,
+        "side": "right"
+      },
+      "ethernet": {
+        "offset": 335,
+        "side": "right"
+      },
+      "processing": {
+        "offset": 312,
+        "side": "left"
+      },
+      "rst": {
+        "offset": 82,
+        "side": "left"
+      },
+      "temp_if": {
+        "offset": 546,
+        "side": "right"
+      },
+      "uart": {
+        "offset": 682,
+        "side": "right"
+      }
+    },
+    "RSTSYNC": {
+      "clk": {
+        "offset": 72,
+        "side": "left"
+      },
+      "rst": {
+        "offset": 50,
+        "side": "left"
+      },
+      "rst_out": {
+        "offset": 50,
+        "side": "right"
+      }
+    },
+    "WifiPacketRouterFpga": {
+      "status_uart": {
+        "offset": 50,
+        "side": "right"
+      },
+      "temp_alert": {
+        "offset": 50,
+        "side": "right"
+      },
+      "temp_i2c": {
+        "offset": 50,
+        "side": "right"
+      }
+    }
+  },
+  "sheets": {
+    "CLKRSTCTRL": {
+      "columns": 3,
+      "edge": {
+        "rst": {
+          "side": "left",
+          "y": 130
+        },
+        "rst_out": {
+          "side": "left",
+          "y": 108
+        },
+        "sys_clk": {
+          "side": "left",
+          "y": 86
+        }
+      },
+      "parts": {
+        "RST_SYNC": {
+          "col": 1,
+          "h": 86,
+          "y": 237.453125
+        }
+      }
+    },
+    "WifiPacketRouterFpga": {
+      "columns": 4,
+      "edge": {
+        "adc_jesd": {
+          "side": "left",
+          "y": 286
+        },
+        "adc_spi": {
+          "side": "left",
+          "y": 308
+        },
+        "clock_gen_spi": {
+          "side": "right",
+          "y": 253.453125
+        },
+        "dac_irq": {
+          "side": "right",
+          "y": 150
+        },
+        "dac_jesd": {
+          "side": "left",
+          "y": 484
+        },
+        "dac_reset": {
+          "side": "left",
+          "y": 551
+        },
+        "dac_spi": {
+          "side": "left",
+          "y": 506
+        },
+        "dac_tx_en": {
+          "side": "left",
+          "y": 528
+        },
+        "eth_mdio": {
+          "side": "right",
+          "y": 454
+        },
+        "eth_reset_f": {
+          "side": "right",
+          "y": 477
+        },
+        "eth_rgmii": {
+          "side": "right",
+          "y": 432
+        },
+        "jesd_refclk": {
+          "side": "left",
+          "y": 222
+        },
+        "jesd_sysref": {
+          "side": "left",
+          "y": 258
+        },
+        "status_uart": {
+          "side": "right",
+          "y": 781
+        },
+        "sys_clock": {
+          "side": "left",
+          "y": 136.453125
+        },
+        "sys_reset_f": {
+          "side": "left",
+          "y": 174
+        },
+        "temp_alert": {
+          "side": "right",
+          "y": 666
+        },
+        "temp_i2c": {
+          "side": "right",
+          "y": 644
+        }
+      },
+      "parts": {
+        "CLK_GEN_CTRL": {
+          "col": 3,
+          "h": 154.546875,
+          "y": 203.453125
+        },
+        "CLK_RST_CTRL": {
+          "col": 0,
+          "h": 123.546875,
+          "y": 88.453125
+        },
+        "Control": {
+          "col": 2,
+          "h": 753,
+          "y": 100
+        },
+        "adc_if": {
+          "col": 0,
+          "h": 174,
+          "y": 236
+        },
+        "dac_if": {
+          "col": 0,
+          "h": 220,
+          "y": 434
+        },
+        "ethernet": {
+          "col": 3,
+          "h": 188,
+          "y": 382
+        },
+        "processing": {
+          "col": 1,
+          "h": 242,
+          "y": 301
+        },
+        "temp_if": {
+          "col": 3,
+          "h": 113,
+          "y": 594
+        },
+        "uart": {
+          "col": 3,
+          "h": 109,
+          "y": 731
+        }
+      }
+    }
+  }
+}

@@ -3,10 +3,11 @@
 #
 #   scripts/check            everything
 #   scripts/check python     Black, flake8, tests (with GHDL), model checks, reproducibility
-#   scripts/check js         Prettier, ESLint, syntax of HA 2's browser code
+#   scripts/check js         Prettier, ESLint, syntax and behaviour tests of HA 2
 #
 # Needs the venv with the dev extras (pip install -e ".[scaffold,flow,test,dev]")
-# for python, and `npm ci` for js. Stops at the first failure.
+# for python, and `npm ci` (plus the venv, for `ha serve`) for js. Stops at the
+# first failure.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 what="${1:-all}"
@@ -43,6 +44,9 @@ js_checks() {
   step "Syntax of HA 2's scripts"
   for f in src/hdl_architect/editor/static/*.js; do node --check "$f"; done
   echo "ok"
+  step "HA 2 behaviour tests (real server, page in jsdom)"
+  command -v ha > /dev/null || { echo "needs \`ha\` on PATH: activate the venv" >&2; exit 1; }
+  npm run -s test:ha2
 }
 
 case "$what" in

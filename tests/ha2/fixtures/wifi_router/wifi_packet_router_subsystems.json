@@ -1,0 +1,262 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "WifiPacketRouterSubsystems",
+    "doc": "The Wi-Fi packet router FPGA's subsystems: the first level of its architecture (the user's split, 2026-11-22). Each device's controller (SPI, I2C) lives in the subsystem for that device. A port bound to an FPGA pin has the pin's name and port def; the other ports come from the flows between subsystems (WifiPacketRouterInterfaces).",
+    "imports": [
+      {
+        "name": "PartKinds::*"
+      },
+      {
+        "name": "PortDefs::*"
+      },
+      {
+        "name": "WifiPacketRouterInterfaces::*"
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "Ethernet",
+        "doc": "1G Ethernet: the MAC (RGMII to the PHY), PHY management (MDIO) and sending and receiving frames.",
+        "specializes": [
+          "Subsystem"
+        ],
+        "ports": [
+          {
+            "name": "eth_rgmii",
+            "type": "RgmiiMac",
+            "doc": "FPGA pin."
+          },
+          {
+            "name": "eth_mdio",
+            "type": "MdioController",
+            "doc": "FPGA pin."
+          },
+          {
+            "name": "eth_reset_f",
+            "type": "ResetOut",
+            "doc": "FPGA pin.",
+            "redefines": {
+              "active": "low",
+              "synchronous": true,
+              "clock_port": "clk"
+            }
+          },
+          {
+            "name": "cmd",
+            "type": "Axi4LiteSubordinate",
+            "doc": "Commands to processing."
+          },
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "rst",
+            "type": "ResetIn"
+          }
+        ]
+      },
+      {
+        "name": "AdcInterface",
+        "doc": "The AD9208: its JESD204B link (receive) and its SPI configuration. Gives ADC samples.",
+        "specializes": [
+          "Subsystem"
+        ],
+        "ports": [
+          {
+            "name": "adc_jesd",
+            "type": "JesdRx",
+            "doc": "FPGA pin.",
+            "redefines": {
+              "lanes": 8
+            }
+          },
+          {
+            "name": "adc_spi",
+            "type": "Spi3WireController",
+            "doc": "FPGA pin."
+          },
+          {
+            "name": "processing",
+            "type": "Axi4StreamTransmitter"
+          },
+          {
+            "name": "Control",
+            "type": "Axi4LiteSubordinate"
+          },
+          {
+            "name": "ref_clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "rst",
+            "type": "ResetIn"
+          },
+          {
+            "name": "sysref",
+            "type": "SysrefIn",
+            "redefines": {
+              "clock_port": "ref_clk"
+            }
+          },
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          }
+        ]
+      },
+      {
+        "name": "DacInterface",
+        "doc": "The AD9172: its JESD204B link (transmit), its SPI configuration, TXEN, reset and IRQ. Takes DAC samples.",
+        "specializes": [
+          "Subsystem"
+        ],
+        "ports": [
+          {
+            "name": "dac_jesd",
+            "type": "JesdTx",
+            "doc": "FPGA pin.",
+            "redefines": {
+              "lanes": 8
+            }
+          },
+          {
+            "name": "dac_spi",
+            "type": "Spi4WireController",
+            "doc": "FPGA pin."
+          },
+          {
+            "name": "dac_tx_en",
+            "type": "BitOut",
+            "doc": "FPGA pin."
+          },
+          {
+            "name": "dac_reset",
+            "type": "ResetOut",
+            "doc": "FPGA pin.",
+            "redefines": {
+              "active": "low",
+              "synchronous": true,
+              "clock_port": "clk"
+            }
+          },
+          {
+            "name": "processing",
+            "type": "Axi4StreamReceiver"
+          },
+          {
+            "name": "Control",
+            "type": "Axi4LiteSubordinate"
+          },
+          {
+            "name": "ref_clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "rst",
+            "type": "ResetIn"
+          },
+          {
+            "name": "sysref",
+            "type": "SysrefIn",
+            "redefines": {
+              "clock_port": "ref_clk"
+            }
+          },
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          }
+        ]
+      },
+      {
+        "name": "TempSensorInterface",
+        "doc": "The TMP117: reads the temperature over I2C on request, and watches ALERT.",
+        "specializes": [
+          "Rtl"
+        ],
+        "ports": [
+          {
+            "name": "temp_i2c",
+            "type": "I2cController",
+            "doc": "FPGA pin."
+          },
+          {
+            "name": "temp_alert",
+            "type": "BitIn",
+            "doc": "FPGA pin."
+          },
+          {
+            "name": "temp_read",
+            "type": "Axi4LiteSubordinate",
+            "doc": "Requests from processing."
+          },
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "rst",
+            "type": "ResetIn"
+          }
+        ]
+      },
+      {
+        "name": "Uart",
+        "doc": "Status out over the UART to the USB-UART bridge.",
+        "specializes": [
+          "Rtl"
+        ],
+        "ports": [
+          {
+            "name": "status_uart",
+            "type": "UartDte",
+            "doc": "FPGA pin."
+          },
+          {
+            "name": "processing",
+            "type": "Axi4LiteSubordinate"
+          },
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "rst",
+            "type": "ResetIn"
+          }
+        ]
+      },
+      {
+        "name": "Processing",
+        "doc": "Takes commands from Ethernet and answers them; turns ADC samples into Ethernet packets. May hold subsystems of its own.",
+        "specializes": [
+          "Subsystem"
+        ],
+        "ports": [
+          {
+            "name": "dac_if",
+            "type": "Axi4StreamTransmitter"
+          },
+          {
+            "name": "adc_if",
+            "type": "Axi4StreamReceiver"
+          },
+          {
+            "name": "Control",
+            "type": "Axi4LiteSubordinate"
+          },
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "rst",
+            "type": "ResetIn"
+          }
+        ]
+      }
+    ]
+  }
+}

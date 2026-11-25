@@ -3,14 +3,16 @@
   "private": true,
   "description": "Development tools for HA 2's browser code (not shipped).",
   "scripts": {
-    "format": "prettier --write src/hdl_architect/editor/static",
-    "format:check": "prettier --check src/hdl_architect/editor/static",
-    "lint": "eslint src/hdl_architect/editor/static"
+    "format": "prettier --write src/hdl_architect/editor/static tests/ha2 eslint.config.mjs",
+    "format:check": "prettier --check src/hdl_architect/editor/static tests/ha2 eslint.config.mjs",
+    "lint": "eslint src/hdl_architect/editor/static tests/ha2",
+    "test:ha2": "node --test --test-concurrency=1 \"tests/ha2/*.test.mjs\""
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "eslint": "10.15.0",
     "globals": "17.14.0",
+    "jsdom": "31.0.1",
     "prettier": "3.10.1"
   }
 }
