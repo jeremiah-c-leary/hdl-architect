@@ -15,7 +15,12 @@ frozen in `~/projects/sysmlpy_spike`).
 
 - `src/hdl_architect/core/`: the schema and `model.py`, the model loader.
 - `src/hdl_architect/editor/`: HA 2 (`server.py` + `static/`). User guide:
-  `docs/ha2.md`.
+  `docs/ha2.md`. The browser code is ES modules loaded from `static/main.js` (no build
+  step): `state`, `util`, `model`, `nets`, `layout`, `store`, `edits`, `menus`,
+  `render`, `interaction`, `clocktree`, `export`. `main.js` exposes every
+  module's exports as `window.ha2` for the tests and the browser console.
+  Known debt: `nets`, `edits` and `store` import `render`/`menus` (the core
+  depends on the UI); moving the core to Python (the operations API) fixes it.
 - `src/hdl_architect/generators/`: one module per generator, each with
   `main(argv)`, registered under the `hdl_architect.generators` entry point
   in `pyproject.toml` (plugins, the PeakRDL pattern).

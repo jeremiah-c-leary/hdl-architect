@@ -10,11 +10,14 @@
  * clock generated three levels down shows where it really comes from.
  * Read-only: clock assignment stays on the sheets.
  */
-"use strict";
+import { KIND_COLORS, S } from "./state.js";
+import { el, tip, trunc } from "./util.js";
+import { kindOf, partDef, partType, partsOf, short } from "./model.js";
+import { NET_COLORS, fmtHz, netsOf, portUsage } from "./nets.js";
 
-const CT = { open: false, mode: "clock", sysref: true, flatten: false }; // mode: 'clock' or 'reset'
+export const CT = { open: false, mode: "clock", sysref: true, flatten: false }; // mode: 'clock' or 'reset'
 
-function buildClockTree(D) {
+export function buildClockTree(D) {
   const cats = new Set(
     CT.mode === "reset"
       ? ["reset"]
@@ -152,7 +155,7 @@ function buildClockTree(D) {
   return { nodes: [...nodes.values()], edges };
 }
 
-function layoutClockTree(g) {
+export function layoutClockTree(g) {
   const byId = new Map(g.nodes.map((n) => [n.id, n]));
   const rank = new Map();
   const rankOf = (id, seen = new Set()) => {
@@ -244,7 +247,7 @@ function layoutClockTree(g) {
   };
 }
 
-function renderClockTree() {
+export function renderClockTree() {
   const D = S.sheet,
     box = document.getElementById("ctSvg");
   box.innerHTML = "";
@@ -442,13 +445,13 @@ function renderClockTree() {
   }
 }
 
-function openClockTree(mode) {
+export function openClockTree(mode) {
   CT.open = true;
   CT.mode = mode || "clock";
   document.getElementById("clockTree").hidden = false;
   renderClockTree();
 }
-function closeClockTree() {
+export function closeClockTree() {
   CT.open = false;
   document.getElementById("clockTree").hidden = true;
 }
