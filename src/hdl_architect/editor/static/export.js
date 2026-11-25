@@ -1,9 +1,11 @@
 // HA 2: export what is on screen (a sheet, the clock tree, the reset tree) as SVG or PNG,
 // for documentation. Always in the light theme, without editing marks (selection, armed
 // ports, resize grips), as a standalone file: styles are inlined, CSS variables resolved.
-"use strict";
+import { S } from "./state.js";
+import { menu } from "./menus.js";
+import { CT } from "./clocktree.js";
 
-function exportCss() {
+export function exportCss() {
   let light = {},
     rules = [];
   for (const sheet of document.styleSheets) {
@@ -30,7 +32,7 @@ function exportCss() {
   return { css, bg: light["--bg"] || "#ffffff" };
 }
 
-function exportSvgText(svgEl) {
+export function exportSvgText(svgEl) {
   const c = svgEl.cloneNode(true);
   c.querySelectorAll(".grip").forEach((e) => e.remove());
   c.querySelectorAll(".sel, .armed, .picked").forEach((e) =>
@@ -60,7 +62,7 @@ function exportSvgText(svgEl) {
   };
 }
 
-function download(blob, name) {
+export function download(blob, name) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = name;
@@ -72,7 +74,7 @@ function download(blob, name) {
   }, 1000);
 }
 
-function exportAs(svgEl, base, fmt) {
+export function exportAs(svgEl, base, fmt) {
   const { text, w, h } = exportSvgText(svgEl);
   const svgBlob = new Blob([text], { type: "image/svg+xml" });
   if (fmt === "svg") return download(svgBlob, base + ".svg");
@@ -91,7 +93,7 @@ function exportAs(svgEl, base, fmt) {
   img.src = URL.createObjectURL(svgBlob);
 }
 
-function fileBase(s) {
+export function fileBase(s) {
   return s.replace(/[^\w.-]+/g, "_");
 }
 
