@@ -79,8 +79,10 @@ frozen in `~/projects/sysmlpy_spike`).
 
 ## Verifying a change
 
-- Always: `python -m pytest` (byte-identical FpgaOne, GHDL analysis,
-  layering, the Wi-Fi example loads).
+- Always: `scripts/check` (what CI runs on every PR: Black, flake8, the
+  tests with GHDL, every example model checks, generators reproducible,
+  Prettier, ESLint). `scripts/check python` or `scripts/check js` for half.
+  CI (`.github/workflows/ci.yml`) runs it on Python 3.11 and 3.14.
 - After changing the schema, the loader or a generator: also regenerate
   FpgaOne and compile it with Questa (`vsim -c -do compile.do` in
   `examples/fpga_one/sim`). If a generated file changes on purpose, update

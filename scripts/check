@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Run the checks CI runs, locally, the same way.
+#
+#   scripts/check            everything
+#   scripts/check python     Black, flake8, tests (with GHDL), model checks, reproducibility
+#   scripts/check js         Prettier, ESLint, syntax of HA 2's browser code
+#
+# Needs the venv with the dev extras (pip install -e ".[scaffold,flow,test,dev]")
+# for python, and `npm ci` for js. Stops at the first failure.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+what="${1:-all}"
+step() { printf '\n== %s\n' "$*"; }
+
+python_checks() {
+  step "Black"; black --check src tests
+  step "flake8"; flake8
+  step "Tests (JUnit report: build/test-results.xml)"
+  mkdir -p build
+  python -m pytest --junitxml=build/test-results.xml
+  step "Every example model checks"
+  (cd examples/fpga_one && ha check --path lib --path ip --path subsystems --path fpgas)
+  ha check --path examples/wifi_router
+  step "Generators are reproducible (two runs give the same files)"
+  tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' RETURN
+  for run in 1 2; do
+    cp -r examples/fpga_one "$tmp/fpga_one-$run"
+    rm -rf "$tmp/fpga_one-$run"/fpgas/*/gen "$tmp/fpga_one-$run"/subsystems/*/gen "$tmp/fpga_one-$run/sim"
+    (cd "$tmp/fpga_one-$run" && SP="--path lib --path ip --path subsystems --path fpgas" &&
+      ha gen vhdl $SP --top FpgaOne > /dev/null &&
+      mkdir -p sim && ha gen compile $SP --top FpgaOne --out sim/compile.do > /dev/null &&
+      ha gen sysml $SP --out gen/sysml > /dev/null)
+    ha gen sysml --path examples/wifi_router --out "$tmp/wifi-sysml-$run" > /dev/null
+  done
+  diff -r "$tmp/fpga_one-1" "$tmp/fpga_one-2"
+  diff -r "$tmp/wifi-sysml-1" "$tmp/wifi-sysml-2"
+  echo "identical"
+}
+
+js_checks() {
+  step "Prettier"; npm run -s format:check
+  step "ESLint"; npm run -s lint
+  step "Syntax of HA 2's scripts"
+  for f in src/hdl_architect/editor/static/*.js; do node --check "$f"; done
+  echo "ok"
+}
+
+case "$what" in
+  python) python_checks ;;
+  js) js_checks ;;
+  all) python_checks; js_checks ;;
+  *) echo "usage: scripts/check [python|js]" >&2; exit 2 ;;
+esac
+printf '\nAll checks passed.\n'
