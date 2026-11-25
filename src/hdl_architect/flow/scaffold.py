@@ -1,6 +1,7 @@
 """hdl_architect.flow.scaffold (`ha scaffold`): model JSON + team Copier templates -> workspace.
 
-    ha scaffold --path examples/wifi_router --top WifiPacketRouterFpga --ws ws --templates templates
+    cd examples/wifi_router && ha scaffold            # settings from ha.toml
+    ha scaffold --config examples/wifi_router/ha.toml
 
 A flow, not a generator: it runs Copier and calls the VHDL generator, so it
 may import generators (generators may not import each other). First version,
@@ -24,6 +25,7 @@ from pathlib import Path
 
 import yaml
 
+from hdl_architect.core import config
 from hdl_architect.core.model import ModelError, load_ir
 from hdl_architect.generators.vhdl import entity_name, skeleton, structural
 
@@ -56,22 +58,46 @@ def logical_name(core: dict) -> str | None:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="ha scaffold", description="Create or update a workspace from the model and team Copier templates.")
-    ap.add_argument("--path", action="append", required=True)
-    ap.add_argument("--top", required=True)
-    ap.add_argument("--ws", required=True, type=Path)
-    ap.add_argument("--templates", required=True, type=Path)
-    ap.add_argument("--project")
+    ap = argparse.ArgumentParser(
+        prog="ha scaffold",
+        description="Create or update a workspace from the model and team Copier templates. "
+                    "Settings come from ha.toml ([model], [scaffold]); options override it.")
+    ap.add_argument("--config", help="settings file (default: ha.toml here or in a parent directory)")
+    ap.add_argument("--path", action="append", help="model search path directory (repeatable)")
+    ap.add_argument("--top", help="top-level part def")
+    ap.add_argument("--ws", help="workspace directory")
+    ap.add_argument("--templates", help="Copier templates directory")
+    ap.add_argument("--project", help="project name, used by the first scaffold")
     args = ap.parse_args(argv)
-    ws, tpl = args.ws, args.templates.resolve()
+    try:
+        cfg, cfg_file = config.load(args.config)
+    except ModelError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    model, sc = cfg.get("model", {}), cfg.get("scaffold", {})
+    paths = args.path or model.get("paths")
+    top_name = args.top or model.get("top")
+    ws_dir = args.ws or sc.get("workspace")
+    tpl_dir = args.templates or sc.get("templates")
+    project = args.project or sc.get("project")
+    missing = [n for n, v in (("[model] paths / --path", paths), ("[model] top / --top", top_name),
+                              ("[scaffold] workspace / --ws", ws_dir),
+                              ("[scaffold] templates / --templates", tpl_dir)) if not v]
+    if missing:
+        where = f"in {cfg_file}" if cfg_file else "(no ha.toml found here or above)"
+        print(f"error: missing {', '.join(missing)} {where}", file=sys.stderr)
+        return 2
+    if cfg_file:
+        print(f"settings: {cfg_file}")
+    ws, tpl = Path(ws_dir), Path(tpl_dir).resolve()
 
     try:
-        top = load_ir(args.path, args.top)
+        top = load_ir(paths, top_name)
     except ModelError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
     if not (ws / ".copier-answers.yml").is_file():
-        copier(tpl / "project", ws, {"project": args.project or entity_name(args.top)})
+        copier(tpl / "project", ws, {"project": project or entity_name(top_name)})
     ans = yaml.safe_load((ws / ".copier-answers.yml").read_text())
     vendor, library = ans["vendor"], ans["library"]
     place = {"Rtl": ans["rtl_dir"], "Subsystem": ans["subsystem_dir"],

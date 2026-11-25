@@ -31,8 +31,10 @@ commands, activate it:
     ha gen compile $SP --top FpgaOne --out sim/compile.do
     ha gen sysml $SP --out gen/sysml              # SysML v2 text (for SysON)
 
-    ha scaffold --path examples/wifi_router --top WifiPacketRouterFpga \
-                --ws ws --templates templates --project wifi
+    cd examples/wifi_router && ha scaffold        # settings from its ha.toml; workspace in ws/wifi
+
+Each design keeps its command settings in an `ha.toml` (model paths, top,
+workspace, templates); command-line options override it.
 
 Tests: `python -m pytest` (FpgaOne must regenerate byte-identical and
 analyze with GHDL; the package's layering rules are checked).

@@ -24,6 +24,10 @@ frozen in `~/projects/sysmlpy_spike`).
   own git repos (Copier versions them by tag).
 - `examples/fpga_one/`: the regression design (model JSON next to its leaf
   RTL). `examples/wifi_router/`: the design the user draws in HA 2.
+- `ha.toml` (per design, e.g. `examples/wifi_router/ha.toml`): settings for
+  the `ha` commands, read by `core/config.py`; paths relative to the file,
+  unknown keys are errors, command-line options override it. Tool
+  configuration, not a design input. New options become new keys there.
 - `tests/`: pytest. `tests/golden/` holds FpgaOne's expected generated files.
 - `gen/`, `sim/`, `ws/` under examples are generated and gitignored.
 - HA 1 is the git tag `ha1` (no HA 1 files on the branch); its docs are in
