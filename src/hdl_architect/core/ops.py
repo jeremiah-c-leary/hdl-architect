@@ -692,3 +692,387 @@ def set_kind(model: Model, def_name: str, kind: str) -> Result:
     d["specializes"] = [short(kind), *rest]
     model.ensure_part_import(pkg, kind)
     return Result({file})
+
+
+# ---------------------------------------------------------------- global nets
+# Clocks, resets and SYSREF are global nets: each port def has a category and
+# a direction. A net's source is a sheet input or a component output; its
+# sinks are component inputs (and sheet outputs). A net is a bind or connect
+# from the source to each sink.
+GLOBAL = {
+    "ClockIn": ("clock", "in"),
+    "ClockOut": ("clock", "out"),
+    "ResetIn": ("reset", "in"),
+    "ResetOut": ("reset", "out"),
+    "SysrefIn": ("sysref", "in"),
+    "SysrefOut": ("sysref", "out"),
+}
+
+
+def global_info(end: End) -> tuple[str, bool] | None:
+    """(category, is a source) of a global port on a sheet, else None."""
+    g = GLOBAL.get(short(end.usage.get("type")))
+    if not g:
+        return None
+    direction = g[1]
+    if end.usage.get("conjugated"):
+        direction = "out" if direction == "in" else "in"
+    return g[0], (direction == "in" if end.is_edge else direction == "out")
+
+
+def _base_def(model: Model, type_: str) -> dict | None:
+    entry = model.port_defs.get(short(type_))
+    d = entry[2] if entry else None
+    if d and d.get("conjugateOf"):
+        base = model.port_defs.get(short(d["conjugateOf"]))
+        d = base[2] if base else d
+    return d
+
+
+def has_param(model: Model, type_: str, name: str) -> bool:
+    """Does the port def (or the one it mirrors) declare parameter `name`?"""
+    d = _base_def(model, type_)
+    return bool(d) and any(
+        a["name"] == name and "direction" not in a for a in d.get("attributes", [])
+    )
+
+
+def global_def_for(model: Model, cat: str, direction: str) -> tuple[str, bool] | None:
+    """The port def (and conjugation) for a new global port: e.g. ClockOut, or
+    ~ClockIn when the model has only ClockIn."""
+    for conj, want in (
+        (False, direction),
+        (True, "out" if direction == "in" else "in"),
+    ):
+        name = next(n for n, g in GLOBAL.items() if g == (cat, want))
+        if name in model.port_defs:
+            return name, conj
+    return None
+
+
+def _clocks(owner: dict) -> list[dict]:
+    return [
+        u
+        for u in owner.get("ports", [])
+        if GLOBAL.get(short(u.get("type")), ("",))[0] == "clock"
+    ]
+
+
+def _pair(model: Model, usage: dict, clock: str | None) -> None:
+    r = usage.setdefault("redefines", {})
+    if clock:
+        r["clock_port"] = clock
+    else:
+        r.pop("clock_port", None)
+    cat = GLOBAL.get(short(usage.get("type")), ("",))[0]
+    if cat == "reset" and has_param(model, usage["type"], "synchronous"):
+        r["synchronous"] = bool(clock)  # paired with a clock: synchronous
+    if not r:
+        del usage["redefines"]
+
+
+def pair_clock(model: Model, def_name: str, port: str, clock: str | None) -> Result:
+    """Pair a reset or SYSREF port with a clock port of the same def (None:
+    unpair). A paired reset is synchronous, an unpaired one asynchronous."""
+    file, _, owner, usage = _port(model, def_name, port)
+    cat = GLOBAL.get(short(usage.get("type")), ("",))[0]
+    if cat not in ("reset", "sysref") or not has_param(
+        model, usage["type"], "clock_port"
+    ):
+        raise OpError(
+            "not_pairable",
+            f"{def_name}.{port} is not a reset or SYSREF with a clock_port.",
+        )
+    if clock is not None and not any(ident(u) == clock for u in _clocks(owner)):
+        raise OpError("not_a_clock", f"{def_name} has no clock port {clock}.")
+    _pair(model, usage, clock)
+    return Result({file})
+
+
+def assign_net(
+    model: Model,
+    sheet_name: str,
+    end_ref: str,
+    source_ref: str | None,
+    retype: bool = False,
+) -> Result:
+    """Put a sink (`end_ref`) on the net of `source_ref`, or on none. Its old net
+    wire is removed. With `retype`, the sink first becomes an input of the net's
+    category (e.g. a plain port onto a clock net); a SYSREF made so is paired
+    with its def's only clock."""
+    file, _, sheet = model.part_def(sheet_name)
+    end = End(model, sheet, end_ref)
+    changed = {file}
+    src = None
+    if source_ref is not None:
+        src = End(model, sheet, source_ref)
+        si = global_info(src)
+        if not si or not si[1]:
+            raise OpError("not_a_source", f"{source_ref} does not drive a net.")
+        if retype:
+            t = global_def_for(model, si[0], "in")
+            if t is None:
+                raise OpError("not_found", f"The model has no {si[0]} input port def.")
+            give_type(model, end, *t)
+            changed.add(end.file)
+            clocks = _clocks(end.owner)
+            if (
+                si[0] == "sysref"
+                and has_param(model, t[0], "clock_port")
+                and len(clocks) == 1
+            ):
+                _pair(model, end.usage, ident(clocks[0]))
+    ei = global_info(end)
+    if not ei:
+        raise OpError("not_global", f"{end_ref} is not a clock, reset or SYSREF port.")
+    if ei[1]:
+        raise OpError("is_a_source", f"{end_ref} drives a net itself.")
+    if src is not None and ei[0] != global_info(src)[0]:
+        raise OpError(
+            "wrong_kind",
+            f"{end_ref} is a {ei[0]} port and {source_ref} drives a "
+            f"{global_info(src)[0]} net.",
+        )
+
+    def is_net_wire(w):
+        if end_ref not in w["ends"]:
+            return False
+        try:
+            a, b = (End(model, sheet, r) for r in w["ends"])
+        except OpError:
+            return False
+        ga, gb = global_info(a), global_info(b)
+        return bool(ga and gb and ga[0] == gb[0])
+
+    for k in ("connections", "bindings"):
+        if k in sheet:
+            sheet[k] = [w for w in sheet[k] if not is_net_wire(w)]
+            if not sheet[k]:
+                del sheet[k]
+    if src is not None:
+        if src.is_edge or end.is_edge:
+            edge, other = (src, end) if src.is_edge else (end, src)
+            sheet.setdefault("bindings", []).append({"ends": [edge.ref, other.ref]})
+        else:
+            sheet.setdefault("connections", []).append({"ends": [src.ref, end.ref]})
+    return Result(changed)
+
+
+def set_frequency(model: Model, sheet_name: str, source_ref: str, hz: float) -> Result:
+    """Set the frequency of the net driven by `source_ref` (on the source port)."""
+    _, _, sheet = model.part_def(sheet_name)
+    src = End(model, sheet, source_ref)
+    si = global_info(src)
+    if not si or not si[1]:
+        raise OpError("not_a_source", f"{source_ref} does not drive a net.")
+    if not isinstance(hz, (int, float)) or isinstance(hz, bool) or hz <= 0:
+        raise OpError("bad_value", "A frequency must be a positive number of Hz.")
+    src.usage.setdefault("redefines", {})["frequency_hz"] = float(hz)
+    return Result({src.file})
+
+
+def add_global_port(
+    model: Model, def_name: str, cat: str, direction: str, name: str
+) -> Result:
+    """Add a clock, reset or SYSREF port (`direction` "in" or "out"). A SYSREF
+    input is paired with the def's only clock; otherwise a note says what to
+    pair. Result.data["name"] is the name given."""
+    if (cat, direction) not in GLOBAL.values():
+        raise OpError("bad_request", f"no global port kind {cat} {direction}")
+    t = global_def_for(model, cat, direction)
+    if t is None:
+        kinds = " / ".join(n for n, g in GLOBAL.items() if g[0] == cat)
+        raise OpError("not_found", f"The model has no {cat} port def ({kinds}).")
+    r = add_port(model, def_name, name, t[0])
+    file, _, owner, usage = _port(model, def_name, r.data["name"])
+    if t[1]:
+        usage["conjugated"] = True
+    notes, clocks = [], _clocks(owner)
+    if cat == "sysref" and direction == "in" and has_param(model, t[0], "clock_port"):
+        if len(clocks) == 1:
+            _pair(model, usage, ident(clocks[0]))
+        elif clocks:
+            notes.append(
+                f"{def_name}.{r.data['name']}: pair it with its device clock "
+                f"({', '.join(ident(c) for c in clocks)})."
+            )
+    elif cat == "reset" and direction == "in" and has_param(model, t[0], "clock_port"):
+        notes.append(
+            f"{def_name}.{r.data['name']} is asynchronous; pair it with a clock "
+            "if it is synchronous."
+        )
+    return Result({file}, notes, r.data)
+
+
+# -------------------------------------------------- wires, descriptions, names
+def delete_wire(model: Model, sheet_name: str, a: str, b: str) -> Result:
+    """Delete the wire (connect or bind) between ends `a` and `b` on a sheet."""
+    file, _, sheet = model.part_def(sheet_name)
+    for k in ("connections", "bindings"):
+        for w in sheet.get(k, []):
+            if set(w["ends"]) == {a, b}:
+                sheet[k].remove(w)
+                if not sheet[k]:
+                    del sheet[k]
+                return Result({file})
+    raise OpError("not_found", f"no wire between {a} and {b} on {sheet_name}")
+
+
+def set_doc(model: Model, def_name: str, port: str | None, text: str | None) -> Result:
+    """Set the description (SysML doc) of a definition, or of one of its ports;
+    empty removes it. Lines are trimmed."""
+    if port is None:
+        entry = next(
+            ((f, d) for f, _, _, d in _all_defs(model) if d["name"] == def_name), None
+        )
+        if entry is None:
+            raise OpError("not_found", f"no definition {def_name}")
+        file, obj = entry
+    else:
+        file, _, _, obj = _port(model, def_name, port)
+    t = "\n".join(line.strip() for line in (text or "").split("\n")).strip()
+    if t:
+        obj["doc"] = t
+    else:
+        obj.pop("doc", None)
+    return Result({file})
+
+
+def set_port_name(model: Model, def_name: str, port: str, label: str | None) -> Result:
+    """Give a port a readable SysML name ("Processing CSR"), or remove it (None,
+    empty, or the identifier itself). The identifier stays: in the file the
+    readable text is `name` and the identifier `shortName`."""
+    file, _, _, usage = _port(model, def_name, port)
+    t = (label or "").strip()
+    if any(c in t for c in "'\\\n\r"):
+        raise OpError(
+            "bad_name", "A port name cannot contain quotes, backslashes or line breaks."
+        )
+    if t and t != port:
+        usage["shortName"], usage["name"] = port, t
+    elif "shortName" in usage:
+        usage["name"] = usage.pop("shortName")
+    return Result({file})
+
+
+# -------------------------------------------------- the operations, by name
+# Every front end runs an operation by name with arguments by name: HA 2's
+# server (POST /api/op), `ha op NAME key=value ...`, and later an MCP server.
+# name -> (call(model, args) -> Result, required args, optional args)
+OPERATIONS = {
+    "connect": (
+        lambda m, a: connect(m, a["sheet"], a["a"], a["b"]),
+        ["sheet", "a", "b"],
+        [],
+    ),
+    "connect_new": (
+        lambda m, a: connect_new(m, a["sheet"], a["a"], a["b"]),
+        ["sheet", "a", "b"],
+        [],
+    ),
+    "set_interface": (
+        lambda m, a: set_interface(
+            m,
+            [(x["def"], x["port"]) for x in a["ports"]],
+            a.get("type"),
+            a.get("sheet"),
+        ),
+        ["ports"],
+        ["type", "sheet"],
+    ),
+    "add_port": (
+        lambda m, a: add_port(m, a["def"], a["name"], a.get("type")),
+        ["def", "name"],
+        ["type"],
+    ),
+    "rename_port": (
+        lambda m, a: rename_port(m, a["def"], a["old"], a["new"]),
+        ["def", "old", "new"],
+        [],
+    ),
+    "delete_port": (
+        lambda m, a: delete_port(m, a["def"], a["port"]),
+        ["def", "port"],
+        [],
+    ),
+    "add_part": (
+        lambda m, a: add_part(m, a["sheet"], a["name"], a.get("kind"), a.get("def")),
+        ["sheet", "name"],
+        ["kind", "def"],
+    ),
+    "rename_part": (
+        lambda m, a: rename_part(m, a["sheet"], a["old"], a["new"]),
+        ["sheet", "old", "new"],
+        [],
+    ),
+    "delete_part": (
+        lambda m, a: delete_part(m, a["sheet"], a["name"]),
+        ["sheet", "name"],
+        [],
+    ),
+    "rename_def": (lambda m, a: rename_def(m, a["old"], a["new"]), ["old", "new"], []),
+    "set_part_def": (
+        lambda m, a: set_part_def(m, a["sheet"], a["part"], a["def"]),
+        ["sheet", "part", "def"],
+        [],
+    ),
+    "set_kind": (lambda m, a: set_kind(m, a["def"], a["kind"]), ["def", "kind"], []),
+    "pair_clock": (
+        lambda m, a: pair_clock(m, a["def"], a["port"], a.get("clock")),
+        ["def", "port"],
+        ["clock"],
+    ),
+    "assign_net": (
+        lambda m, a: assign_net(
+            m, a["sheet"], a["end"], a.get("source"), bool(a.get("retype"))
+        ),
+        ["sheet", "end"],
+        ["source", "retype"],
+    ),
+    "set_frequency": (
+        lambda m, a: set_frequency(m, a["sheet"], a["source"], a["hz"]),
+        ["sheet", "source", "hz"],
+        [],
+    ),
+    "add_global_port": (
+        lambda m, a: add_global_port(m, a["def"], a["cat"], a["dir"], a["name"]),
+        ["def", "cat", "dir", "name"],
+        [],
+    ),
+    "delete_wire": (
+        lambda m, a: delete_wire(m, a["sheet"], a["a"], a["b"]),
+        ["sheet", "a", "b"],
+        [],
+    ),
+    "set_doc": (
+        lambda m, a: set_doc(m, a["def"], a.get("port"), a.get("text")),
+        ["def"],
+        ["port", "text"],
+    ),
+    "set_port_name": (
+        lambda m, a: set_port_name(m, a["def"], a["port"], a.get("name")),
+        ["def", "port"],
+        ["name"],
+    ),
+}
+
+
+def run(model: Model, name: str, args: dict) -> Result:
+    """Run operation `name` with `args`; unknown names, missing or unknown
+    arguments are refused (a typo is never ignored)."""
+    if name not in OPERATIONS:
+        raise OpError("unknown_op", f"no operation {name!r} (see `ha op --list`)")
+    call, required, optional = OPERATIONS[name]
+    missing = [k for k in required if k not in args]
+    extra = [k for k in args if k not in required and k not in optional]
+    if missing or extra:
+        raise OpError(
+            "bad_request",
+            f"{name}: "
+            + "; ".join(
+                ([f"missing {', '.join(missing)}"] if missing else [])
+                + ([f"unknown {', '.join(extra)}"] if extra else [])
+            )
+            + f" (takes {', '.join(required + [k + '?' for k in optional])})",
+        )
+    return call(model, args)

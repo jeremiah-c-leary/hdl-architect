@@ -191,56 +191,18 @@ class Store:
         files it changed. `bases`: {file id: version} as the browser last saw
         them; a changed file must still be at that version (else nothing is
         written: the browser reloads). Returns (HTTP status, response)."""
-        ops = {
-            "connect": lambda m, b: core_ops.connect(m, b["sheet"], b["a"], b["b"]),
-            "connect_new": lambda m, b: core_ops.connect_new(
-                m, b["sheet"], b["a"], b["b"]
-            ),
-            "add_port": lambda m, b: core_ops.add_port(
-                m, b["def"], b["name"], b.get("type")
-            ),
-            "rename_port": lambda m, b: core_ops.rename_port(
-                m, b["def"], b["old"], b["new"]
-            ),
-            "delete_port": lambda m, b: core_ops.delete_port(m, b["def"], b["port"]),
-            "add_part": lambda m, b: core_ops.add_part(
-                m, b["sheet"], b["name"], b.get("kind"), b.get("def")
-            ),
-            "rename_part": lambda m, b: core_ops.rename_part(
-                m, b["sheet"], b["old"], b["new"]
-            ),
-            "delete_part": lambda m, b: core_ops.delete_part(m, b["sheet"], b["name"]),
-            "rename_def": lambda m, b: core_ops.rename_def(m, b["old"], b["new"]),
-            "set_part_def": lambda m, b: core_ops.set_part_def(
-                m, b["sheet"], b["part"], b["def"]
-            ),
-            "set_kind": lambda m, b: core_ops.set_kind(m, b["def"], b["kind"]),
-            "set_interface": lambda m, b: core_ops.set_interface(
-                m,
-                [(x["def"], x["port"]) for x in b["ports"]],
-                b.get("type"),
-                b.get("sheet"),
-            ),
-        }
         name = body.get("op")
-        if name not in ops:
-            return 404, {
-                "error": {"code": "unknown_op", "message": f"no operation {name!r}"}
-            }
+        args = {k: v for k, v in body.items() if k not in ("op", "bases")}
         docs = {
             fid: json.loads(f.read_text(encoding="utf-8"))
             for fid, f in self.files.items()
         }
         try:
-            result = ops[name](core_ops.Model(docs), body)
-            changed = result.changed
-        except (core_ops.OpError, KeyError) as e:
-            err = (
-                e
-                if isinstance(e, core_ops.OpError)
-                else core_ops.OpError("bad_request", f"missing {e}")
-            )
-            return 422, {"error": {"code": err.code, "message": err.message}}
+            result = core_ops.run(core_ops.Model(docs), name, args)
+        except core_ops.OpError as e:
+            code = 404 if e.code == "unknown_op" else 422
+            return code, {"error": {"code": e.code, "message": e.message}}
+        changed = result.changed
         bases = body.get("bases") or {}
         if any(stale(self.files[fid], bases.get(fid)) for fid in changed):
             return 409, {"error": {"code": "stale", "message": STALE}, "stale": True}

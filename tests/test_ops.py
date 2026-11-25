@@ -515,3 +515,174 @@ def test_ha_part_commands(wifi, capsys):
     assert "debug" not in part_types(m)
     assert m.part_def("DebugCore")[2]["specializes"] == ["VendorIp"]
     assert ha(["check", "--path", str(wifi)]) == 0
+
+
+# ---------------------------------------------------------------- global nets
+def test_assign_net_moves_a_sink_to_another_net(wifi):
+    docs, m = load(wifi)
+    assert ["CLK_RST_CTRL.rst_out", "uart.rst"] in wires(m)
+    ops.assign_net(m, TOP, "uart.rst", "sys_reset_f")
+    assert ["CLK_RST_CTRL.rst_out", "uart.rst"] not in wires(m)
+    assert ["sys_reset_f", "uart.rst"] in wires(m)  # a bind: the source is a sheet port
+    ops.assign_net(m, TOP, "uart.rst", None)  # on no net
+    assert not any("uart.rst" in w for w in wires(m))
+    still_checks(docs, wifi)
+
+
+def test_assign_net_refusals(wifi):
+    docs, m = load(wifi)
+    for end, src, code in (
+        ("uart.clk", "sys_reset_f", "wrong_kind"),  # a clock onto a reset net
+        ("uart.rst", "uart.clk", "not_a_source"),  # a sink cannot drive a net
+        ("uart.rst", "adc_jesd", "not_a_source"),  # not a global port at all
+        ("CLK_RST_CTRL.rst_out", "sys_reset_f", "is_a_source"),
+        ("uart.processing", "sys_clock", "not_global"),
+    ):
+        with pytest.raises(ops.OpError) as e:
+            ops.assign_net(m, TOP, end, src)
+        assert e.value.code == code, (end, src, e.value.message)
+
+
+def test_assign_net_with_retype_makes_the_port_an_input_of_the_net(wifi):
+    docs, m = load(wifi)
+    add_port(m, "Uart", "x", "BitIn")
+    ops.assign_net(m, TOP, "uart.x", "sys_clock", retype=True)
+    assert port_of(m, "Uart", "x")["type"] == "ClockIn"
+    assert ["sys_clock", "uart.x"] in wires(m)
+    still_checks(docs, wifi)
+
+
+def test_set_frequency(wifi):
+    docs, m = load(wifi)
+    ops.set_frequency(m, TOP, "sys_clock", 125e6)
+    assert port_of(m, TOP, "sys_clock")["redefines"]["frequency_hz"] == 125e6
+    for src, hz, code in (
+        ("sys_clock", 0, "bad_value"),
+        ("uart.clk", 1e6, "not_a_source"),
+    ):
+        with pytest.raises(ops.OpError) as e:
+            ops.set_frequency(m, TOP, src, hz)
+        assert e.value.code == code
+    still_checks(docs, wifi)
+
+
+def test_pair_clock_and_reset_synchronism(wifi):
+    docs, m = load(wifi)
+    ops.pair_clock(m, "AdcInterface", "rst", "clk")
+    r = port_of(m, "AdcInterface", "rst")["redefines"]
+    assert r["clock_port"] == "clk" and r["synchronous"] is True
+    ops.pair_clock(m, "AdcInterface", "rst", None)
+    r = port_of(m, "AdcInterface", "rst").get("redefines", {})
+    assert "clock_port" not in r and r.get("synchronous") is False
+    for port, clock, code in (
+        ("clk", "ref_clk", "not_pairable"),  # a clock is not paired
+        ("sysref", "rst", "not_a_clock"),
+    ):
+        with pytest.raises(ops.OpError) as e:
+            ops.pair_clock(m, "AdcInterface", port, clock)
+        assert e.value.code == code
+    still_checks(docs, wifi)
+
+
+def test_add_global_port(wifi):
+    docs, m = load(wifi)
+    r = ops.add_global_port(m, "Uart", "reset", "in", "rst")
+    assert r.data == {"name": "rst_2"}
+    assert port_of(m, "Uart", "rst_2")["type"] == "ResetIn"
+    assert "asynchronous" in r.notes[0]
+    r = ops.add_global_port(m, "Uart", "sysref", "in", "sysref")  # Uart has one clock
+    assert port_of(m, "Uart", "sysref")["redefines"]["clock_port"] == "clk"
+    r = ops.add_global_port(m, "AdcInterface", "sysref", "in", "sysref")  # two clocks
+    assert "pair it with its device clock" in r.notes[0]
+    still_checks(docs, wifi)
+
+
+def test_add_global_port_uses_the_conjugate_when_only_one_direction_exists():
+    lib = {
+        "schemaVersion": "0.6",
+        "package": {"name": "Lib", "portDefs": [{"name": "ClockIn"}]},
+    }
+    design = {
+        "schemaVersion": "0.6",
+        "package": {"name": "Design", "partDefs": [{"name": "Pll", "ports": []}]},
+    }
+    m = ops.Model({"lib": lib, "design": design})
+    ops.add_global_port(m, "Pll", "clock", "out", "clk_out")
+    u = design["package"]["partDefs"][0]["ports"][0]
+    assert (u["type"], u.get("conjugated")) == ("ClockIn", True)  # ~ClockIn
+
+
+# -------------------------------------------------- wires, descriptions, names
+def test_delete_wire_either_order(wifi):
+    docs, m = load(wifi)
+    ops.delete_wire(m, TOP, "Control.adc_if", "adc_if.Control")
+    assert ["adc_if.Control", "Control.adc_if"] not in wires(m)
+    with pytest.raises(ops.OpError) as e:
+        ops.delete_wire(m, TOP, "Control.adc_if", "adc_if.Control")
+    assert e.value.code == "not_found"
+    still_checks(docs, wifi)
+
+
+def test_set_doc_on_a_def_and_a_port(wifi):
+    docs, m = load(wifi)
+    ops.set_doc(m, "Uart", None, "  Status out.\n   Over the UART.  ")
+    assert m.part_def("Uart")[2]["doc"] == "Status out.\nOver the UART."
+    ops.set_doc(m, "Uart", "clk", "The UART's clock.")
+    assert port_of(m, "Uart", "clk")["doc"] == "The UART's clock."
+    ops.set_doc(m, "Uart", "clk", "")
+    assert "doc" not in port_of(m, "Uart", "clk")
+    ops.set_doc(m, "BitIn", None, "One bit.")  # a port def too
+    assert m.port_defs["BitIn"][2]["doc"] == "One bit."
+    still_checks(docs, wifi)
+
+
+def test_set_port_name_is_sysml_name_and_short_name(wifi):
+    docs, m = load(wifi)
+    ops.set_port_name(m, "Uart", "clk", "UART clock")
+    p = port_of(m, "Uart", "clk")
+    assert (p["name"], p["shortName"]) == ("UART clock", "clk")
+    ops.set_port_name(m, "Uart", "clk", "")  # removed: the identifier is the name again
+    p = port_of(m, "Uart", "clk")
+    assert p["name"] == "clk" and "shortName" not in p
+    with pytest.raises(ops.OpError) as e:
+        ops.set_port_name(m, "Uart", "clk", "it's")
+    assert e.value.code == "bad_name"
+    still_checks(docs, wifi)
+
+
+def test_ha_op_runs_any_operation_by_name(wifi, capsys):
+    path = ["--path", str(wifi)]
+    (wifi / "ha.toml").write_text(f'[model]\npaths = ["."]\ntop = "{TOP}"\n')
+    assert (
+        ha(["op", "pair_clock", "def=AdcInterface", "port=rst", "clock=clk", *path])
+        == 0
+    )
+    assert (
+        ha(
+            [
+                "op",
+                "set_frequency",
+                "source=sys_clock",
+                "hz=125e6",
+                "--config",
+                str(wifi / "ha.toml"),
+            ]
+        )
+        == 0
+    )
+    assert ha(["op", "pair_clock", "def=AdcInterface", *path]) == 1  # port missing
+    assert ha(["op", "nope", *path]) == 1
+    err = capsys.readouterr().err
+    assert "missing port" in err and "refused (unknown_op)" in err
+    _, m = load(wifi)
+    assert port_of(m, "AdcInterface", "rst")["redefines"]["clock_port"] == "clk"
+    assert port_of(m, TOP, "sys_clock")["redefines"]["frequency_hz"] == 125e6
+    assert ha(["check", "--path", str(wifi)]) == 0
+
+
+def test_every_operation_is_runnable_by_name():
+    """The table front ends use: each entry names a function in this module."""
+    assert {"connect", "set_interface", "assign_net", "set_doc"} <= set(ops.OPERATIONS)
+    for name, (call, required, optional) in ops.OPERATIONS.items():
+        assert callable(call) and required, name
+        assert not set(required) & set(optional), name
