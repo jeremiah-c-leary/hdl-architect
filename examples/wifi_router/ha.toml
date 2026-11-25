@@ -1,0 +1,11 @@
+# Settings for the `ha` commands on this design (paths are relative to this file).
+# Run `ha scaffold` from this folder, or `ha scaffold --config examples/wifi_router/ha.toml`.
+
+[model]
+paths = ["."]                     # where the model files are
+top = "WifiPacketRouterFpga"      # the top-level part def
+
+[scaffold]
+workspace = "../../ws/wifi"       # created on the first run, updated after (git ignores ws/)
+templates = "../../templates"     # the team's Copier templates
+project = "wifi"                  # project name, used by the first run only
