@@ -54,7 +54,7 @@ export const S = {
   armed: null, // an end: {kind:'edge', port} | {kind:'part', part, port}
   undo: [],
   redo: [],
-  saved: {}, // file -> {m, l} texts last saved
+  saved: {}, // file -> {modelText, layoutText}: last saved, to tell what changed
   serverProblems: [],
   saveProblems: [],
   drag: null,

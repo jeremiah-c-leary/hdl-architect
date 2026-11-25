@@ -53,37 +53,56 @@ window.ha2 = Object.assign(
   exportMod,
 );
 
-$("undo").onclick = undo;
-$("redo").onclick = redo;
-$("back").onclick = goBack;
-$("checkBtn").onclick = check;
-$("libFilter").oninput = renderSide;
-
 // ------------------------------------------------------------------ start
-(async function start() {
-  const r = await fetch("/api/model");
-  S.pkgs = (await r.json()).packages;
-  for (const p of S.pkgs)
-    S.saved[p.file] = {
-      m: JSON.stringify(p.model),
-      l: JSON.stringify(p.layout || null),
-    };
-  rebuildIndex();
-  const want = decodeURIComponent(location.hash.slice(1));
-  const sheets = Object.keys(S.defs)
-    .filter((n) => S.defs[n].coll === "partDefs" && isSheet(n))
-    .sort();
-  const first = partDef(want)
-    ? want
-    : sheets.find((n) => ["Fpga", "FpgaPart"].includes(kindOf(n))) ||
-      sheets[0] ||
-      null;
-  if (first) {
-    S.sheet = first;
-    settle(first);
-  }
+wireButtons();
+start();
+
+/** The top bar's buttons and the library filter. */
+function wireButtons() {
+  $("undo").onclick = undo;
+  $("redo").onclick = redo;
+  $("back").onclick = goBack;
+  $("checkBtn").onclick = check;
+  $("libFilter").oninput = renderSide;
+}
+
+/** Load the model, open the first sheet and draw it. */
+async function start() {
+  await loadModel();
+  openFirstSheet();
   render();
   setStatus("ready");
   hint();
-  check();
-})();
+  check(); // the server checks the whole model; problems appear under the sheet
+}
+
+/**
+ * Every model file, with its layout, from the server. What was loaded is
+ * also what is saved: S.saved lets a later save tell what has changed.
+ */
+async function loadModel() {
+  const response = await fetch("/api/model");
+  S.pkgs = (await response.json()).packages;
+  for (const pkg of S.pkgs)
+    S.saved[pkg.file] = {
+      modelText: JSON.stringify(pkg.model),
+      layoutText: JSON.stringify(pkg.layout || null),
+    };
+  rebuildIndex();
+}
+
+/**
+ * The first sheet to show: the one named in the page's address (.../#Control),
+ * else the FPGA's sheet, else the first sheet by name.
+ */
+function openFirstSheet() {
+  const named = decodeURIComponent(location.hash.slice(1));
+  const sheets = Object.keys(S.defs)
+    .filter((n) => S.defs[n].coll === "partDefs" && isSheet(n))
+    .sort();
+  const isFpga = (n) => ["Fpga", "FpgaPart"].includes(kindOf(n));
+  const first = partDef(named) ? named : sheets.find(isFpga) || sheets[0];
+  if (!first) return;
+  S.sheet = first;
+  settle(first); // lay the sheet out: straight wires, nothing overlapping
+}

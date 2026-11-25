@@ -112,7 +112,7 @@ export function takeChanged(changed) {
     p.model = c.model;
     p.version = c.version;
     S.saved[p.file] = Object.assign(S.saved[p.file] || {}, {
-      m: JSON.stringify(c.model),
+      modelText: JSON.stringify(c.model),
     });
   }
   rebuildIndex();
@@ -155,40 +155,41 @@ export async function flushSave() {
 export async function saveAll() {
   setStatus("saving…");
   const problems = [];
-  for (const p of S.pkgs) {
-    const m = JSON.stringify(p.model),
-      l = JSON.stringify(p.layout || null);
-    const last = S.saved[p.file] || {};
-    if (m !== last.m) {
+  for (const pkg of S.pkgs) {
+    // what is in the page now, and what was last saved, as text
+    const modelText = JSON.stringify(pkg.model),
+      layoutText = JSON.stringify(pkg.layout || null);
+    const saved = S.saved[pkg.file] || {};
+    if (modelText !== saved.modelText) {
       const res = await put("/api/file", {
-        file: p.file,
-        model: p.model,
-        base: p.version,
+        file: pkg.file,
+        model: pkg.model,
+        base: pkg.version,
       });
       const errs = res.errors || [];
-      if (errs.length) problems.push(...errs.map((e) => `${p.file}: ${e}`));
+      if (errs.length) problems.push(...errs.map((e) => `${pkg.file}: ${e}`));
       else {
-        last.m = m;
-        p.version = res.version;
+        saved.modelText = modelText;
+        pkg.version = res.version;
       }
       if (res.stale) S.stale = true;
     }
-    if (p.layout && l !== last.l) {
+    if (pkg.layout && layoutText !== saved.layoutText) {
       const res = await put("/api/layout", {
-        file: p.file,
-        layout: p.layout,
-        base: p.layoutVersion,
+        file: pkg.file,
+        layout: pkg.layout,
+        base: pkg.layoutVersion,
       });
       const errs = res.errors || [];
       if (errs.length)
-        problems.push(...errs.map((e) => `${p.file} (layout): ${e}`));
+        problems.push(...errs.map((e) => `${pkg.file} (layout): ${e}`));
       else {
-        last.l = l;
-        p.layoutVersion = res.version;
+        saved.layoutText = layoutText;
+        pkg.layoutVersion = res.version;
       }
       if (res.stale) S.stale = true;
     }
-    S.saved[p.file] = last;
+    S.saved[pkg.file] = saved;
   }
   S.saveProblems = problems;
   setStatus(
