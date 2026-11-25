@@ -6,6 +6,7 @@
     ha gen NAME ...                            run a generator (ha gen --list)
     ha scaffold ...                            create or update a workspace
     ha connect [--sheet NAME] A B              wire two existing ports (a.p or p)
+    ha set-interface DEF.PORT... --type T      set ports' interface (--none clears)
 
 Generators are plugins: any installed package can add one through the
 `hdl_architect.generators` entry point group (name = module:main), the way
@@ -81,7 +82,7 @@ def _connect(argv) -> int:
         return 2
     docs = read_model_files(paths)
     try:
-        changed = ops.connect(ops.Model(docs), sheet, a.a, a.b)
+        changed = ops.connect(ops.Model(docs), sheet, a.a, a.b).changed
     except ops.OpError as e:
         print(f"refused ({e.code}): {e.message}", file=sys.stderr)
         return 1
@@ -89,6 +90,60 @@ def _connect(argv) -> int:
         write_model_file(f, docs[f])
     kind = "bind" if "." not in a.a or "." not in a.b else "connect"
     print(f"{kind} {a.a} {a.b} on {sheet}; wrote {', '.join(changed)}")
+    return 0
+
+
+def _set_interface(argv) -> int:
+    """`ha set-interface`: the model operation behind HA 2's "Set interface"."""
+    import argparse
+
+    from hdl_architect.core import config, ops
+    from hdl_architect.core.files import read_model_files, write_model_file
+    from hdl_architect.core.model import ModelError
+
+    ap = argparse.ArgumentParser(
+        prog="ha set-interface",
+        description="Set the interface (port def) of ports, given as Def.port. An "
+        "untyped port wired to one on the sheet gets the matching interface too. "
+        "Settings from ha.toml ([model] paths, top); options override it.",
+    )
+    ap.add_argument("ports", nargs="+", metavar="DEF.PORT")
+    t = ap.add_mutually_exclusive_group(required=True)
+    t.add_argument("--type", help="the port def, e.g. Axi4LiteSubordinate")
+    t.add_argument("--none", action="store_true", help="remove the interface")
+    ap.add_argument("--sheet", help="whose wires to follow (default: [model] top)")
+    ap.add_argument("--path", action="append", dest="paths", metavar="DIR")
+    ap.add_argument("--config", help="settings file (default: ha.toml here or above)")
+    a = ap.parse_args(argv)
+    try:
+        cfg, _ = config.load(a.config)
+    except ModelError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    paths = a.paths or cfg.get("model", {}).get("paths")
+    if not paths:
+        print("error: need --path (or [model] paths in ha.toml)", file=sys.stderr)
+        return 2
+    ports = []
+    for x in a.ports:
+        d, _, port = x.partition(".")
+        if not port:
+            ap.error(f"{x}: give ports as Def.port")
+        ports.append((d, port))
+    docs = read_model_files(paths)
+    sheet = a.sheet or cfg.get("model", {}).get("top")
+    try:
+        result = ops.set_interface(
+            ops.Model(docs), ports, None if a.none else a.type, sheet
+        )
+    except ops.OpError as e:
+        print(f"refused ({e.code}): {e.message}", file=sys.stderr)
+        return 1
+    for f in result.changed:
+        write_model_file(f, docs[f])
+    print(f"set {len(ports)} port(s); wrote {', '.join(result.changed)}")
+    for n in result.notes:
+        print(n)
     return 0
 
 
@@ -110,6 +165,8 @@ def main(argv=None) -> int:
         return run(rest)
     if cmd == "connect":
         return _connect(rest)
+    if cmd == "set-interface":
+        return _set_interface(rest)
     if cmd == "scaffold":
         from hdl_architect.flow.scaffold import main as run
 

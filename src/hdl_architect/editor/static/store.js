@@ -1,6 +1,6 @@
 // HA 2: Changes, undo/redo, saving, the server check.
 import { COLLS, S } from "./state.js";
-import { $ } from "./util.js";
+import { $, hint } from "./util.js";
 import { ensureImport, partDef, rebuildIndex, short } from "./model.js";
 import { settle } from "./layout.js";
 import { render, renderProblems } from "./render.js";
@@ -116,6 +116,35 @@ export function takeChanged(changed) {
     });
   }
   rebuildIndex();
+}
+/**
+ * Run a model operation as one undoable edit: save pending edits, run it on
+ * the server (core.ops), take the files it changed, then `after(res)` for
+ * drawing changes (port sides...). Returns the response, or null when it was
+ * refused (the reason is shown: a pop-up for interfaces that do not fit, the
+ * hint line otherwise).
+ */
+export async function applyOp(op, args, after) {
+  const snap = snapshot();
+  if (!(await flushSave())) {
+    hint("Not done: save the open changes first.");
+    return null;
+  }
+  const res = await runOp(op, args);
+  if (res.error) {
+    if (res.error.code === "interfaces") alert(res.error.message);
+    render();
+    hint(res.error.code === "interfaces" ? "" : res.error.message);
+    return null;
+  }
+  takeChanged(res.changed);
+  if (after) after(res);
+  S.undo.push(snap);
+  if (S.undo.length > 200) S.undo.shift();
+  S.redo = [];
+  changed();
+  if (res.notes && res.notes.length) hint(res.notes.join(" "));
+  return res;
 }
 /** Save now if an edit is waiting, so the files on disk are the page's. */
 export async function flushSave() {

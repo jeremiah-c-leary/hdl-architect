@@ -25,7 +25,9 @@ frozen in `~/projects/sysmlpy_spike`).
   Model rules belong in `core/ops.py`, not in the browser: HA 2 keeps only
   drawing rules (columns, port sides) and calls an operation through
   `POST /api/op` (`runOp` in `store.js`), which writes the files and returns
-  them. Done: wiring two ports (`connect`, also `ha connect`). Known debt: the
+  them (`applyOp` in `store.js`: one undo step). Done: wiring two ports
+  (`connect`, `ha connect`), setting interfaces (`set_interface`,
+  `ha set-interface`). Known debt: the
   other edits are still in `edits.js`/`nets.js`, and `nets`, `edits` and
   `store` import `render`/`menus` (the core depends on the UI); moving each
   operation to `core/ops.py` fixes it, one at a time, each with Python tests.

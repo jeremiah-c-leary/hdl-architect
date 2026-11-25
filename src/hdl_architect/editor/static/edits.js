@@ -13,16 +13,9 @@ import {
   rebuildIndex,
   short,
 } from "./model.js";
-import { drawnWires, portUsage } from "./nets.js";
+import { drawnWires } from "./nets.js";
 import { hasPortLayout, layoutOf, portLayout, sheetLayout } from "./layout.js";
-import {
-  changed,
-  flushSave,
-  mutate,
-  runOp,
-  snapshot,
-  takeChanged,
-} from "./store.js";
+import { applyOp, mutate } from "./store.js";
 import { render } from "./render.js";
 
 // ------------------------------------------------------------------ edits
@@ -184,19 +177,7 @@ export async function connectPorts(a, b) {
       (w) => endStr(w.a) === endStr(e) || endStr(w.b) === endStr(e),
     );
   const before = { a: wiredElsewhere(a), b: wiredElsewhere(b) };
-  const snap = snapshot();
-  if (!(await flushSave()))
-    return say("Not wired: save the open changes first.");
-  const res = await runOp("connect", {
-    sheet: D,
-    a: endStr(first),
-    b: endStr(second),
-  });
-  if (res.error) {
-    if (res.error.code === "interfaces") alert(res.error.message);
-    return say(res.error.code === "interfaces" ? "" : res.error.message);
-  }
-  takeChanged(res.changed);
+  const wired = (e) => (e === a ? before.a : before.b);
   const turned = [];
   const face = (e, side, wasWired) => {
     // turn a component port to `side` if nothing else was wired to it
@@ -209,26 +190,28 @@ export async function connectPorts(a, b) {
     setPortSide(owner(e), e.port, side);
     turned.push(endStr(e));
   };
-  const wired = (e) => (e === a ? before.a : before.b);
-  if (isBind) {
-    const edge = a.kind === "edge" ? a : b,
-      part = a.kind === "edge" ? b : a;
-    if (!wired(edge))
-      sl.edge[edge.port].side =
-        sl.parts[part.part].col >= sl.columns / 2 ? "right" : "left";
-    face(part, sl.edge[edge.port].side, wired(part));
-  } else {
-    face(first, "right", wired(first));
-    face(second, "left", wired(second));
-  }
-  S.undo.push(snap);
-  if (S.undo.length > 200) S.undo.shift();
-  S.redo = [];
-  changed();
-  hint(
-    `Wired ${endStr(a)} ${isBind ? "=" : "–"} ${endStr(b)}.` +
-      (turned.length ? ` Turned ${turned.join(", ")} to face the wire.` : ""),
+  const res = await applyOp(
+    "connect",
+    { sheet: D, a: endStr(first), b: endStr(second) },
+    () => {
+      if (isBind) {
+        const edge = a.kind === "edge" ? a : b,
+          part = a.kind === "edge" ? b : a;
+        if (!wired(edge))
+          sl.edge[edge.port].side =
+            sl.parts[part.part].col >= sl.columns / 2 ? "right" : "left";
+        face(part, sl.edge[edge.port].side, wired(part));
+      } else {
+        face(first, "right", wired(first));
+        face(second, "left", wired(second));
+      }
+    },
   );
+  if (res)
+    hint(
+      `Wired ${endStr(a)} ${isBind ? "=" : "–"} ${endStr(b)}.` +
+        (turned.length ? ` Turned ${turned.join(", ")} to face the wire.` : ""),
+    );
 }
 export function addComponent(D, col, y, kindOrDef, isDef) {
   const pkg = pkgOf(D);
@@ -387,45 +370,19 @@ export function deleteWire(D, w) {
     if (!d[k].length) delete d[k];
   });
 }
-export function typePort(P, name, type) {
-  const p = portsOfDef(P).find((x) => x.name === name);
-  if (type) {
-    p.type = type;
-    ensureImport(pkgOf(P), type);
-  } else delete p.type;
-  const keyOrder = ["name", "label", "type", "conjugated", "doc", "redefines"];
-  const copy = Object.assign({}, p);
-  for (const k in p) delete p[k];
-  for (const k of keyOrder) if (k in copy) p[k] = copy[k];
-  for (const k in copy) if (!(k in p)) p[k] = copy[k]; // never drop a key it does not know
-}
+// A port's interface is a model operation (core.ops.set_interface, via the
+// server): it also gives an untyped port at the other end of a wire on the
+// open sheet the matching interface.
 export function setPortType(P, name, type) {
-  // Set a port's interface; on the open sheet, an untyped port at the other end of its
-  // wire gets the matching role too: the mirror across a connect, the same across a bind.
-  const done = [];
-  mutate(() => {
-    typePort(P, name, type);
-    if (!type || !S.sheet || !partDef(S.sheet)) return;
-    const D = S.sheet;
-    const isMe = (e) =>
-      e.kind === "edge"
-        ? P === D && e.port === name
-        : partType(D, e.part) === P && e.port === name;
-    for (const w of drawnWires(D)) {
-      const other = isMe(w.a) ? w.b : isMe(w.b) ? w.a : null;
-      if (!other) continue;
-      const u = portUsage(D, other);
-      if (!u || u.type) continue;
-      const t = w.kind === "bind" ? type : counterpart(type);
-      typePort(
-        other.kind === "edge" ? D : partType(D, other.part),
-        other.port,
-        t,
-      );
-      done.push(`${endStr(other)} : ${t}`);
-    }
+  return setPortsType([{ P, port: name }], type);
+}
+export function setPortsType(list, type) {
+  const D = S.sheet && partDef(S.sheet) ? S.sheet : null;
+  return applyOp("set_interface", {
+    sheet: D,
+    ports: list.map((x) => ({ def: x.P, port: x.port })),
+    type: type || null,
   });
-  if (done.length) hint(`Also typed the other end: ${done.join(", ")}.`);
 }
 export function insertColumn(D, at) {
   mutate(() => {

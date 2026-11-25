@@ -43,7 +43,7 @@ def test_two_roles_of_one_interface_connect(wifi):
     docs, m = load(wifi)
     add_port(m, "AdcInterface", "x", "Axi4LiteManager")
     add_port(m, "Ethernet", "y", "Axi4LiteSubordinate")
-    changed = ops.connect(m, TOP, "adc_if.x", "ethernet.y")
+    changed = ops.connect(m, TOP, "adc_if.x", "ethernet.y").changed
     assert changed == [str(wifi / FPGA)]
     assert top(m)["connections"][-1] == {"ends": ["adc_if.x", "ethernet.y"]}
 
@@ -76,7 +76,7 @@ def test_an_untyped_end_takes_the_other_role(wifi):
     docs, m = load(wifi)
     add_port(m, "AdcInterface", "x", "Axi4LiteManager")
     y = add_port(m, "Ethernet", "y")
-    changed = ops.connect(m, TOP, "adc_if.x", "ethernet.y")
+    changed = ops.connect(m, TOP, "adc_if.x", "ethernet.y").changed
     assert y["type"] == "Axi4LiteSubordinate"
     assert str(wifi / "wifi_packet_router_subsystems.json") in changed
 
@@ -129,7 +129,7 @@ def test_conjugation_and_imports():
         },
     }
     m = ops.Model({"lib": lib, "design": design})
-    assert ops.connect(m, "Top", "a.m", "b.s") == ["design"]  # Bus with ~Bus
+    assert ops.connect(m, "Top", "a.m", "b.s").changed == ["design"]  # Bus with ~Bus
     with pytest.raises(ops.OpError, match="already wired"):
         ops.connect(m, "Top", "b.s", "a.m")
     ops.connect(m, "Top", "a.m", "b.u")  # untyped: takes the other end of Bus
@@ -182,3 +182,92 @@ def test_the_server_runs_the_operation_and_guards_stale_files(wifi):
     assert [c["file"] for c in res["changed"]] == [str((wifi / FPGA).resolve())]
     code, res = store.apply_op({**op, "bases": bases})
     assert (code, res["error"]["code"]) == (422, "exists")
+
+
+# ---------------------------------------------------------------- set_interface
+def port_of(m, d, ident):
+    return next(u for u in m.part_def(d)[2]["ports"] if ops.ident(u) == ident)
+
+
+def test_set_interface_on_one_and_several_ports(wifi):
+    docs, m = load(wifi)
+    add_port(m, "Uart", "p1")
+    add_port(m, "Ethernet", "p2")
+    r = ops.set_interface(m, [("Uart", "p1"), ("Ethernet", "p2")], "BitIn")
+    assert (
+        port_of(m, "Uart", "p1")["type"]
+        == port_of(m, "Ethernet", "p2")["type"]
+        == "BitIn"
+    )
+    assert r.changed == [str(wifi / "wifi_packet_router_subsystems.json")]
+    assert r.notes == []
+
+
+def test_set_interface_types_the_untyped_far_end_of_a_wire(wifi):
+    docs, m = load(wifi)
+    add_port(m, "AdcInterface", "x")
+    add_port(m, "Ethernet", "y")
+    add_port(m, TOP, "e")
+    add_port(m, "Uart", "z")
+    top(m).setdefault("connections", []).append({"ends": ["adc_if.x", "ethernet.y"]})
+    top(m).setdefault("bindings", []).append({"ends": ["e", "uart.z"]})
+    r = ops.set_interface(m, [("AdcInterface", "x")], "Axi4LiteManager", TOP)
+    assert (
+        port_of(m, "Ethernet", "y")["type"] == "Axi4LiteSubordinate"
+    )  # the other role
+    assert r.notes == ["Also typed the other end: ethernet.y : Axi4LiteSubordinate."]
+    ops.set_interface(m, [("Uart", "z")], "BitIn", TOP)
+    assert port_of(m, TOP, "e")["type"] == "BitIn"  # a bind: the same interface
+
+
+def test_set_interface_leaves_a_typed_far_end_alone(wifi):
+    docs, m = load(wifi)
+    add_port(m, "AdcInterface", "x")
+    add_port(m, "Ethernet", "y", "BitIn")
+    top(m).setdefault("connections", []).append({"ends": ["adc_if.x", "ethernet.y"]})
+    r = ops.set_interface(m, [("AdcInterface", "x")], "Axi4LiteManager", TOP)
+    assert port_of(m, "Ethernet", "y")["type"] == "BitIn"
+    assert r.notes == []
+
+
+def test_set_interface_none_clears_it_and_conjugation(wifi):
+    docs, m = load(wifi)
+    p = add_port(m, "Uart", "p", "BitIn")
+    p["conjugated"] = True
+    ops.set_interface(m, [("Uart", "p")], None)
+    assert "type" not in p and "conjugated" not in p
+
+
+def test_set_interface_refusals_and_imports():
+    lib = {
+        "schemaVersion": "0.6",
+        "package": {"name": "Lib", "portDefs": [{"name": "Bus"}]},
+    }
+    design = {
+        "schemaVersion": "0.6",
+        "package": {
+            "name": "Design",
+            "partDefs": [{"name": "A", "ports": [{"name": "p"}]}],
+        },
+    }
+    m = ops.Model({"lib": lib, "design": design})
+    with pytest.raises(ops.OpError) as e:
+        ops.set_interface(m, [("A", "p")], "NoSuchDef")
+    assert e.value.code == "not_found"
+    with pytest.raises(ops.OpError) as e:
+        ops.set_interface(m, [("A", "nope")], "Bus")
+    assert e.value.code == "not_found"
+    ops.set_interface(m, [("A", "p")], "Bus")
+    assert {"name": "Lib::*"} in design["package"]["imports"]
+
+
+def test_ha_set_interface(wifi, capsys):
+    docs, m = load(wifi)
+    add_port(m, "Uart", "p1")
+    for f, doc in docs.items():
+        write_model_file(f, doc)
+    assert ha(["set-interface", "Uart.p1", "--type", "BitIn", "--path", str(wifi)]) == 0
+    assert ha(["set-interface", "Uart.p1", "--type", "Nope", "--path", str(wifi)]) == 1
+    assert "refused (not_found)" in capsys.readouterr().err
+    _, m2 = load(wifi)
+    assert port_of(m2, "Uart", "p1")["type"] == "BitIn"
