@@ -1,0 +1,12 @@
+{
+  "name": "hdl-architect-dev-tools",
+  "private": true,
+  "description": "Development tools for HA 2's browser code (not shipped).",
+  "scripts": {
+    "format": "prettier --write src/hdl_architect/editor/static",
+    "format:check": "prettier --check src/hdl_architect/editor/static"
+  },
+  "devDependencies": {
+    "prettier": "3.10.1"
+  }
+}

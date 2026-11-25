@@ -229,3 +229,6 @@ examples/*/sim/
 build/
 # The Python template above ignores every lib/ folder; a model's lib/ is source.
 !examples/**/lib/
+
+# Node tools (Prettier)
+node_modules/

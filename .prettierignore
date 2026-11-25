@@ -1,0 +1,17 @@
+# Prettier formats HA 2's browser code (src/hdl_architect/editor/static).
+# Everything below has its own writer and must not be reformatted.
+# Model JSON and layouts: HA 2's server writes them in canonical form.
+examples/
+# Expected generator output, byte for byte.
+tests/golden/
+# Copier templates, hand-written docs, generated workspaces and builds.
+templates/
+docs/
+ws/
+build/
+# The schema and models are written by json.dumps / HA 2; prose and configs by hand.
+*.json
+*.md
+*.toml
+*.yml
+*.yaml
