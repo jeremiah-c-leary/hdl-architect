@@ -32,6 +32,10 @@ import * as resourceBar from "./resourcebar.js";
 import * as resourceBanner from "./resourcebanner.js";
 import * as resourceView from "./resourceview.js";
 import * as deviceView from "./deviceview.js";
+import * as actions from "./actions.js";
+import * as performsPanel from "./performspanel.js";
+import * as sequenceView from "./sequenceview.js";
+import * as footprint from "./footprint.js";
 
 // Every module's functions and state, by name: for the tests and the browser
 // console (e.g. ha2.partDef('Control')). Not used by HA 2 itself.
@@ -59,6 +63,10 @@ window.ha2 = Object.assign(
   resourceBanner,
   resourceView,
   deviceView,
+  actions,
+  performsPanel,
+  sequenceView,
+  footprint,
 );
 
 // ------------------------------------------------------------------ start
@@ -83,6 +91,7 @@ async function start() {
   statusbar.showDefaultHint();
   store.checkModel(); // the server checks the whole model; problems appear under the sheet
   estimates.startResources();
+  actions.startActions();
 }
 
 /** Every model file, with its layout, from the server. */

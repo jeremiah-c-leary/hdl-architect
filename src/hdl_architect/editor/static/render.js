@@ -8,6 +8,7 @@
 // (see componentOf), and a port's, `drawing` (see portDrawing).
 import * as clockTree from "./clocktree.js";
 import * as edits from "./edits.js";
+import * as footprint from "./footprint.js";
 import * as interaction from "./interaction.js";
 import * as layout from "./layout.js";
 import * as menus from "./menus.js";
@@ -68,6 +69,7 @@ function drawSheet(sheet) {
   drawWires(sheet);
   drawEdgePorts(sheet);
   drawComponents(sheet);
+  drawFootprint(sheet);
 }
 
 /** What every drawing function needs: the canvas and the open sheet's facts. */
@@ -82,6 +84,7 @@ function sheetDrawing(canvas) {
     geometry: layout.geometry(name), // the edges, columns and gutters
     height: canvasHeight(places),
     netByEnd: nets.netsOf(name).byEnd, // the clock or reset net of each port
+    footprint: footprint.currentFootprint(), // an action's, or null
   };
 }
 
@@ -217,7 +220,8 @@ function drawWire(sheet, wire) {
   const start = layout.absPort(sheet.name, sheet.geometry, wire.a);
   const end = layout.absPort(sheet.name, sheet.geometry, wire.b);
   if (!start || !end) return;
-  const attributes = { d: wirePath(start, end), class: wireClass(wire) };
+  const className = wireClass(wire) + footprintWireClass(sheet, wire);
+  const attributes = { d: wirePath(start, end), class: className };
   const line = svg.el("path", attributes, sheet.canvas);
   svg.tip(line, wireText(wire));
   line.oncontextmenu = (event) => wireMenu(event, sheet, wire);
@@ -407,7 +411,11 @@ function componentOf(sheet, part) {
 }
 
 function drawComponent(sheet, component) {
-  const group = svg.el("g", {}, sheet.canvas);
+  const group = svg.el(
+    "g",
+    footprintPartAttributes(sheet, component),
+    sheet.canvas,
+  );
   const drawn = { ...component, group };
   drawComponentBox(sheet, drawn);
   drawResizeGrips(drawn);
@@ -844,4 +852,63 @@ function crumb(sheetName) {
   link.textContent = sheetName;
   link.onclick = () => interaction.openSheet(sheetName);
   return link;
+}
+
+// ------------------------------------------------------------------ footprint
+
+/** With a footprint shown, its wires stand out and the others are dimmed. */
+function footprintWireClass(sheet, wire) {
+  if (!sheet.footprint) return "";
+  const key = footprint.endsKey(model.endStr(wire.a), model.endStr(wire.b));
+  if (sheet.footprint.wires.has(key)) return " fp-used";
+  return " fp-dim";
+}
+
+/** With a footprint shown, a part that performs none of its steps is dimmed. */
+function footprintPartAttributes(sheet, component) {
+  if (!sheet.footprint) return {};
+  if (sheet.footprint.parts[component.part.name]) return {};
+  return { class: "fp-dim" };
+}
+
+/** Each performing part's step numbers, and a red line for each missing wire. */
+function drawFootprint(sheet) {
+  if (!sheet.footprint) return;
+  for (const [partName, numbers] of Object.entries(sheet.footprint.parts))
+    drawStepBadge(sheet, partName, numbers);
+  for (const line of sheet.footprint.missing) drawMissingWire(sheet, line);
+}
+
+/** "steps 1, 5" just above the part's box. */
+function drawStepBadge(sheet, partName, numbers) {
+  const place = sheet.places.parts[partName];
+  const column = place && sheet.geometry.cols[place.col];
+  if (!column) return;
+  const attributes = {
+    x: column.x0 + SIZE.COMP_W / 2,
+    y: place.y - 6,
+    "text-anchor": "middle",
+    class: "fp-badge",
+  };
+  svg.el("text", attributes, sheet.canvas, stepsText(numbers));
+}
+
+function stepsText(numbers) {
+  if (numbers.length === 1) return `step ${numbers[0]}`;
+  return `steps ${numbers.join(", ")}`;
+}
+
+function drawMissingWire(sheet, line) {
+  const start = portAt(sheet, line.sourceEnd);
+  const end = portAt(sheet, line.targetEnd);
+  if (!start || !end) return;
+  const attributes = { d: wirePath(start, end), class: "fp-missing" };
+  svg.tip(svg.el("path", attributes, sheet.canvas), line.text);
+}
+
+/** Where a port ("part.port", or the sheet's own "port") is on the sheet. */
+function portAt(sheet, endText) {
+  const end = model.parseEnd(sheet.name, endText);
+  if (!end) return null;
+  return layout.absPort(sheet.name, sheet.geometry, end);
 }

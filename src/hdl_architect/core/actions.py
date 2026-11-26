@@ -23,6 +23,7 @@ The model (examples/wifi_router shows it):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Optional
 
 from hdl_architect.core.model import _JsonModel
 from hdl_architect.core.resources import ROLL_UP_KINDS, part_generals
@@ -46,6 +47,28 @@ class ItemPort:
     port_item: str | None = None  # the port's own item it travels as
 
 
+# Where an item crosses a part's boundary: (part, port); (None, port) is the
+# sheet's own port.
+End = tuple[Optional[str], str]
+
+
+@dataclass
+class ItemFlow:
+    """An item passing from one step to the next, or between a step and the
+    edge (the action's own item, through the sheet's port). A step of None is
+    the edge. `wired`: a wire carries it (True), none does (False), or it is
+    not known (None: a port not said, or a step not allocated)."""
+
+    source: str | None  # the step it leaves
+    source_item: str  # its name there
+    target: str | None  # the step it enters
+    target_item: str  # its name there
+    item_type: str
+    source_end: End | None = None
+    target_end: End | None = None
+    wired: bool | None = None
+
+
 @dataclass
 class Step:
     """One step of a composed action: who performs it, and how."""
@@ -57,6 +80,7 @@ class Step:
     status: str
     items: list[ItemPort] = field(default_factory=list)
     steps: list[Step] = field(default_factory=list)  # when DECOMPOSED
+    flows: list[ItemFlow] = field(default_factory=list)  # between those steps
 
 
 @dataclass
@@ -68,6 +92,7 @@ class PerformedAction:
     action_def: str
     items: list[ItemPort]
     steps: list[Step]
+    flows: list[ItemFlow] = field(default_factory=list)  # between its steps
 
 
 @dataclass
@@ -102,9 +127,9 @@ class ActionWalk:
         action = self.action_def(perform["type"])
         items = self.items_of(owner, perform["name"], action)
         steps = self.steps_of(owner, perform["name"], action)
-        self.check_wires(owner, perform["name"], action, steps)
+        flows = self.flows_of(owner, perform["name"], action, steps)
         return PerformedAction(
-            owner["name"], perform["name"], action["name"], items, steps
+            owner["name"], perform["name"], action["name"], items, steps, flows
         )
 
     def action_def(self, name: str) -> dict:
@@ -175,7 +200,8 @@ class ActionWalk:
         made.items = self.items_of(part_def, perform["name"], action)
         if action.get("actions"):
             made.status = DECOMPOSED
-            made.steps = self.performed(part_def, perform).steps
+            inside = self.performed(part_def, perform)
+            made.steps, made.flows = inside.steps, inside.flows
         elif self.is_roll_up(part_def):
             made.status = TO_BREAK_DOWN
         return made
@@ -185,46 +211,107 @@ class ActionWalk:
             return True
         return bool(ROLL_UP_KINDS & part_generals(self.model, definition["name"]))
 
-    # ------------------------------------------------------------ wires
+    # ------------------------------------------------------------ flows and wires
 
-    def check_wires(
+    def flows_of(
         self, owner: dict, perform_name: str, action: dict, steps: list[Step]
-    ) -> None:
-        """Every item that moves between parts, or to the edge, needs a wire."""
+    ) -> list[ItemFlow]:
+        """Every item that moves between steps, or to or from the edge, and
+        whether a wire carries it (a missing wire is a problem)."""
         by_name = {step.name: step for step in steps}
-        for flow in action.get("flows", []):
-            self.check_step_flow(owner, flow, by_name)
+        flows = [
+            self.step_flow(owner, flow, by_name) for flow in action.get("flows", [])
+        ]
         for binding in action.get("bindings", []):
-            self.check_edge(owner, perform_name, binding, by_name)
-
-    def check_step_flow(self, owner: dict, flow: dict, by_name: dict) -> None:
-        source = end_of(flow["from"], by_name, "out")
-        target = end_of(flow["to"], by_name, "in")
-        if source is None or target is None or source[0] == target[0]:
-            return  # unknown, no port said (reported), or within one part
-        if not has_wire(owner, source, target):
-            item = flow["from"].split(".")[-1]
-            self.problem(
-                f"{owner['name']}: {item} ({flow['from']} -> {flow['to']}): no wire "
-                f"from {source[0]}.{source[1]} to {target[0]}.{target[1]}"
+            flows.append(
+                self.edge_flow(owner, (perform_name, action), binding, by_name)
             )
+        return flows
 
-    def check_edge(
-        self, owner: dict, perform_name: str, binding: dict, by_name: dict
-    ) -> None:
-        """`bind step.item = actionItem`: the sheet's port to the step's part."""
+    def step_flow(self, owner: dict, flow: dict, by_name: dict) -> ItemFlow:
+        source, _, source_item = flow["from"].partition(".")
+        target, _, target_item = flow["to"].partition(".")
+        made = ItemFlow(
+            source,
+            source_item,
+            target,
+            target_item,
+            item_type_of(flow["from"], by_name),
+        )
+        made.source_end = end_of(flow["from"], by_name, "out")
+        made.target_end = end_of(flow["to"], by_name, "in")
+        if made.source_end is None or made.target_end is None:
+            return made  # unknown, or no port said (reported)
+        if made.source_end[0] == made.target_end[0]:
+            made.wired = True  # within one part
+            return made
+        made.wired = has_wire(owner, made.source_end, made.target_end)
+        if not made.wired:
+            ends = f"{end_text(made.source_end)} to {end_text(made.target_end)}"
+            self.problem(
+                f"{owner['name']}: {source_item} ({flow['from']} -> {flow['to']}): "
+                f"no wire from {ends}"
+            )
+        return made
+
+    def edge_flow(
+        self, owner: dict, performed: tuple, binding: dict, by_name: dict
+    ) -> ItemFlow:
+        """`bind step.item = actionItem`: between the sheet's port and the
+        step's part, into the step if the action gets the item, else out."""
+        perform_name, action = performed
         step_end, action_item = binding["ends"]
-        direction = direction_in(owner, perform_name, action_item)
+        step, _, step_item = step_end.partition(".")
+        parameter = parameter_of(action, action_item)
+        direction = parameter.get("direction", "in")
+        made = ItemFlow(None, action_item, step, step_item, parameter.get("type", ""))
         sheet_end = port_end_for(owner, f"{perform_name}.{action_item}", direction)
-        part_end = end_of(step_end, by_name, direction)
-        sheet_port = sheet_end.split(".")[0] if sheet_end else None
-        if sheet_port is None or part_end is None:
+        if sheet_end:
+            made.source_end = (None, sheet_end.split(".")[0])
+        made.target_end = end_of(step_end, by_name, direction)
+        if direction == "out":
+            made = reversed_flow(made)
+        self.check_edge(owner, made, action_item)
+        return made
+
+    def check_edge(self, owner: dict, flow: ItemFlow, action_item: str) -> None:
+        sheet_end, part_end = flow.source_end, flow.target_end
+        if flow.source is not None:
+            sheet_end, part_end = flow.target_end, flow.source_end
+        if sheet_end is None or part_end is None:
             return
-        if not has_wire(owner, (None, sheet_port), part_end):
+        flow.wired = has_wire(owner, sheet_end, part_end)
+        if not flow.wired:
             self.problem(
                 f"{owner['name']}: {action_item}: no wire from the sheet's "
-                f"{sheet_port} to {part_end[0]}.{part_end[1]}"
+                f"{sheet_end[1]} to {end_text(part_end)}"
             )
+
+
+def reversed_flow(flow: ItemFlow) -> ItemFlow:
+    """The same item flow, the other way (out of the step, to the edge)."""
+    return ItemFlow(
+        flow.target,
+        flow.target_item,
+        flow.source,
+        flow.source_item,
+        flow.item_type,
+        flow.target_end,
+        flow.source_end,
+        flow.wired,
+    )
+
+
+def item_type_of(step_item: str, by_name: dict) -> str:
+    step_name, _, item = step_item.partition(".")
+    step = by_name.get(step_name)
+    if step is None:
+        return ""
+    return next((i.item_type for i in step.items if i.item == item), "")
+
+
+def parameter_of(action: dict, name: str) -> dict:
+    return next((p for p in action.get("parameters", []) if p["name"] == name), {})
 
 
 # ---------------------------------------------------------------- model lookups
@@ -281,14 +368,6 @@ def carries(owner: dict, item: ItemPort) -> bool:
     )
 
 
-def direction_in(owner: dict, perform_name: str, item: str) -> str:
-    """Whether an item of a performed action goes into it or out of it."""
-    for flow in owner.get("flows", []):
-        if flow["to"] == f"{perform_name}.{item}":
-            return "in"
-    return "out"
-
-
 def allocated_part(owner: dict, step_ref: str) -> dict | None:
     """The part a step is allocated to: `allocate step_ref to part;`."""
     for allocation in owner.get("allocations", []):
@@ -338,3 +417,68 @@ def no_port_text(owner: str, perform_name: str, item: ItemPort) -> str:
 
 def unqualified(name: str | None) -> str:
     return (name or "").split("::")[-1]
+
+
+# ---------------------------------------------------------------- as JSON
+
+
+def report_as_dict(report: ActionReport) -> dict:
+    """The report as JSON for HA 2 (GET /api/actions)."""
+    return {
+        "actions": [performed_as_dict(action) for action in report.actions],
+        "problems": report.problems,
+    }
+
+
+def performed_as_dict(action: PerformedAction) -> dict:
+    return {
+        "owner": action.owner,
+        "name": action.name,
+        "actionDef": action.action_def,
+        "items": [item_as_dict(item) for item in action.items],
+        "steps": [step_as_dict(step) for step in action.steps],
+        "flows": [flow_as_dict(flow) for flow in action.flows],
+    }
+
+
+def step_as_dict(step: Step) -> dict:
+    return {
+        "name": step.name,
+        "actionDef": step.action_def,
+        "part": step.part,
+        "partDef": step.part_def,
+        "status": step.status,
+        "items": [item_as_dict(item) for item in step.items],
+        "steps": [step_as_dict(inner) for inner in step.steps],
+        "flows": [flow_as_dict(flow) for flow in step.flows],
+    }
+
+
+def item_as_dict(item: ItemPort) -> dict:
+    return {
+        "item": item.item,
+        "itemType": item.item_type,
+        "direction": item.direction,
+        "port": item.port,
+        "portItem": item.port_item,
+    }
+
+
+def flow_as_dict(flow: ItemFlow) -> dict:
+    """Ends as text: "part.port", or "port" for the sheet's own port."""
+    return {
+        "source": flow.source,
+        "sourceItem": flow.source_item,
+        "target": flow.target,
+        "targetItem": flow.target_item,
+        "itemType": flow.item_type,
+        "sourceEnd": optional_end_text(flow.source_end),
+        "targetEnd": optional_end_text(flow.target_end),
+        "wired": flow.wired,
+    }
+
+
+def optional_end_text(end: End | None) -> str | None:
+    if end is None:
+        return None
+    return end_text(end)

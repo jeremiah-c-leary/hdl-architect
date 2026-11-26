@@ -37,6 +37,10 @@
           <div id="sheets"></div>
         </section>
         <section>
+          <h2>Performs <small>this sheet</small></h2>
+          <div id="performs"></div>
+        </section>
+        <section>
           <h2>Clocks &amp; resets <small>this sheet</small></h2>
           <div id="nets"></div>
         </section>
@@ -51,6 +55,10 @@
         </section>
       </aside>
       <div id="canvasWrap">
+        <div id="footprintBar" hidden>
+          <span id="footprintTitle">Footprint</span>
+          <button id="footprintClose" title="Hide the footprint">✕</button>
+        </div>
         <svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg>
         <div id="hint"></div>
       </div>
@@ -82,6 +90,26 @@
       <div class="ct-body">
         <div id="dvNote"></div>
         <table id="dvTable"></table>
+      </div>
+    </div>
+    <div id="sequenceView" hidden>
+      <div class="ct-bar">
+        <b id="seqTitle">Sequence</b>
+        <span class="rv-spacer"></span>
+        <button id="seqExpandAll" title="Expand every lifeline that can be">
+          Expand all
+        </button>
+        <button id="seqCollapseAll">Collapse all</button>
+        <button
+          id="seqFootprint"
+          title="Show where this action runs on the sheet"
+        >
+          Footprint
+        </button>
+        <button id="seqClose" title="Close (Esc)">Close</button>
+      </div>
+      <div class="ct-body">
+        <svg id="seqSvg" xmlns="http://www.w3.org/2000/svg"></svg>
       </div>
     </div>
     <div id="resourceView" hidden>

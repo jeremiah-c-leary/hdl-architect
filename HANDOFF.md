@@ -221,9 +221,10 @@ as friction shows.
 - [x] Performed actions: model (schema 0.8), core walk, `ha report
       actions` (PR #34, decision 13); the 12 operations that edit them
       (`core/action_ops.py`).
-- [ ] **Next:** HA 2 views for performed actions [D16]: a Performs
-      section, a steps editor, the sequence view (HA 1's Feature Mapping
-      Visualization) and the footprint. Mockups first (decision 12).
+- [x] HA 2, read-only: the Performs section, the sequence view (expandable
+      lifelines) and the footprint (`docs/ha2.md`).
+- [ ] **Next:** the steps editor in HA 2 (on the operations of
+      `core/action_ops.py`); mockup agreed 2026-11-26.
 
 **Estimates (E)**
 - [x] Resources: model, roll-up, margins, device library, reports, HA 2

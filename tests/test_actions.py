@@ -16,6 +16,7 @@ from hdl_architect.core.actions import (
     PERFORMED,
     TO_BREAK_DOWN,
     action_report,
+    report_as_dict,
 )
 
 # A frozen copy of the Wi-Fi example (not the example the user edits).
@@ -198,6 +199,10 @@ def test_a_step_broken_down_into_steps_on_the_part_s_own_parts(wifi_copy):
     def decompose_decoding(package):
         decode = next(a for a in package["actionDefs"] if a["name"] == "DecodeCommand")
         decode["actions"] = [{"name": "parse", "type": "ParseCommand"}]
+        decode["bindings"] = [
+            {"ends": ["parse.cmd", "cmd"]},
+            {"ends": ["parse.request", "request"]},
+        ]
         package["actionDefs"].append(
             {
                 "name": "ParseCommand",
@@ -232,6 +237,52 @@ def test_a_step_broken_down_into_steps_on_the_part_s_own_parts(wifi_copy):
         ("parse", "parser", "CommandParser")
     ]
     assert decode.steps[0].status == PERFORMED
+    # its items, between the edge of Processing and the parser (no ports said)
+    assert [
+        (f.source, f.source_item, f.target, f.target_item) for f in decode.flows
+    ] == [
+        (None, "cmd", "parse", "cmd"),
+        ("parse", "request", None, "request"),
+    ]
+    assert [f.wired for f in decode.flows] == [None, None]
+
+
+def test_the_items_between_the_steps_and_their_wires():
+    flows = action_report([WIFI], TOP).actions[0].flows
+    moves = [(f.source, f.source_item, f.target, f.target_item) for f in flows]
+    assert moves == [
+        ("receiveFrame", "cmd", "decodeCommand", "cmd"),
+        ("decodeCommand", "request", "readSensor", "request"),
+        ("readSensor", "temperature", "buildResponse", "temperature"),
+        ("buildResponse", "response", "sendFrame", "response"),
+        (None, "cmdFrame", "receiveFrame", "ethFrame"),  # in at the edge
+        ("sendFrame", "ethFrame", None, "rspFrame"),  # out at the edge
+    ]
+    assert [f.wired for f in flows] == [False, False, False, False, True, True]
+    assert (flows[4].source_end, flows[4].target_end) == (
+        (None, "eth_rgmii"),
+        ("ethernet", "eth_rgmii"),
+    )
+
+
+def test_the_report_as_json_for_ha2():
+    as_json = report_as_dict(action_report([WIFI], TOP))
+    action = as_json["actions"][0]
+    assert action["actionDef"] == "ReadTemperature"
+    assert action["steps"][2]["status"] == PERFORMED
+    assert action["flows"][0] == {
+        "source": "receiveFrame",
+        "sourceItem": "cmd",
+        "target": "decodeCommand",
+        "targetItem": "cmd",
+        "itemType": "Command",
+        "sourceEnd": "ethernet.cmd",
+        "targetEnd": "processing.Control",
+        "wired": False,
+    }
+    assert action["flows"][4]["sourceEnd"] == "eth_rgmii"  # the sheet's own port
+    assert as_json["problems"] == MISSING_WIRES
+    json.dumps(as_json)  # plain JSON
 
 
 # ------------------------------------------------------------------ the report
