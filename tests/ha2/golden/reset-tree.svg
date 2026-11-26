@@ -88,17 +88,18 @@ svg text { fill: #1d2430; font-size: 12px; user-select: none; }
 #textDlg form, #estimateDlg form { display: flex; flex-direction: column; gap: 8px; }
 #textDlg textarea { font: inherit; width: 100%; resize: vertical; padding: 6px; border: 1px solid #d8dde5; border-radius: 4px; background: #f6f7f9; color: #1d2430; }
 .dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; }
-#resourceBanner { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 5px 12px; background: #ffffff; border-bottom: 1px solid #d8dde5; font-size: 12px; }
+#resourceBanner { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 5px 12px; background: #ffffff; border-bottom: 1px solid #d8dde5; font-size: 12px; }
 #resourceBanner:empty { display: none; }
 .rb-resource, .rb-bar { display: inline-flex; align-items: center; gap: 6px; }
-.rb-name { color: #6b7686; min-width: 3.5em; text-align: right; }
-.rb-track { position: relative; width: 110px; height: 16px; border: 1px solid #d8dde5; background: #f6f7f9; overflow: hidden; }
+.rb-name { color: #6b7686; }
+.rb-track { position: relative; width: 80px; height: 16px; border: 1px solid #d8dde5; background: #f6f7f9; overflow: hidden; }
+.rb-unavailable { background: #d8dde5; }
 .rb-fill { position: absolute; inset: 0px auto 0px 0px; }
 .rb-level-ok { background: rgb(47, 143, 87); }
 .rb-level-margin { background: rgb(211, 155, 28); }
 .rb-level-over { background: rgb(180, 35, 24); }
 .rb-margin-line { position: absolute; top: 0px; bottom: 0px; width: 2px; background: #1d2430; opacity: 0.6; }
-.rb-percent { min-width: 3em; }
+.rb-percent { min-width: 2.8em; }
 .rb-no-room { color: rgb(180, 35, 24); }
 .rb-error { color: rgb(180, 35, 24); }
 .rb-incomplete { color: rgb(154, 103, 0); }
@@ -110,7 +111,6 @@ svg text { fill: #1d2430; font-size: 12px; user-select: none; }
 #dvTable td { padding: 3px 8px; white-space: nowrap; }
 .dv-head td { color: #6b7686; }
 .dv-row { border-top: 1px solid #d8dde5; }
-.dv-bar .rb-track { width: 80px; }
 .dv-target { background: #f6f7f9; font-weight: 600; }
 .dv-smallest .dv-device { font-weight: 600; }
 .dv-tag { margin-left: 8px; padding: 0px 5px; border: 1px solid rgb(47, 143, 87); color: rgb(47, 143, 87); font-size: 11px; font-weight: 400; }

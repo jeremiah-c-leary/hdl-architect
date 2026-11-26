@@ -45,6 +45,7 @@ const deviceRow = (device) =>
         text: row.innerText.replace(/\\s+/g, ' ').trim(),
         bars: row.querySelectorAll('.rb-bar').length,
         lutLevel: row.querySelector('.rb-fill').className,
+        unavailable: row.querySelectorAll('.rb-unavailable').length,
       };
     })()`,
   );
@@ -81,12 +82,13 @@ test("the view: every device of the family, smallest first, as bars", async () =
   );
   const first = await deviceRow("XCZU1CG");
   assert.equal(first.bars, 7);
+  assert.equal(first.unavailable, 3); // the ZU1 has no URAM, GTH or GTY
   assert.match(first.classes, /dv-smallest/);
-  assert.match(first.text, /smallest that fits/);
+  assert.match(first.text, /^Use fits XCZU1CG\s*smallest that fits/);
   assert.match(first.lutLevel, /rb-level-ok/);
   const target = await deviceRow("XCZU9EG");
   assert.match(target.classes, /dv-target/);
-  assert.match(target.text, /fits target$/);
+  assert.match(target.text, /^target fits XCZU9EG/); // Use, Fit, Device, bars
   assert.match(
     await E(page, "document.getElementById('dvNote').textContent"),
     /5 blocks to break down or estimate/,

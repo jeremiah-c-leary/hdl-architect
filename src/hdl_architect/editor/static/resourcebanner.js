@@ -1,6 +1,6 @@
 // HA 2: the resource banner under the toolbar: the target device, and one bar
-// per resource that fills as estimates are added (resourcebar.js). Resources
-// the device does not have, and the design does not use, are left out.
+// per resource that fills as estimates are added (resourcebar.js); a
+// resource the device does not have is a grey bar.
 // "Devices…" compares the design with every device of the family;
 // "Hierarchy…" shows what uses each resource.
 import * as deviceView from "./deviceview.js";
@@ -20,16 +20,10 @@ function bannerContents(report) {
   return [
     devicesButton(),
     element("b", report.device, "rb-device"),
-    ...shownResources(report).map((use) => namedBar(use)),
+    ...report.resourceNames.map((name) => namedBar(resourceUse(report, name))),
     ...incompleteNote(report),
     hierarchyButton(report),
   ];
-}
-
-/** What the design uses of each resource the banner shows. */
-function shownResources(report) {
-  const uses = report.resourceNames.map((name) => resourceUse(report, name));
-  return uses.filter(resourceBar.isWorthShowing);
 }
 
 function resourceUse(report, name) {

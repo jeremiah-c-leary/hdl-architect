@@ -459,7 +459,7 @@ svg text {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 14px;
+  gap: 6px 12px;
   padding: 5px 12px;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
@@ -476,16 +476,17 @@ svg text {
 }
 .rb-name {
   color: var(--muted);
-  min-width: 3.5em;
-  text-align: right;
 }
 .rb-track {
   position: relative;
-  width: 110px;
+  width: 80px;
   height: 16px;
   border: 1px solid var(--line);
   background: var(--bg);
   overflow: hidden;
+}
+.rb-unavailable {
+  background: var(--line);
 }
 .rb-fill {
   position: absolute;
@@ -509,7 +510,7 @@ svg text {
   opacity: 0.6;
 }
 .rb-percent {
-  min-width: 3em;
+  min-width: 2.8em;
 }
 .rb-no-room {
   color: #b42318;
@@ -556,9 +557,6 @@ svg text {
 }
 .dv-row {
   border-top: 1px solid var(--line);
-}
-.dv-bar .rb-track {
-  width: 80px;
 }
 .dv-target {
   background: var(--bg);

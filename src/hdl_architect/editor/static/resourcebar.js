@@ -1,6 +1,7 @@
 // HA 2: one resource bar: how much of a device's resource a design uses. The
 // fill is green within the budget, amber in the margin, red past the device
-// (the level comes from the core); a line marks where the margin starts.
+// (the level comes from the core); a line marks where the margin starts. A
+// resource the device does not have is a grey bar.
 // The resource banner and the device view both draw it.
 
 /**
@@ -14,14 +15,12 @@ export function resourceBar(use) {
   return bar;
 }
 
-/** Does the device have this resource, or does the design use it anyway? */
-export function isWorthShowing(use) {
-  return use.capacity > 0 || use.used > 0;
-}
-
 function trackOf(use) {
   const track = element("span", "", "rb-track");
-  if (use.capacity === 0) return track;
+  if (use.capacity === 0) {
+    track.classList.add("rb-unavailable");
+    return track;
+  }
   const fill = element("span", "", `rb-fill rb-level-${use.level}`);
   fill.style.width = `${Math.min(100, percentOf(use))}%`;
   const marginLine = element("span", "", "rb-margin-line");

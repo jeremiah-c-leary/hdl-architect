@@ -94,10 +94,14 @@ test("the banner: the device, a bar per resource with its margin line", async ()
     "960 of 274080 lut (0%); margin 30%: budget 191856",
   );
   assert.equal((await bar("bram36")).marginAt, "80%"); // the design's own margin
+  const uram = await bar("uram"); // the XCZU9EG has none: a grey bar
+  assert.equal(uram.percent, "none");
   assert.equal(
-    await E(page, "document.querySelector('[data-resource=uram]')"),
-    null,
-    "a resource the device lacks and the design does not use is left out",
+    await E(
+      page,
+      "document.querySelector('[data-resource=uram] .rb-track').className",
+    ),
+    "rb-track rb-unavailable",
   );
 });
 

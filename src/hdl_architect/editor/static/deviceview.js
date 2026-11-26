@@ -69,7 +69,7 @@ function headerRow() {
   const row = document.createElement("tr");
   row.className = "dv-head";
   const names = shownFits.resourceNames;
-  row.append(...["Device", ...names, "Fit", ""].map((text) => cell(text)));
+  row.append(...["", "Fit", "Device", ...names].map((text) => cell(text)));
   return row;
 }
 
@@ -78,10 +78,10 @@ function deviceRow(fit) {
   row.className = rowClasses(fit);
   row.dataset.device = fit.device;
   row.append(
+    useCell(fit),
+    cell(fit.verdict, VERDICT_CLASSES[fit.verdict]),
     deviceCell(fit),
     ...shownFits.resourceNames.map((name) => barCell(fit, name)),
-    cell(fit.verdict, VERDICT_CLASSES[fit.verdict]),
-    useCell(fit),
   );
   return row;
 }
