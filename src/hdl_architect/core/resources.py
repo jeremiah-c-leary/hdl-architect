@@ -9,6 +9,10 @@ The model (examples/wifi_router/fpga_devices.json shows the shape):
 - A device is an attribute def specializing FpgaDevice, with an attribute
   typed by its family's resources (its capacity) and values for it.
 - The FPGA part def names its target device: `attribute device : XCZU9EG;`.
+- The FPGA may keep a margin of each resource free:
+  `attribute resourceMargins : ZynqUltraScalePlusMargins { :>> bram36 = 20; }`
+  (a FpgaResourceMargins specialization: percent per resource, with
+  defaults); its budget for a resource is capacity * (100 - margin) / 100.
 - A block's estimate is an attribute typed by the family's resources:
   `attribute zynqUltraScalePlusEstimate : ZynqUltraScalePlusResources {...}`.
 
@@ -27,6 +31,7 @@ from hdl_architect.core.model import ModelError, _JsonModel
 
 DEVICE_ROOT = "FpgaDevice"
 RESOURCES_ROOT = "FpgaResources"
+MARGINS_ROOT = "FpgaResourceMargins"
 ROLL_UP_KINDS = {"SystemPart", "FpgaPart", "Fpga", "Subsystem", "Container"}
 
 # How a block's resources are known.
@@ -55,6 +60,11 @@ class Target:
     family: str  # the family's resources def
     resource_names: list[str]
     capacity: dict[str, int]
+    margins: dict[str, int]  # percent to keep free; 0 without margins
+
+    def budget(self, name: str) -> int:
+        """What the design may use of a resource: capacity less its margin."""
+        return self.capacity[name] * (100 - self.margins[name]) // 100
 
 
 @dataclass
@@ -78,6 +88,15 @@ class ResourceReport:
             name
             for name in self.target.resource_names
             if self.top.used[name] > self.target.capacity[name]
+        ]
+
+    def over_budget(self) -> list[str]:
+        """The resources past their margin, but still within the device."""
+        target = self.target
+        return [
+            name
+            for name in target.resource_names
+            if target.budget(name) < self.top.used[name] <= target.capacity[name]
         ]
 
 
@@ -112,7 +131,28 @@ def target_of(model: _JsonModel, fpga: dict) -> Target:
         family=family,
         resource_names=names,
         capacity=with_zeros(capacity, names),
+        margins=with_zeros(margins_of(model, fpga), names),
     )
+
+
+def margins_of(model: _JsonModel, fpga: dict) -> dict[str, int]:
+    """The FPGA's margins: its margins def's defaults, then its own values."""
+    for attribute in fpga.get("attributes", []):
+        type_name = unqualified(attribute["type"])
+        if specializes(model, type_name, MARGINS_ROOT):
+            margins = default_values(model, type_name)
+            margins.update(attribute.get("redefines", {}))
+            return margins
+    return {}
+
+
+def default_values(model: _JsonModel, name: str) -> dict:
+    """The defaults of an attribute def's attributes, inherited ones included."""
+    return {
+        attribute["name"]: attribute["default"]
+        for attribute in inherited_attributes(model, name)
+        if "default" in attribute
+    }
 
 
 def device_attribute(model: _JsonModel, fpga: dict) -> str:
@@ -303,9 +343,26 @@ def report_as_dict(report: ResourceReport) -> dict:
         "family": target.family,
         "resourceNames": target.resource_names,
         "capacity": target.capacity,
+        "margins": target.margins,
+        "budget": {name: target.budget(name) for name in target.resource_names},
         "top": report.top.definition,
         "definitions": totals_by_definition(report.top),
+        "tree": block_as_dict(report.top),
+        "notEstimated": report.not_estimated(),
+        "toBreakDown": report.to_break_down(),
         "problems": report.problems,
+    }
+
+
+def block_as_dict(block: BlockUse) -> dict:
+    """One block of the hierarchy, with its parts, for the utilization view."""
+    return {
+        "name": block.path.rsplit(".", 1)[-1],
+        "path": block.path,
+        "definition": block.definition,
+        "used": block.used,
+        "status": block.status,
+        "children": [block_as_dict(child) for child in block.children],
     }
 
 

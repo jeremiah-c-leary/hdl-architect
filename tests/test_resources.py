@@ -263,3 +263,60 @@ def test_the_server_reports_each_definition_s_totals():
     assert report["definitions"]["Ethernet"]["status"] == "to break down"
     assert report["definitions"][TOP]["used"]["lut"] == 960
     assert "no target device" in store.resources("Uart")["error"]
+
+
+# ------------------------------------------------------------------ margins
+
+
+def test_margins_are_the_family_s_defaults_and_the_design_s_own():
+    target = resource_report([WIFI], TOP).target
+    assert target.margins == {
+        "lut": 30,
+        "ff": 30,
+        "bram36": 20,
+        "uram": 30,
+        "dsp48": 30,
+    }
+    assert target.budget("lut") == 274080 * 70 // 100
+    assert target.budget("bram36") == 912 * 80 // 100
+
+
+def test_a_design_past_its_margin_but_within_the_device(wifi_copy, capsys):
+    change_def(
+        wifi_copy,
+        SUBSYSTEMS,
+        "Uart",
+        lambda d: estimate_of(d)["redefines"].update(lut=200000),
+    )
+    report = resource_report([wifi_copy], TOP)
+    assert report.over_budget() == ["lut"]
+    assert report.over_capacity() == []
+    assert ha(["report", "resources", "--path", str(wifi_copy), "--top", TOP]) == 1
+    assert "warning: lut: the design uses part of its margin" in (
+        capsys.readouterr().out
+    )
+
+
+def test_without_margins_the_budget_is_the_whole_device(wifi_copy):
+    def remove_margins(definition):
+        definition["attributes"] = [
+            a for a in definition["attributes"] if a["name"] != "resourceMargins"
+        ]
+
+    change_def(wifi_copy, FPGA, TOP, remove_margins)
+    target = resource_report([wifi_copy], TOP).target
+    assert target.margins["lut"] == 0
+    assert target.budget("lut") == 274080
+
+
+def test_the_server_sends_the_hierarchy_and_the_margins():
+    from hdl_architect.editor.server import Store
+
+    report = Store([WIFI]).resources(TOP)
+    assert report["margins"]["bram36"] == 20
+    assert report["budget"]["lut"] == 191856
+    tree = report["tree"]
+    assert tree["definition"] == TOP
+    clock_reset = next(c for c in tree["children"] if c["name"] == "CLK_RST_CTRL")
+    assert clock_reset["children"][0]["name"] == "RST_SYNC"
+    assert f"{TOP}.ethernet" in report["toBreakDown"]

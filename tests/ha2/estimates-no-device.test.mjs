@@ -1,5 +1,5 @@
 // Resource estimates in HA 2 on a model without a target device (the frozen
-// Wi-Fi fixture, from before devices): the panel and the menu say so.
+// Wi-Fi fixture, from before devices): the banner and the menu say so.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { E, TOP, openPage, startServer, waitFor } from "./harness.mjs";
@@ -11,7 +11,10 @@ test("a model without a target device says so", async () => {
     await waitFor(
       async () =>
         (
-          await E(plainPage, "document.getElementById('resources').innerText")
+          await E(
+            plainPage,
+            "document.getElementById('resourceBanner').innerText",
+          )
         ).includes("no target device"),
       "no target device",
     );

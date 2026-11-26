@@ -161,10 +161,19 @@ never estimated.
   per resource of the device's family (LUTs, flip-flops, ...). All zeros
   removes it. On a roll-up block the menu says "Resources: the sum of its
   parts" instead.
-- **See the roll-up:** the **Resources** panel shows each part on the open
-  sheet (its counts, *not estimated*, or *to break down*), the sheet's
-  total, and on the FPGA's sheet how full the device is. It follows every
-  change. The numbers come from the core, the same as
+- **The resource banner** (under the toolbar) shows the target device and
+  one bar per resource. A bar is green within the budget, amber once it
+  eats into the margin, red past the device; a line marks where the margin
+  starts. Margins are per resource, on the FPGA
+  (`attribute resourceMargins : ZynqUltraScalePlusMargins { :>> bram36 = 20; }`;
+  the family's defaults apply otherwise). "⚠ 5 to break down" warns that
+  the bars leave blocks out. Hover a bar for the numbers.
+- **Hierarchy…** opens the utilization view: the whole hierarchy as a
+  table, like Vivado's hierarchical utilization report, each row in its
+  block's kind colour. ▼/▶ fold a level; "Show percent" switches to percent
+  of the device; clicking a row opens its sheet (a leaf's: the sheet it is
+  on). Esc closes it.
+- Both follow every change. The numbers come from the core, the same as
   `ha report resources`.
 
 ## Checks

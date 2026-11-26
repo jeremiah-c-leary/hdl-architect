@@ -39,6 +39,14 @@
             "name": "device",
             "type": "XCZU9EG",
             "doc": "The target device."
+          },
+          {
+            "name": "resourceMargins",
+            "type": "ZynqUltraScalePlusMargins",
+            "redefines": {
+              "bram36": 20
+            },
+            "doc": "Resources to keep free; block RAM tighter than the family's 30%."
           }
         ],
         "parts": [

@@ -88,11 +88,35 @@ svg text { fill: #1d2430; font-size: 12px; user-select: none; }
 #textDlg form, #estimateDlg form { display: flex; flex-direction: column; gap: 8px; }
 #textDlg textarea { font: inherit; width: 100%; resize: vertical; padding: 6px; border: 1px solid #d8dde5; border-radius: 4px; background: #f6f7f9; color: #1d2430; }
 .dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; }
-.res-line { padding: 2px 6px; font-size: 12px; }
-.res-line b { font-weight: 600; }
-.res-target { color: #6b7686; }
-.res-total { border-top: 1px solid #d8dde5; margin-top: 4px; }
-.res-error { color: rgb(180, 35, 24); }
+#resourceBanner { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 5px 12px; background: #ffffff; border-bottom: 1px solid #d8dde5; font-size: 12px; }
+#resourceBanner:empty { display: none; }
+.rb-resource { display: inline-flex; align-items: center; gap: 6px; }
+.rb-name { color: #6b7686; min-width: 3.5em; text-align: right; }
+.rb-track { position: relative; width: 110px; height: 10px; border: 1px solid #d8dde5; border-radius: 3px; background: #f6f7f9; overflow: hidden; }
+.rb-fill { position: absolute; inset: 0px auto 0px 0px; }
+.rb-level-ok { background: rgb(47, 143, 87); }
+.rb-level-margin { background: rgb(211, 155, 28); }
+.rb-level-over { background: rgb(180, 35, 24); }
+.rb-margin-line { position: absolute; top: 0px; bottom: 0px; width: 2px; background: #1d2430; opacity: 0.6; }
+.rb-percent { min-width: 3em; }
+.rb-no-room { color: rgb(180, 35, 24); }
+.rb-error { color: rgb(180, 35, 24); }
+.rb-incomplete { color: rgb(154, 103, 0); }
+.rb-hierarchy { margin-left: auto; }
+#resourceView { position: fixed; inset: 40px 30px; z-index: 5; background: #ffffff; border: 1px solid #d8dde5; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.25) 0px 10px 40px; display: flex; flex-direction: column; }
+#resourceView[hidden] { display: none; }
+.rv-spacer { flex: 1 1 0%; }
+#rvTable { border-collapse: collapse; margin: 12px; font-size: 12px; }
+#rvTable td { padding: 3px 10px; }
+.rv-head td, .rv-foot td { color: #6b7686; text-align: right; }
+.rv-head td:first-child, .rv-foot td:first-child { text-align: left; }
+.rv-foot:first-of-type td, .rv-foot td { border-top: 1px solid #d8dde5; }
+.rv-row { cursor: pointer; }
+.rv-row:hover { filter: brightness(0.93); }
+.rv-name { white-space: nowrap; }
+.rv-fold { cursor: pointer; color: #6b7686; }
+.rv-number { text-align: right; font-variant-numeric: tabular-nums; }
+.rv-status { font-style: italic; color: #6b7686; }
 .est-field { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .est-field input { width: 9em; padding: 3px 6px; border: 1px solid #d8dde5; border-radius: 4px; background: #f6f7f9; color: #1d2430; }</style><rect x="0" y="0" width="1022" height="420" fill="#f6f7f9"/><rect x="16" y="44" width="120" height="366" class="band-edge"/><rect x="886" y="44" width="120" height="366" class="band-edge"/><rect x="136" y="44" width="60" height="366" class="band-gutter"/><rect x="366" y="44" width="60" height="366" class="band-gutter"/><rect x="596" y="44" width="60" height="366" class="band-gutter"/><rect x="826" y="44" width="60" height="366" class="band-gutter"/><rect x="196" y="44" width="170" height="366" class="band-col" data-col="0"/><rect x="426" y="44" width="170" height="366" class="band-col" data-col="1"/><rect x="656" y="44" width="170" height="366" class="band-col" data-col="2"/><text x="16" y="22" class="title">Control</text><text x="16" y="38" class="subtitle">Subsystem · package WifiPacketRouterFpgaSys</text><text x="20" y="58" class="subtitle">ports</text><text x="890" y="58" class="subtitle">ports</text><rect x="128" y="80" width="8" height="12" class="edge-port" data-edge="uart"><title>UART CSR
 uart : Axi4LiteManager</title></rect><text x="124" y="85" text-anchor="end" class="port-label">UART CSR</text><text x="124" y="96" text-anchor="end" class="port-type">Axi4LiteManager</text><rect x="128" y="102" width="8" height="12" class="edge-port" data-edge="ethernet"><title>ETH CSR

@@ -88,11 +88,35 @@ svg text { fill: #1d2430; font-size: 12px; user-select: none; }
 #textDlg form, #estimateDlg form { display: flex; flex-direction: column; gap: 8px; }
 #textDlg textarea { font: inherit; width: 100%; resize: vertical; padding: 6px; border: 1px solid #d8dde5; border-radius: 4px; background: #f6f7f9; color: #1d2430; }
 .dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; }
-.res-line { padding: 2px 6px; font-size: 12px; }
-.res-line b { font-weight: 600; }
-.res-target { color: #6b7686; }
-.res-total { border-top: 1px solid #d8dde5; margin-top: 4px; }
-.res-error { color: rgb(180, 35, 24); }
+#resourceBanner { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 5px 12px; background: #ffffff; border-bottom: 1px solid #d8dde5; font-size: 12px; }
+#resourceBanner:empty { display: none; }
+.rb-resource { display: inline-flex; align-items: center; gap: 6px; }
+.rb-name { color: #6b7686; min-width: 3.5em; text-align: right; }
+.rb-track { position: relative; width: 110px; height: 10px; border: 1px solid #d8dde5; border-radius: 3px; background: #f6f7f9; overflow: hidden; }
+.rb-fill { position: absolute; inset: 0px auto 0px 0px; }
+.rb-level-ok { background: rgb(47, 143, 87); }
+.rb-level-margin { background: rgb(211, 155, 28); }
+.rb-level-over { background: rgb(180, 35, 24); }
+.rb-margin-line { position: absolute; top: 0px; bottom: 0px; width: 2px; background: #1d2430; opacity: 0.6; }
+.rb-percent { min-width: 3em; }
+.rb-no-room { color: rgb(180, 35, 24); }
+.rb-error { color: rgb(180, 35, 24); }
+.rb-incomplete { color: rgb(154, 103, 0); }
+.rb-hierarchy { margin-left: auto; }
+#resourceView { position: fixed; inset: 40px 30px; z-index: 5; background: #ffffff; border: 1px solid #d8dde5; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.25) 0px 10px 40px; display: flex; flex-direction: column; }
+#resourceView[hidden] { display: none; }
+.rv-spacer { flex: 1 1 0%; }
+#rvTable { border-collapse: collapse; margin: 12px; font-size: 12px; }
+#rvTable td { padding: 3px 10px; }
+.rv-head td, .rv-foot td { color: #6b7686; text-align: right; }
+.rv-head td:first-child, .rv-foot td:first-child { text-align: left; }
+.rv-foot:first-of-type td, .rv-foot td { border-top: 1px solid #d8dde5; }
+.rv-row { cursor: pointer; }
+.rv-row:hover { filter: brightness(0.93); }
+.rv-name { white-space: nowrap; }
+.rv-fold { cursor: pointer; color: #6b7686; }
+.rv-number { text-align: right; font-variant-numeric: tabular-nums; }
+.rv-status { font-style: italic; color: #6b7686; }
 .est-field { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .est-field input { width: 9em; padding: 3px 6px; border: 1px solid #d8dde5; border-radius: 4px; background: #f6f7f9; color: #1d2430; }</style><rect x="0" y="0" width="1280" height="648" fill="#f6f7f9"/><path d="M520,88 H534 V376 H640" class="ct-edge reset" style="stroke:#1f77b4"><title>CLK_RST_CTRL.rst_out (reset)</title></path><path d="M634,372 L640,376 L634,380" style="stroke:#1f77b4;fill:none;stroke-width:1.5"/><path d="M520,88 H534 V88 H640" class="ct-edge reset" style="stroke:#1f77b4"><title>CLK_RST_CTRL.rst_out (reset)</title></path><path d="M634,84 L640,88 L634,92" style="stroke:#1f77b4;fill:none;stroke-width:1.5"/><path d="M520,88 H534 V304 H640" class="ct-edge reset" style="stroke:#1f77b4"><title>CLK_RST_CTRL.rst_out (reset)</title></path><path d="M634,300 L640,304 L634,308" style="stroke:#1f77b4;fill:none;stroke-width:1.5"/><path d="M520,88 H534 V520 H640" class="ct-edge reset" style="stroke:#1f77b4"><title>CLK_RST_CTRL.rst_out (reset)</title></path><path d="M634,516 L640,520 L634,524" style="stroke:#1f77b4;fill:none;stroke-width:1.5"/><path d="M520,88 H534 V592 H640" class="ct-edge reset" style="stroke:#1f77b4"><title>CLK_RST_CTRL.rst_out (reset)</title></path><path d="M634,588 L640,592 L634,596" style="stroke:#1f77b4;fill:none;stroke-width:1.5"/><path d="M520,88 H534 V448 H640" class="ct-edge reset" style="stroke:#1f77b4"><title>CLK_RST_CTRL.rst_out (reset)</title></path><path d="M634,444 L640,448 L634,452" style="stroke:#1f77b4;fill:none;stroke-width:1.5"/><path d="M520,88 H534 V232 H640" class="ct-edge reset" style="stroke:#1f77b4"><title>CLK_RST_CTRL.rst_out (reset)</title></path><path d="M634,228 L640,232 L634,236" style="stroke:#1f77b4;fill:none;stroke-width:1.5"/><path d="M520,88 H534 V160 H640" class="ct-edge reset" style="stroke:#1f77b4"><title>CLK_RST_CTRL.rst_out (reset)</title></path><path d="M634,156 L640,160 L634,164" style="stroke:#1f77b4;fill:none;stroke-width:1.5"/><path d="M210,88 H224 V88 H330" class="ct-edge reset" style="stroke:#d62728"><title>sys_reset_f (reset)</title></path><path d="M324,84 L330,88 L324,92" style="stroke:#d62728;fill:none;stroke-width:1.5"/><path d="M830,304 H844 V88 H950" class="ct-edge reset" style="stroke:#2ca02c"><title>dac_if.dac_reset (reset)</title></path><path d="M944,84 L950,88 L944,92" style="stroke:#2ca02c;fill:none;stroke-width:1.5"/><path d="M830,376 H853 V160 H950" class="ct-edge reset" style="stroke:#9467bd"><title>ethernet.eth_reset_f (reset)</title></path><path d="M944,156 L950,160 L944,164" style="stroke:#9467bd;fill:none;stroke-width:1.5"/><rect x="330" y="50" width="190" height="54" rx="4" class="ct-node" style="fill:#6b7280"><title>CLK_RST_CTRL : CLKRSTCTRL
 generates clocks</title></rect><text x="425" y="66" text-anchor="middle" class="comp-name on-kind">CLK_RST_CTRL</text><text x="425" y="79" text-anchor="middle" class="comp-type on-kind">CLKRSTCTRL · generator</text><text x="336" y="92" class="port-label on-kind">rst</text><text x="514" y="92" text-anchor="end" class="port-label on-kind">rst_out</text><rect x="640" y="338" width="190" height="54" rx="4" class="ct-node" style="fill:#6b7280"><title>ethernet : Ethernet
