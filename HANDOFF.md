@@ -26,16 +26,21 @@ spike, 2026-10 to 2026-11-24, and the Claude.ai strategy session of
   resources` and `ha report devices`; in HA 2 the resource banner (a bar
   per resource), the hierarchy view (Vivado style), the device view (every
   device of the family, "Use" to retarget) and "Estimate…" on leaves.
+- **Performed actions, core** (2026-11-26, PR #34): schema 0.8 (items on
+  ports, part-def flows, `perform` with doc); `core/actions.py` walks each
+  step of each action the FPGA performs (performed / decomposed / to break
+  down / not performed / not allocated) and finds missing wires; `ha report
+  actions`. HA 2 views not built yet (next task).
 - **Code quality** (PRs #21-#28): the Clean Code rules in `CLAUDE.md`,
   enforced by ESLint on every HA 2 file not in `NOT_YET_CLEAN`; `main.js`,
   `model.js` and the new modules are clean. Since then: tidy first (below).
-- Checks: `scripts/check` passes: 97 pytest, 64 HA 2 behaviour tests.
+- Checks: `scripts/check` passes: 110 pytest, plus the HA 2 behaviour tests.
 - **The Wi-Fi example is incomplete on purpose** (the user's design in
   progress): `hard_macro : HardMacro2` has no core yet, so `ha scaffold`
   reports it missing and FuseSoC will not resolve the top. Five subsystems
   have no parts yet, so they are "to break down" in the resource views; its
-  estimates are illustrative. The user's working copy has two uncommitted
-  example edits (Uart's estimate, target XCZU4CG): theirs to keep or drop.
+  estimates are illustrative. `ha report actions` finds four missing wires
+  in `ReadTemperature` (see "Waiting on the user", 9).
 
 ## Decisions
 
@@ -86,6 +91,16 @@ From the spike (2026-11-22) and [S] section A, confirmed by the user:
     real choices. UI is agreed as a mockup before it is built. A value is
     cited to a source only if it was read from it; otherwise it is marked
     unverified (the XCZU9EG was cited to DS891 from memory, 2026-11-25).
+13. **Performed actions** (2026-11-26): what HA 1 called a feature is a
+    SysML `perform action`. Composition is top-down: a step added on a part
+    that is not broken down yet becomes an action that part must perform;
+    IP brings its own performed actions, which the architect uses rather
+    than redefines. A step's inputs and outputs are items carried "via a
+    port": the port declares the item (`out item frame : EthFrame;`) and
+    the part def's flow names it (`flow from mac.frame to
+    receiveFrame.frame;`); a bare port is not a valid flow end in SysML v2
+    (SysON leaves it unresolved). No separate "arc" concept. Shape and
+    SysON check: `docs/history/schema-notes.md`, version 0.8.
 
 ## Waiting on the user
 
@@ -109,6 +124,10 @@ From the spike (2026-11-22) and [S] section A, confirmed by the user:
    templates; which DIDs a CDRL would list; requirements tool; software
    coding standard; operating modes in the model or a hand-written diagram;
    the scenario tag for a feature's representative scenario.
+9. **Wi-Fi `ReadTemperature`**: `decodeCommand` and `buildResponse` are
+   allocated to `processing`, which has no wires to `ethernet` or
+   `temp_if` (those go through `Control`). Move the steps to `Control`, or
+   wire `processing`.
 
 ## Corrections to the Claude.ai session (it could not see the repo)
 
@@ -199,10 +218,11 @@ as friction shows.
 - [ ] Headless diagram export command for document builds.
 
 **Phase 2: the user's process**
-- [ ] **Next:** feature arcs per level; Feature Mapping Visualization
-      (sequence view); feature footprint [D16]. Start with a proposal and
-      mockups (decision 12); the Wi-Fi model's `ReadTemperature` action def
-      with allocations may be the SysML basis.
+- [x] Performed actions: model (schema 0.8), core walk, `ha report
+      actions` (PR #34, decision 13).
+- [ ] **Next:** HA 2 views for performed actions [D16]: a Performs
+      section, a steps editor, the sequence view (HA 1's Feature Mapping
+      Visualization) and the footprint. Mockups first (decision 12).
 
 **Estimates (E)**
 - [x] Resources: model, roll-up, margins, device library, reports, HA 2
