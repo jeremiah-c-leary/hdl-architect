@@ -149,6 +149,24 @@ generated clock: give the PLL block a clock output (right-click, Add a clock
 output), set its frequency in the panel, pick its net, click the ports it
 drives.
 
+## Resource estimates
+
+The FPGA names its target device (`attribute device : XCZU9EG;`; devices are
+in a device library such as `fpga_devices.json`). Only leaf blocks (Rtl,
+VendorIp, HardMacro, RegisterFile) have estimates; a roll-up block (one with
+parts, or a Subsystem, FPGA, ...) is the sum of its parts and is broken down,
+never estimated.
+
+- **Enter an estimate:** right-click a leaf block, **Estimate…**: one count
+  per resource of the device's family (LUTs, flip-flops, ...). All zeros
+  removes it. On a roll-up block the menu says "Resources: the sum of its
+  parts" instead.
+- **See the roll-up:** the **Resources** panel shows each part on the open
+  sheet (its counts, *not estimated*, or *to break down*), the sheet's
+  total, and on the FPGA's sheet how full the device is. It follows every
+  change. The numbers come from the core, the same as
+  `ha report resources`.
+
 ## Checks
 
 The footer lists, for the open sheet: edge ports not wired inside,
@@ -202,4 +220,4 @@ page to pick up the change; edits made since the last good save are lost.
 - a CSR bus as a global net;
 - importing HA 1 drawings (`fpga-hierarchy (*.json)`);
 - protocol (port def) and HW part editors; feature arcs and the sequence view;
-- resource estimates; a new package (file) from the tool.
+- effort estimates; a new package (file) from the tool; a device from the tool.

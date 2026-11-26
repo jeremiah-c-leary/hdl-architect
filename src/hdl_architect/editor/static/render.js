@@ -1,4 +1,5 @@
 // HA 2: Drawing a sheet, the side panel and the problem list.
+import { showResources } from "./estimates.js";
 import { G, KIND_COLORS, editor } from "./state.js";
 import { $, el, tip, trunc } from "./svg.js";
 import {
@@ -486,6 +487,7 @@ export function renderSide() {
   renderSheetList();
   renderLibrary();
   renderNets();
+  showResources();
   renderInterfaces();
 }
 

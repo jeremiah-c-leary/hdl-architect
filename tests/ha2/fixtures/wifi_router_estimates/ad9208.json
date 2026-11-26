@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "Ad9208Lib",
+    "doc": "AD9208: dual 14-bit, 3 GSPS ADC with a JESD204B output.",
+    "imports": [
+      {
+        "name": "PartKinds::*"
+      },
+      {
+        "name": "PartMetadata::*"
+      },
+      {
+        "name": "PortDefs::*"
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "Ad9208",
+        "specializes": [
+          "HwPart"
+        ],
+        "comments": [
+          "Revision: the newest copy found on 2026-11-20 is Rev. 0; check analog.com.",
+          "Not modelled: fast-detect outputs, power-down input."
+        ],
+        "metadata": [
+          {
+            "type": "Datasheet",
+            "values": {
+              "manufacturer": "Analog Devices",
+              "partNumber": "AD9208",
+              "revision": "0",
+              "url": "https://www.analog.com/en/products/ad9208.html"
+            }
+          }
+        ],
+        "ports": [
+          {
+            "name": "devclk",
+            "type": "ClockIn",
+            "doc": "Device (sample) clock: CLK+/CLK-.",
+            "redefines": {
+              "frequency_hz": 3000000000.0,
+              "duty_cycle": 0.5,
+              "differential": true
+            }
+          },
+          {
+            "name": "sysref",
+            "type": "SysrefIn",
+            "doc": "SYSREF+/SYSREF-.",
+            "redefines": {
+              "differential": true
+            }
+          },
+          {
+            "name": "spi",
+            "type": "Spi3WireTarget",
+            "doc": "Configuration: SCLK, SDIO, CSB."
+          },
+          {
+            "name": "jesd",
+            "type": "JesdTx",
+            "doc": "Sample data: SERDOUT0..7, SYNCINB.",
+            "redefines": {
+              "lanes": 8
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

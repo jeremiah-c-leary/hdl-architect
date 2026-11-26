@@ -154,3 +154,112 @@ def test_estimates_and_the_device_are_not_vhdl_generics():
     top = load_ir([WIFI], TOP)
     assert top.generics == {}
     assert all(child.generics == {} for child in top.children)
+
+
+# ------------------------------------------------------- set_estimate (core.ops)
+
+FAMILY = "ZynqUltraScalePlusResources"
+
+
+def load_ops_model(model_dir: Path):
+    from hdl_architect.core import ops
+    from hdl_architect.core.files import read_model_files
+
+    docs = read_model_files([model_dir])
+    return docs, ops.Model(docs)
+
+
+def write_and_check(docs, model_dir: Path) -> None:
+    from hdl_architect.core.files import write_model_file
+    from hdl_architect.core.model import check_model
+
+    for file, doc in docs.items():
+        write_model_file(file, doc)
+    check_model([model_dir])
+
+
+def estimate_on(model, def_name: str) -> dict | None:
+    attributes = model.part_def(def_name)[2].get("attributes", [])
+    return next((a for a in attributes if a["type"] == FAMILY), None)
+
+
+def test_set_estimate_changes_a_leaf_s_counts_and_keeps_its_doc(wifi_copy):
+    from hdl_architect.core import ops
+
+    docs, model = load_ops_model(wifi_copy)
+    ops.set_estimate(model, "Uart", FAMILY, {"lut": 500, "ff": 0, "dsp48": 2})
+    estimate = estimate_on(model, "Uart")
+    assert estimate["redefines"] == {"lut": 500, "dsp48": 2}  # zeros left out
+    assert "illustrative" in estimate["doc"]
+    write_and_check(docs, wifi_copy)
+    assert resource_report([wifi_copy], TOP).top.used["lut"] == 960 - 250 + 500
+
+
+def test_set_estimate_with_no_counts_removes_it(wifi_copy):
+    from hdl_architect.core import ops
+
+    docs, model = load_ops_model(wifi_copy)
+    ops.set_estimate(model, "Uart", FAMILY, {"lut": 0})
+    assert estimate_on(model, "Uart") is None
+    write_and_check(docs, wifi_copy)
+    assert resource_report([wifi_copy], TOP).not_estimated() == [f"{TOP}.uart"]
+
+
+def test_a_new_estimate_adds_the_import_it_needs(wifi_copy):
+    from hdl_architect.core import ops
+
+    docs, model = load_ops_model(wifi_copy)
+    ops.set_estimate(model, "Uart", FAMILY, {})
+    package = model.part_def("Uart")[1]
+    package["imports"] = [
+        i for i in package["imports"] if i["name"] != "FpgaDevices::*"
+    ]
+    ops.set_estimate(model, "Uart", FAMILY, {"lut": 300})
+    assert estimate_on(model, "Uart")["name"] == "zynqUltraScalePlusEstimate"
+    assert {"name": "FpgaDevices::*"} in package["imports"]
+    write_and_check(docs, wifi_copy)
+
+
+@pytest.mark.parametrize("def_name", ["Ethernet", "CLKRSTCTRL"])
+def test_set_estimate_refuses_roll_up_blocks(wifi_copy, def_name):
+    from hdl_architect.core import ops
+
+    _, model = load_ops_model(wifi_copy)
+    with pytest.raises(ops.OpError) as refused:
+        ops.set_estimate(model, def_name, FAMILY, {"lut": 1})
+    assert refused.value.code == "roll_up"
+    assert "Break it down" in refused.value.message
+
+
+@pytest.mark.parametrize(
+    "family, values, message",
+    [
+        ("NoSuchResources", {"lut": 1}, "no device family resources"),
+        ("XCZU9EG", {"lut": 1}, "no device family resources"),
+        (FAMILY, {"alm": 1}, "has no resource alm"),
+        (FAMILY, {"lut": -1}, "whole number"),
+        (FAMILY, {"lut": 1.5}, "whole number"),
+        (FAMILY, {"lut": True}, "whole number"),
+    ],
+)
+def test_set_estimate_refuses_bad_input(wifi_copy, family, values, message):
+    from hdl_architect.core import ops
+
+    _, model = load_ops_model(wifi_copy)
+    with pytest.raises(ops.OpError, match=message):
+        ops.set_estimate(model, "Uart", family, values)
+
+
+def test_the_server_reports_each_definition_s_totals():
+    from hdl_architect.editor.server import Store
+
+    store = Store([WIFI])
+    report = store.resources(TOP)
+    assert report["device"] == "XCZU9EG"
+    assert report["definitions"]["Uart"] == {
+        "used": {"lut": 250, "ff": 200, "bram36": 0, "uram": 0, "dsp48": 0},
+        "status": "estimated",
+    }
+    assert report["definitions"]["Ethernet"]["status"] == "to break down"
+    assert report["definitions"][TOP]["used"]["lut"] == 960
+    assert "no target device" in store.resources("Uart")["error"]

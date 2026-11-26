@@ -289,3 +289,28 @@ def inherited_values(model: _JsonModel, name: str) -> dict:
 
 def unqualified(name: str) -> str:
     return name.split("::")[-1]
+
+
+# ---------------------------------------------------------------- for HA 2
+
+
+def report_as_dict(report: ResourceReport) -> dict:
+    """The report as JSON for HA 2: the target, and each part def's totals (the
+    same wherever the def is used)."""
+    target = report.target
+    return {
+        "device": target.device,
+        "family": target.family,
+        "resourceNames": target.resource_names,
+        "capacity": target.capacity,
+        "top": report.top.definition,
+        "definitions": totals_by_definition(report.top),
+        "problems": report.problems,
+    }
+
+
+def totals_by_definition(block: BlockUse) -> dict:
+    totals = {block.definition: {"used": block.used, "status": block.status}}
+    for child in block.children:
+        totals.update(totals_by_definition(child))
+    return totals

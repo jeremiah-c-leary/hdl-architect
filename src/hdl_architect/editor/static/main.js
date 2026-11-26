@@ -24,6 +24,7 @@ import * as render from "./render.js";
 import * as interaction from "./interaction.js";
 import * as clocktree from "./clocktree.js";
 import * as diagramExport from "./export.js";
+import * as estimates from "./estimates.js";
 
 // Every module's functions and state, by name: for the tests and the browser
 // console (e.g. ha2.partDef('Control')). Not used by HA 2 itself.
@@ -43,6 +44,7 @@ window.ha2 = Object.assign(
   interaction,
   clocktree,
   diagramExport,
+  estimates,
 );
 
 // ------------------------------------------------------------------ start
@@ -66,6 +68,7 @@ async function start() {
   statusbar.setStatus("ready");
   statusbar.showDefaultHint();
   store.checkModel(); // the server checks the whole model; problems appear under the sheet
+  estimates.startResources();
 }
 
 /** Every model file, with its layout, from the server. */

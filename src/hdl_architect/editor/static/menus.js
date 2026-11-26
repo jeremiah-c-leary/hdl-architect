@@ -1,4 +1,5 @@
 // HA 2: The context menu, every right-click menu, and the text dialogs.
+import { estimateItems } from "./estimates.js";
 import { KIND_COLORS, editor } from "./state.js";
 import { $, trunc } from "./svg.js";
 import { showDefaultHint } from "./statusbar.js";
@@ -189,6 +190,7 @@ export function compMenu(ev, D, name) {
     ...addPortItems(component),
     { sep: true },
     ...definitionItems(component, position),
+    ...estimateItems(component),
     { sep: true },
     {
       label: "Delete",

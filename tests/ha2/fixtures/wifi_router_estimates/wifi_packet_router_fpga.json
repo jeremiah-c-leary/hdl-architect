@@ -1,0 +1,706 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "WifiPacketRouterFpgaSys",
+    "doc": "The Wi-Fi packet router's FPGA: its boundary, from the Connection Diagram.",
+    "imports": [
+      {
+        "name": "PartKinds::*"
+      },
+      {
+        "name": "FpgaDevices::*"
+      },
+      {
+        "name": "PortDefs::*"
+      },
+      {
+        "name": "WifiPacketRouterSubsystems::*"
+      },
+      {
+        "name": "WifiPacketRouterBehavior::*"
+      },
+      {
+        "name": "WifiPacketRouterInterfaces::*"
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "WifiPacketRouterFpga",
+        "doc": "The FPGA between the AD9208 ADC, the AD9172 DAC, the HMC7044 clock generator and the TMP117 temperature sensor.",
+        "specializes": [
+          "FpgaPart"
+        ],
+        "comments": [
+          "OPEN: where the clocks and resets, the HMC7044's SPI, and the JESD transceivers (shared by the ADC and DAC links) go.",
+          "OPEN: FPGA pins with no subsystem yet: sys_reset_f, sys_clock, jesd_refclk, jesd_sysref, clock_gen_spi."
+        ],
+        "attributes": [
+          {
+            "name": "device",
+            "type": "XCZU9EG",
+            "doc": "The target device."
+          }
+        ],
+        "parts": [
+          {
+            "name": "ethernet",
+            "type": "Ethernet"
+          },
+          {
+            "name": "adc_if",
+            "type": "AdcInterface"
+          },
+          {
+            "name": "dac_if",
+            "type": "DacInterface"
+          },
+          {
+            "name": "temp_if",
+            "type": "TempSensorInterface"
+          },
+          {
+            "name": "uart",
+            "type": "Uart"
+          },
+          {
+            "name": "processing",
+            "type": "Processing"
+          },
+          {
+            "name": "Control",
+            "type": "Control"
+          },
+          {
+            "name": "CLK_RST_CTRL",
+            "type": "CLKRSTCTRL"
+          },
+          {
+            "name": "CLK_GEN_CTRL",
+            "type": "CLKGENCTRL"
+          }
+        ],
+        "bindings": [
+          {
+            "ends": [
+              "eth_rgmii",
+              "ethernet.eth_rgmii"
+            ]
+          },
+          {
+            "ends": [
+              "eth_mdio",
+              "ethernet.eth_mdio"
+            ]
+          },
+          {
+            "ends": [
+              "eth_reset_f",
+              "ethernet.eth_reset_f"
+            ]
+          },
+          {
+            "ends": [
+              "adc_jesd",
+              "adc_if.adc_jesd"
+            ]
+          },
+          {
+            "ends": [
+              "adc_spi",
+              "adc_if.adc_spi"
+            ]
+          },
+          {
+            "ends": [
+              "dac_jesd",
+              "dac_if.dac_jesd"
+            ]
+          },
+          {
+            "ends": [
+              "dac_spi",
+              "dac_if.dac_spi"
+            ]
+          },
+          {
+            "ends": [
+              "dac_tx_en",
+              "dac_if.dac_tx_en"
+            ]
+          },
+          {
+            "ends": [
+              "dac_reset",
+              "dac_if.dac_reset"
+            ]
+          },
+          {
+            "ends": [
+              "temp_i2c",
+              "temp_if.temp_i2c"
+            ]
+          },
+          {
+            "ends": [
+              "temp_alert",
+              "temp_if.temp_alert"
+            ]
+          },
+          {
+            "ends": [
+              "status_uart",
+              "uart.status_uart"
+            ]
+          },
+          {
+            "ends": [
+              "dac_irq",
+              "Control.dac_irq"
+            ]
+          },
+          {
+            "ends": [
+              "sys_clock",
+              "Control.clk"
+            ]
+          },
+          {
+            "ends": [
+              "jesd_refclk",
+              "adc_if.ref_clk"
+            ]
+          },
+          {
+            "ends": [
+              "jesd_refclk",
+              "dac_if.ref_clk"
+            ]
+          },
+          {
+            "ends": [
+              "sys_clock",
+              "processing.clk"
+            ]
+          },
+          {
+            "ends": [
+              "sys_clock",
+              "temp_if.clk"
+            ]
+          },
+          {
+            "ends": [
+              "sys_clock",
+              "uart.clk"
+            ]
+          },
+          {
+            "ends": [
+              "sys_clock",
+              "ethernet.clk"
+            ]
+          },
+          {
+            "ends": [
+              "jesd_sysref",
+              "adc_if.sysref"
+            ]
+          },
+          {
+            "ends": [
+              "jesd_sysref",
+              "dac_if.sysref"
+            ]
+          },
+          {
+            "ends": [
+              "sys_clock",
+              "adc_if.clk"
+            ]
+          },
+          {
+            "ends": [
+              "sys_clock",
+              "dac_if.clk"
+            ]
+          },
+          {
+            "ends": [
+              "sys_clock",
+              "CLK_RST_CTRL.sys_clk"
+            ]
+          },
+          {
+            "ends": [
+              "sys_reset_f",
+              "CLK_RST_CTRL.rst"
+            ]
+          },
+          {
+            "ends": [
+              "clock_gen_spi",
+              "CLK_GEN_CTRL.clock_gen_spi"
+            ]
+          },
+          {
+            "ends": [
+              "sys_clock",
+              "CLK_GEN_CTRL.clk"
+            ]
+          }
+        ],
+        "connections": [
+          {
+            "ends": [
+              "dac_if.processing",
+              "processing.dac_if"
+            ]
+          },
+          {
+            "ends": [
+              "adc_if.processing",
+              "processing.adc_if"
+            ]
+          },
+          {
+            "ends": [
+              "uart.processing",
+              "Control.uart"
+            ]
+          },
+          {
+            "ends": [
+              "ethernet.cmd",
+              "Control.ethernet"
+            ]
+          },
+          {
+            "ends": [
+              "adc_if.Control",
+              "Control.adc_if"
+            ]
+          },
+          {
+            "ends": [
+              "temp_if.temp_read",
+              "Control.temp_if"
+            ]
+          },
+          {
+            "ends": [
+              "dac_if.Control",
+              "Control.dac_if"
+            ]
+          },
+          {
+            "ends": [
+              "processing.Control",
+              "Control.processing"
+            ]
+          },
+          {
+            "ends": [
+              "CLK_RST_CTRL.rst_out",
+              "Control.rst"
+            ]
+          },
+          {
+            "ends": [
+              "CLK_RST_CTRL.rst_out",
+              "ethernet.rst"
+            ]
+          },
+          {
+            "ends": [
+              "CLK_RST_CTRL.rst_out",
+              "temp_if.rst"
+            ]
+          },
+          {
+            "ends": [
+              "CLK_RST_CTRL.rst_out",
+              "uart.rst"
+            ]
+          },
+          {
+            "ends": [
+              "CLK_RST_CTRL.rst_out",
+              "processing.rst"
+            ]
+          },
+          {
+            "ends": [
+              "CLK_RST_CTRL.rst_out",
+              "adc_if.rst"
+            ]
+          },
+          {
+            "ends": [
+              "CLK_RST_CTRL.rst_out",
+              "dac_if.rst"
+            ]
+          },
+          {
+            "ends": [
+              "CLK_GEN_CTRL.Control",
+              "Control.CLK_GEN_CTRL"
+            ]
+          },
+          {
+            "ends": [
+              "CLK_RST_CTRL.rst_out",
+              "CLK_GEN_CTRL.rst"
+            ]
+          }
+        ],
+        "performs": [
+          {
+            "name": "readTemperature",
+            "type": "ReadTemperature"
+          }
+        ],
+        "allocations": [
+          {
+            "from": "readTemperature.receiveFrame",
+            "to": "ethernet"
+          },
+          {
+            "from": "readTemperature.decodeCommand",
+            "to": "processing"
+          },
+          {
+            "from": "readTemperature.readSensor",
+            "to": "temp_if"
+          },
+          {
+            "from": "readTemperature.buildResponse",
+            "to": "processing"
+          },
+          {
+            "from": "readTemperature.sendFrame",
+            "to": "ethernet"
+          }
+        ],
+        "ports": [
+          {
+            "name": "sys_reset_f",
+            "type": "ResetIn",
+            "doc": "The FPGA's reset, from off the card (through the card's connector).",
+            "redefines": {
+              "active": "low",
+              "synchronous": false
+            }
+          },
+          {
+            "name": "sys_clock",
+            "type": "ClockIn",
+            "doc": "From HMC7044 ch0 (Sys clk).",
+            "redefines": {
+              "frequency_hz": 100000000.0,
+              "duty_cycle": 0.5
+            }
+          },
+          {
+            "name": "jesd_refclk",
+            "type": "ClockIn",
+            "doc": "From HMC7044 ch2 (Jesd refclk): transceiver reference clock.",
+            "redefines": {
+              "frequency_hz": 150000000.0,
+              "duty_cycle": 0.5
+            }
+          },
+          {
+            "name": "jesd_sysref",
+            "type": "SysrefIn",
+            "doc": "From HMC7044 ch1 (Jesd sysref).",
+            "redefines": {
+              "frequency_hz": 10000000.0,
+              "duty_cycle": 0.5,
+              "clock_port": "jesd_refclk"
+            }
+          },
+          {
+            "name": "clock_gen_spi",
+            "type": "Spi3WireController",
+            "doc": "To HMC7044 SPI (SCLK, SDATA, SLEN)."
+          },
+          {
+            "name": "adc_jesd",
+            "type": "JesdRx",
+            "doc": "From AD9208 JESD204B (SERDOUT0..7, SYNCINB).",
+            "redefines": {
+              "lanes": 8
+            }
+          },
+          {
+            "name": "adc_spi",
+            "type": "Spi3WireController",
+            "doc": "To AD9208 SPI (SCLK, SDIO, CSB)."
+          },
+          {
+            "name": "dac_jesd",
+            "type": "JesdTx",
+            "doc": "To AD9172 JESD204B (SERDIN0..7, SYNCOUT0).",
+            "redefines": {
+              "lanes": 8
+            }
+          },
+          {
+            "name": "dac_spi",
+            "type": "Spi4WireController",
+            "doc": "To AD9172 SPI, 4-wire (SCLK, CS, SDIO as data in, SDO)."
+          },
+          {
+            "name": "dac_tx_en",
+            "type": "BitOut",
+            "doc": "To AD9172 TXEN0."
+          },
+          {
+            "name": "dac_reset",
+            "type": "ResetOut",
+            "doc": "To AD9172 RESET.",
+            "redefines": {
+              "active": "low",
+              "synchronous": false
+            }
+          },
+          {
+            "name": "dac_irq",
+            "type": "BitIn",
+            "doc": "From AD9172 IRQ0 (open drain, active low)."
+          },
+          {
+            "name": "eth_rgmii",
+            "type": "RgmiiMac",
+            "doc": "To the Ethernet PHY: RGMII, 1G. Snapshots and commands."
+          },
+          {
+            "name": "eth_mdio",
+            "type": "MdioController",
+            "doc": "To the Ethernet PHY: MDIO management."
+          },
+          {
+            "name": "eth_reset_f",
+            "type": "ResetOut",
+            "doc": "To the Ethernet PHY's reset.",
+            "redefines": {
+              "active": "low",
+              "synchronous": false
+            }
+          },
+          {
+            "name": "status_uart",
+            "type": "UartDte",
+            "doc": "To the USB-UART bridge on the card: status."
+          },
+          {
+            "name": "temp_i2c",
+            "type": "I2cController",
+            "doc": "To TMP117 I2C (SCL, SDA)."
+          },
+          {
+            "name": "temp_alert",
+            "type": "BitIn",
+            "doc": "From TMP117 ALERT (open drain)."
+          }
+        ]
+      },
+      {
+        "name": "Control",
+        "specializes": [
+          "Subsystem"
+        ],
+        "ports": [
+          {
+            "name": "UART CSR",
+            "shortName": "uart",
+            "type": "Axi4LiteManager"
+          },
+          {
+            "name": "ETH CSR",
+            "shortName": "ethernet",
+            "type": "Axi4LiteManager"
+          },
+          {
+            "name": "ADC_CSR",
+            "shortName": "adc_if",
+            "type": "Axi4LiteManager"
+          },
+          {
+            "name": "TEMP_CSR",
+            "shortName": "temp_if",
+            "type": "Axi4LiteManager"
+          },
+          {
+            "name": "DAC_CSR",
+            "shortName": "dac_if",
+            "type": "Axi4LiteManager"
+          },
+          {
+            "name": "PROCESSING CSR",
+            "shortName": "processing",
+            "type": "Axi4LiteManager"
+          },
+          {
+            "name": "DAC DISCRETES",
+            "shortName": "dac_irq",
+            "type": "BitIn"
+          },
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "rst",
+            "type": "ResetIn"
+          },
+          {
+            "name": "CLK_GEN_CTRL_CSR",
+            "shortName": "CLK_GEN_CTRL",
+            "type": "Axi4LiteManager"
+          }
+        ]
+      },
+      {
+        "name": "Hw",
+        "specializes": [
+          "HwPart"
+        ]
+      },
+      {
+        "name": "CLKRSTCTRL",
+        "specializes": [
+          "Subsystem"
+        ],
+        "parts": [
+          {
+            "name": "RST_SYNC",
+            "type": "RSTSYNC"
+          }
+        ],
+        "bindings": [
+          {
+            "ends": [
+              "sys_clk",
+              "RST_SYNC.clk"
+            ]
+          },
+          {
+            "ends": [
+              "rst",
+              "RST_SYNC.rst"
+            ]
+          },
+          {
+            "ends": [
+              "rst_out",
+              "RST_SYNC.rst_out"
+            ]
+          }
+        ],
+        "ports": [
+          {
+            "name": "sys_clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "rst_out",
+            "type": "ResetOut",
+            "redefines": {
+              "clock_port": "sys_clk",
+              "synchronous": true
+            }
+          },
+          {
+            "name": "rst",
+            "type": "ResetIn"
+          }
+        ]
+      },
+      {
+        "name": "HardMacro2",
+        "specializes": [
+          "HardMacro"
+        ]
+      },
+      {
+        "name": "PLL",
+        "specializes": [
+          "VendorIp"
+        ]
+      },
+      {
+        "name": "RSTSYNC",
+        "specializes": [
+          "Rtl"
+        ],
+        "attributes": [
+          {
+            "name": "zynqUltraScalePlusEstimate",
+            "type": "ZynqUltraScalePlusResources",
+            "redefines": {
+              "lut": 10,
+              "ff": 12
+            },
+            "doc": "Estimate for Zynq UltraScale+ devices (illustrative numbers for this example)."
+          }
+        ],
+        "ports": [
+          {
+            "name": "rst_out",
+            "type": "ResetOut",
+            "redefines": {
+              "clock_port": "clk",
+              "synchronous": true
+            }
+          },
+          {
+            "name": "rst",
+            "type": "ResetIn"
+          },
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          }
+        ]
+      },
+      {
+        "name": "CLKGENCTRL",
+        "specializes": [
+          "Rtl"
+        ],
+        "attributes": [
+          {
+            "name": "zynqUltraScalePlusEstimate",
+            "type": "ZynqUltraScalePlusResources",
+            "redefines": {
+              "lut": 400,
+              "ff": 350
+            },
+            "doc": "Estimate for Zynq UltraScale+ devices (illustrative numbers for this example)."
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "rst",
+            "type": "ResetIn"
+          },
+          {
+            "name": "SPI",
+            "shortName": "clock_gen_spi",
+            "type": "Spi3WireController"
+          },
+          {
+            "name": "CSR",
+            "shortName": "Control",
+            "type": "Axi4LiteSubordinate"
+          }
+        ]
+      }
+    ]
+  }
+}

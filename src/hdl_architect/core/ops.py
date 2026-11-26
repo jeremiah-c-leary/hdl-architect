@@ -60,6 +60,7 @@ class Model:
         # name -> (file, package, def)
         self.part_defs: dict[str, tuple[str, dict, dict]] = {}
         self.port_defs: dict[str, tuple[str, dict, dict]] = {}
+        self.attribute_defs: dict[str, tuple[str, dict, dict]] = {}
         # id(package dict) -> qualified name
         self.package_name: dict[int, str] = {}
         for fid, doc in self.docs.items():
@@ -73,6 +74,8 @@ class Model:
             self.part_defs[d["name"]] = (fid, pkg, d)
         for d in pkg.get("portDefs", []):
             self.port_defs[d["name"]] = (fid, pkg, d)
+        for d in pkg.get("attributeDefs", []):
+            self.attribute_defs[d["name"]] = (fid, pkg, d)
         for sub in pkg.get("packages", []):
             self._index(fid, sub, qname + "::")
 
@@ -97,6 +100,16 @@ class Model:
     def ensure_part_import(self, pkg: dict, def_name: str) -> None:
         """Make part def `def_name` visible in package `pkg` (add `Pkg::*`)."""
         entry = self.part_defs.get(short(def_name))
+        if entry is None or entry[1] is pkg:
+            return
+        owner = self.package_name[id(entry[1])]
+        names = {i["name"] for i in pkg.get("imports", [])}
+        if f"{owner}::*" not in names and f"{owner}::{short(def_name)}" not in names:
+            pkg.setdefault("imports", []).append({"name": f"{owner}::*"})
+
+    def ensure_attribute_import(self, pkg: dict, def_name: str) -> None:
+        """Make attribute def `def_name` visible in package `pkg` (add `Pkg::*`)."""
+        entry = self.attribute_defs.get(short(def_name))
         if entry is None or entry[1] is pkg:
             return
         owner = self.package_name[id(entry[1])]
@@ -959,6 +972,125 @@ def set_port_name(model: Model, def_name: str, port: str, label: str | None) -> 
 # Every front end runs an operation by name with arguments by name: HA 2's
 # server (POST /api/op), `ha op NAME key=value ...`, and later an MCP server.
 # name -> (call(model, args) -> Result, required args, optional args)
+# ---------------------------------------------------------------- estimates
+# A leaf block's resource estimate (core.resources has the model's shape):
+# an attribute typed by a device family's resources, with values. Roll-up
+# blocks (with parts, or of a roll-up kind) are the sum of their parts and
+# may not have one.
+
+
+def set_estimate(model: Model, def_name: str, family: str, values: dict) -> Result:
+    """Set a leaf part def's estimate in a device family's resources; no
+    values (or all zero) removes it."""
+    file, pkg, definition = model.part_def(def_name)
+    _refuse_roll_up(model, definition)
+    names = _resource_names(model, family)
+    _check_estimate_values(values, names, family)
+    counts = {name: values[name] for name in names if values.get(name)}
+    if not counts:
+        _remove_estimate(definition, family)
+        return Result({file})
+    _estimate_attribute(definition, family)["redefines"] = counts
+    model.ensure_attribute_import(pkg, family)
+    return Result({file})
+
+
+def estimate_name(family: str) -> str:
+    """ZynqUltraScalePlusResources -> zynqUltraScalePlusEstimate."""
+    base = family.removesuffix("Resources")
+    return base[0].lower() + base[1:] + "Estimate"
+
+
+def _refuse_roll_up(model: Model, definition: dict) -> None:
+    from hdl_architect.core.resources import ROLL_UP_KINDS
+
+    kind = ROLL_UP_KINDS & _part_generals(model, definition["name"])
+    if definition.get("parts") or kind:
+        what = f"a {sorted(kind)[0]}" if kind else "a block with parts"
+        raise OpError(
+            "roll_up",
+            f"{definition['name']} is {what}: its resources are the sum of its "
+            "parts. Break it down, and estimate the parts.",
+        )
+
+
+def _part_generals(model: Model, name: str) -> set[str]:
+    """A part def and every part def it specializes, directly or not."""
+    found: set[str] = set()
+    pending = [short(name)]
+    while pending:
+        current = pending.pop()
+        if current in found or current not in model.part_defs:
+            continue
+        found.add(current)
+        definition = model.part_defs[current][2]
+        pending += [short(n) for n in definition.get("specializes", [])]
+    return found
+
+
+def _resource_names(model: Model, family: str) -> list[str]:
+    """The resource names of a device family's resources def."""
+    from hdl_architect.core.resources import RESOURCES_ROOT
+
+    chain = _attribute_generals(model, short(family))
+    if RESOURCES_ROOT not in chain:
+        raise OpError("not_found", f"no device family resources {family}")
+    names = []
+    for name in reversed(chain):
+        attributes = model.attribute_defs[name][2].get("attributes", [])
+        names += [attribute["name"] for attribute in attributes]
+    return names
+
+
+def _attribute_generals(model: Model, name: str) -> list[str]:
+    """An attribute def and the attribute defs it specializes, nearest first."""
+    chain: list[str] = []
+    pending = [name]
+    while pending:
+        current = pending.pop(0)
+        if current in chain or current not in model.attribute_defs:
+            continue
+        chain.append(current)
+        definition = model.attribute_defs[current][2]
+        pending += [short(n) for n in definition.get("specializes", [])]
+    return chain
+
+
+def _check_estimate_values(values: dict, names: list[str], family: str) -> None:
+    if not isinstance(values, dict):
+        raise OpError("bad_value", "An estimate is {resource: count}.")
+    for name, count in values.items():
+        if name not in names:
+            raise OpError("bad_value", f"{family} has no resource {name}.")
+        if not _is_count(count):
+            raise OpError("bad_value", f"{name}: a count is a whole number, 0 or more.")
+
+
+def _is_count(value) -> bool:
+    is_integer = isinstance(value, int) and not isinstance(value, bool)
+    return is_integer and value >= 0
+
+
+def _estimate_attribute(definition: dict, family: str) -> dict:
+    """The part def's estimate in this family (kept with its doc), or a new one."""
+    attributes = definition.setdefault("attributes", [])
+    for attribute in attributes:
+        if short(attribute["type"]) == short(family):
+            return attribute
+    attribute = {"name": estimate_name(family), "type": family}
+    attributes.append(attribute)
+    return attribute
+
+
+def _remove_estimate(definition: dict, family: str) -> None:
+    attributes = definition.get("attributes", [])
+    kept = [a for a in attributes if short(a["type"]) != short(family)]
+    if kept:
+        definition["attributes"] = kept
+    else:
+        definition.pop("attributes", None)
+
+
 OPERATIONS = {
     "connect": (
         lambda m, a: connect(m, a["sheet"], a["a"], a["b"]),
@@ -1053,6 +1185,11 @@ OPERATIONS = {
         lambda m, a: set_port_name(m, a["def"], a["port"], a.get("name")),
         ["def", "port"],
         ["name"],
+    ),
+    "set_estimate": (
+        lambda m, a: set_estimate(m, a["def"], a["family"], a.get("values") or {}),
+        ["def", "family"],
+        ["values"],
     ),
 }
 

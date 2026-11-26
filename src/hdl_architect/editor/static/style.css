@@ -419,7 +419,8 @@ svg text {
 .ct-edge:hover {
   stroke-width: 4;
 }
-#textDlg {
+#textDlg,
+#estimateDlg {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -428,10 +429,12 @@ svg text {
   width: min(560px, 90vw);
   padding: 14px;
 }
-#textDlg::backdrop {
+#textDlg::backdrop,
+#estimateDlg::backdrop {
   background: rgba(0, 0, 0, 0.25);
 }
-#textDlg form {
+#textDlg form,
+#estimateDlg form {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -450,4 +453,36 @@ svg text {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+/* the Resources panel (estimates.js) */
+.res-line {
+  padding: 2px 6px;
+  font-size: 12px;
+}
+.res-line b {
+  font-weight: 600;
+}
+.res-target {
+  color: var(--muted);
+}
+.res-total {
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+}
+.res-error {
+  color: #b42318;
+}
+.est-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.est-field input {
+  width: 9em;
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--ink);
 }
