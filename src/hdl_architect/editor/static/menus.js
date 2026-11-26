@@ -1,7 +1,7 @@
 // HA 2: The context menu, every right-click menu, and the text dialogs.
-import { KIND_COLORS, S } from "./state.js";
+import { KIND_COLORS, editor } from "./state.js";
 import { $, trunc } from "./svg.js";
-import { hint } from "./statusbar.js";
+import { showDefaultHint } from "./statusbar.js";
 import { askName, askText } from "./dialogs.js";
 import { kindOf, partDef, partType, portsOfDef } from "./model.js";
 import { addGlobalPort, pairMenu, pairable, pairedClock } from "./nets.js";
@@ -64,8 +64,8 @@ export function hideMenu() {
 }
 export function portDefMenu(x, y, P, port, cur) {
   const groups = {};
-  for (const n of Object.keys(S.defs).sort()) {
-    const e = S.defs[n];
+  for (const n of Object.keys(editor.defs).sort()) {
+    const e = editor.defs[n];
     if (e.coll !== "portDefs") continue;
     (groups[e.pkg.model.package.name] =
       groups[e.pkg.model.package.name] || []).push(n);
@@ -83,8 +83,8 @@ export function portDefMenu(x, y, P, port, cur) {
         label:
           (n === cur ? "✓ " : "") +
           n +
-          (S.defs[n].def.conjugateOf
-            ? `  (mirror of ${S.defs[n].def.conjugateOf})`
+          (editor.defs[n].def.conjugateOf
+            ? `  (mirror of ${editor.defs[n].def.conjugateOf})`
             : ""),
         act: () => setPortType(P, port, n),
       });
@@ -93,8 +93,8 @@ export function portDefMenu(x, y, P, port, cur) {
 }
 export function libraryMenu(x, y, D, col, yy) {
   const items = [{ head: "Add an instance of" }];
-  for (const n of Object.keys(S.defs).sort()) {
-    const e = S.defs[n];
+  for (const n of Object.keys(editor.defs).sort()) {
+    const e = editor.defs[n];
     if (
       e.coll === "partDefs" &&
       !e.def.isAbstract &&
@@ -115,7 +115,7 @@ export function kindsAvailable() {
 }
 export function edgeMenu(ev, side) {
   ev.preventDefault();
-  const D = S.sheet,
+  const D = editor.sheet,
     y = svgPoint(ev).y;
   menu(ev.clientX, ev.clientY, [
     {
@@ -146,7 +146,7 @@ export function edgeMenu(ev, side) {
 }
 export function colMenu(ev, col) {
   ev.preventDefault();
-  const D = S.sheet,
+  const D = editor.sheet,
     y = svgPoint(ev).y;
   const items = [{ head: `Column ${col + 1}` }];
   for (const k of kindsAvailable())
@@ -240,7 +240,7 @@ export function compMenu(ev, D, name) {
       act: () => {
         const n = askName("Definition name", P);
         if (n && n !== P) {
-          if (S.defs[n]) alert(`${n} already exists.`);
+          if (editor.defs[n]) alert(`${n} already exists.`);
           else renameDef(P, n);
         }
       },
@@ -265,10 +265,10 @@ export function compMenu(ev, D, name) {
       label: "Change definition…",
       act: () => {
         const items = [{ head: `Type of ${name}` }];
-        for (const n of Object.keys(S.defs).sort())
+        for (const n of Object.keys(editor.defs).sort())
           if (
-            S.defs[n].coll === "partDefs" &&
-            !S.defs[n].def.isAbstract &&
+            editor.defs[n].coll === "partDefs" &&
+            !editor.defs[n].def.isAbstract &&
             !KIND_COLORS[n] &&
             n !== D
           )
@@ -290,7 +290,7 @@ export async function editDoc(title, target, hintText) {
   // target: { def } or { def, port }
   const obj = target.port
     ? portsOfDef(target.def).find((p) => p.name === target.port)
-    : S.defs[target.def] && S.defs[target.def].def;
+    : editor.defs[target.def] && editor.defs[target.def].def;
   if (!obj) return;
   const text = await askText(title, obj.doc, hintText);
   if (text === null) return;
@@ -325,15 +325,15 @@ export async function editLabel(P, name) {
 }
 export function portMenu(ev, P, name, isEdge) {
   const port = portsOfDef(P).find((p) => p.name === name);
-  if (S.picked.length > 1 && isPicked(P, name)) {
-    const n = S.picked.length;
+  if (editor.picked.length > 1 && isPicked(P, name)) {
+    const n = editor.picked.length;
     menu(ev.clientX, ev.clientY, [
       { head: `${n} ports picked` },
       {
         label: `Move the ${n} ports to the other side  (F)`,
         act: () => {
-          const l = S.picked;
-          S.picked = [];
+          const l = editor.picked;
+          editor.picked = [];
           flipPorts(l);
         },
       },
@@ -341,11 +341,11 @@ export function portMenu(ev, P, name, isEdge) {
         label: "Set their interface…",
         act: () => {
           const items = [{ head: `Interface of ${n} ports` }];
-          for (const t of Object.keys(S.defs).sort())
-            if (S.defs[t].coll === "portDefs")
+          for (const t of Object.keys(editor.defs).sort())
+            if (editor.defs[t].coll === "portDefs")
               items.push({
                 label: t,
-                act: () => setPortsType(S.picked, t),
+                act: () => setPortsType(editor.picked, t),
               });
           menu(ev.clientX, ev.clientY, items);
         },
@@ -353,9 +353,9 @@ export function portMenu(ev, P, name, isEdge) {
       {
         label: "Clear the selection  (Esc)",
         act: () => {
-          S.picked = [];
+          editor.picked = [];
           render();
-          hint();
+          showDefaultHint();
         },
       },
     ]);

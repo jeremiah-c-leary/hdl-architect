@@ -13,13 +13,13 @@ after(async () => {
 
 test("the sheet named in the address", async () => {
   const page = await openPage(server.url, "Control");
-  assert.equal(await E(page, "S.sheet"), "Control");
+  assert.equal(await E(page, "editor.sheet"), "Control");
 });
 
 test("no name, or a name that is not a sheet: the FPGA's sheet", async () => {
   for (const named of ["", "NoSuchSheet"]) {
     const page = await openPage(server.url, named);
-    assert.equal(await E(page, "S.sheet"), TOP, `#${named}`);
+    assert.equal(await E(page, "editor.sheet"), TOP, `#${named}`);
     assert.deepEqual(page.errors, []);
   }
 });

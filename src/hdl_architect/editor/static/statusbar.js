@@ -2,7 +2,8 @@
 // the status at the top right (saved, not saved, ...).
 import { $ } from "./svg.js";
 
-export function hint(msg) {
+/** Show a message in the hint line under the sheet (empty: the usual help). */
+export function showHint(msg) {
   $("hint").textContent = msg || DEFAULT_HINT;
 }
 export const DEFAULT_HINT =
@@ -11,4 +12,8 @@ export function setStatus(t, err) {
   const s = $("status");
   s.textContent = t;
   s.className = err ? "err" : "";
+}
+/** Show the usual help in the hint line: how to use the sheet. */
+export function showDefaultHint() {
+  showHint();
 }

@@ -1,18 +1,18 @@
 // HA 2: Changes, undo/redo, saving, the server check.
-import { COLLS, S } from "./state.js";
-import { hint, setStatus } from "./statusbar.js";
+import { COLLS, editor } from "./state.js";
+import { setStatus, showHint } from "./statusbar.js";
 import { ensureImport, partDef, rebuildIndex, short } from "./model.js";
 import { settle } from "./layout.js";
 import { render, renderProblems } from "./render.js";
 
 // ------------------------------------------------------------------ change, undo, save
 export function snapshot() {
-  return JSON.stringify(S.pkgs.map((p) => [p.model, p.layout || null]));
+  return JSON.stringify(editor.pkgs.map((p) => [p.model, p.layout || null]));
 }
 export function restore(snap) {
   JSON.parse(snap).forEach(([m, l], i) => {
-    S.pkgs[i].model = m;
-    S.pkgs[i].layout = l;
+    editor.pkgs[i].model = m;
+    editor.pkgs[i].layout = l;
   });
 }
 export function mutate(fn) {
@@ -32,21 +32,21 @@ export function mutate(fn) {
     render();
     return;
   }
-  S.undo.push(snap);
-  if (S.undo.length > 200) S.undo.shift();
-  S.redo = [];
+  editor.undo.push(snap);
+  if (editor.undo.length > 200) editor.undo.shift();
+  editor.redo = [];
   changed();
 }
 export function changed() {
   rebuildIndex();
   repairImports();
-  if (S.sheet && partDef(S.sheet)) settle(S.sheet);
+  if (editor.sheet && partDef(editor.sheet)) settle(editor.sheet);
   render();
   scheduleSave();
 }
 export function repairImports() {
   // every definition a package refers to must be visible in it: add missing imports
-  for (const pkg of S.pkgs)
+  for (const pkg of editor.pkgs)
     for (const coll of COLLS)
       for (const d of pkg.model.package[coll] || []) {
         const refs = [
@@ -62,19 +62,20 @@ export function repairImports() {
             ...(d.metadata || []),
           ].map((u) => u.type),
         ];
-        for (const r of refs) if (r && S.defs[short(r)]) ensureImport(pkg, r);
+        for (const r of refs)
+          if (r && editor.defs[short(r)]) ensureImport(pkg, r);
       }
 }
 export function undo() {
-  if (!S.undo.length) return;
-  S.redo.push(snapshot());
-  restore(S.undo.pop());
+  if (!editor.undo.length) return;
+  editor.redo.push(snapshot());
+  restore(editor.undo.pop());
   changed();
 }
 export function redo() {
-  if (!S.redo.length) return;
-  S.undo.push(snapshot());
-  restore(S.redo.pop());
+  if (!editor.redo.length) return;
+  editor.undo.push(snapshot());
+  restore(editor.redo.pop());
   changed();
 }
 
@@ -95,23 +96,23 @@ export async function put(url, body) {
 }
 /** Run a model operation on the server (core.ops via POST /api/op). */
 export async function runOp(op, args) {
-  const bases = Object.fromEntries(S.pkgs.map((p) => [p.file, p.version]));
+  const bases = Object.fromEntries(editor.pkgs.map((p) => [p.file, p.version]));
   const r = await fetch("/api/op", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ op, ...args, bases }),
   });
   const res = await r.json();
-  if (res.stale) S.stale = true;
+  if (res.stale) editor.stale = true;
   return res;
 }
 /** Take the files an operation changed: they are now saved as they are. */
 export function takeChanged(changed) {
   for (const c of changed) {
-    const p = S.pkgs.find((x) => x.file === c.file);
+    const p = editor.pkgs.find((x) => x.file === c.file);
     p.model = c.model;
     p.version = c.version;
-    S.saved[p.file] = Object.assign(S.saved[p.file] || {}, {
+    editor.saved[p.file] = Object.assign(editor.saved[p.file] || {}, {
       modelText: JSON.stringify(c.model),
     });
   }
@@ -127,39 +128,39 @@ export function takeChanged(changed) {
 export async function applyOp(op, args, after) {
   const snap = snapshot();
   if (!(await flushSave())) {
-    hint("Not done: save the open changes first.");
+    showHint("Not done: save the open changes first.");
     return null;
   }
   const res = await runOp(op, args);
   if (res.error) {
     if (res.error.code === "interfaces") alert(res.error.message);
     render();
-    hint(res.error.code === "interfaces" ? "" : res.error.message);
+    showHint(res.error.code === "interfaces" ? "" : res.error.message);
     return null;
   }
   takeChanged(res.changed);
   if (after) after(res);
-  S.undo.push(snap);
-  if (S.undo.length > 200) S.undo.shift();
-  S.redo = [];
+  editor.undo.push(snap);
+  if (editor.undo.length > 200) editor.undo.shift();
+  editor.redo = [];
   changed();
-  if (res.notes && res.notes.length) hint(res.notes.join(" "));
+  if (res.notes && res.notes.length) showHint(res.notes.join(" "));
   return res;
 }
 /** Save now if an edit is waiting, so the files on disk are the page's. */
 export async function flushSave() {
   clearTimeout(saveTimer);
   await saveAll();
-  return !S.stale && !(S.saveProblems || []).length;
+  return !editor.stale && !(editor.saveProblems || []).length;
 }
 export async function saveAll() {
   setStatus("saving…");
   const problems = [];
-  for (const pkg of S.pkgs) {
+  for (const pkg of editor.pkgs) {
     // what is in the page now, and what was last saved, as text
     const modelText = JSON.stringify(pkg.model),
       layoutText = JSON.stringify(pkg.layout || null);
-    const saved = S.saved[pkg.file] || {};
+    const saved = editor.saved[pkg.file] || {};
     if (modelText !== saved.modelText) {
       const res = await put("/api/file", {
         file: pkg.file,
@@ -172,7 +173,7 @@ export async function saveAll() {
         saved.modelText = modelText;
         pkg.version = res.version;
       }
-      if (res.stale) S.stale = true;
+      if (res.stale) editor.stale = true;
     }
     if (pkg.layout && layoutText !== saved.layoutText) {
       const res = await put("/api/layout", {
@@ -187,13 +188,13 @@ export async function saveAll() {
         saved.layoutText = layoutText;
         pkg.layoutVersion = res.version;
       }
-      if (res.stale) S.stale = true;
+      if (res.stale) editor.stale = true;
     }
-    S.saved[pkg.file] = saved;
+    editor.saved[pkg.file] = saved;
   }
-  S.saveProblems = problems;
+  editor.saveProblems = problems;
   setStatus(
-    S.stale
+    editor.stale
       ? "changed on disk: reload"
       : problems.length
         ? "not saved"
@@ -202,10 +203,12 @@ export async function saveAll() {
   );
   renderProblems();
   clearTimeout(checkTimer);
-  checkTimer = setTimeout(check, 400);
+  checkTimer = setTimeout(checkModel, 400);
 }
-export async function check() {
+/** Ask the server to check the whole model (schema, names, imports, as
+ * `ha check`) and list its problems under the sheet. */
+export async function checkModel() {
   const r = await fetch("/api/check");
-  S.serverProblems = (await r.json()).errors || [];
+  editor.serverProblems = (await r.json()).errors || [];
   renderProblems();
 }

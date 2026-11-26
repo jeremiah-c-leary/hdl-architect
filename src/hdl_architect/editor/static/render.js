@@ -1,5 +1,5 @@
 // HA 2: Drawing a sheet, the side panel and the problem list.
-import { G, KIND_COLORS, S } from "./state.js";
+import { G, KIND_COLORS, editor } from "./state.js";
 import { $, el, tip, trunc } from "./svg.js";
 import {
   brokenEnds,
@@ -46,14 +46,14 @@ export function render() {
   renderCrumbs();
   const svg = $("canvas");
   svg.innerHTML = "";
-  if (!S.sheet || !partDef(S.sheet)) {
+  if (!editor.sheet || !partDef(editor.sheet)) {
     svg.setAttribute("width", 600);
     svg.setAttribute("height", 200);
     el("text", { x: 20, y: 40 }, svg, "No sheet: pick one on the left.");
     renderProblems();
     return;
   }
-  const D = S.sheet,
+  const D = editor.sheet,
     d = partDef(D),
     sl = sheetLayout(D),
     geo = geometry(D);
@@ -97,7 +97,7 @@ export function render() {
     b.onmousedown = (e) => {
       if (e.shiftKey && e.button === 0) {
         e.preventDefault();
-        S.band = { side, y0: svgPoint(e).y };
+        editor.band = { side, y0: svgPoint(e).y };
       }
     };
   }
@@ -114,8 +114,8 @@ export function render() {
       (band(c.x0, c.x1, "band-col", (e) => colMenu(e, i), {
         "data-col": i,
       }).onclick = () => {
-        if (S.sel) {
-          S.sel = null;
+        if (editor.sel) {
+          editor.sel = null;
           render();
         }
       }),
@@ -185,7 +185,9 @@ export function render() {
     if (!e) continue;
     const x = e.side === "left" ? geo.edgeL.x1 - G.PORT_W : geo.edgeR.x0;
     const armed =
-      S.armed && S.armed.kind === "edge" && S.armed.port === port.name;
+      editor.armed &&
+      editor.armed.kind === "edge" &&
+      editor.armed.port === port.name;
     const gEnd = { kind: "edge", port: port.name },
       gi = globalInfo(D, gEnd),
       net = byEnd[port.name];
@@ -251,7 +253,8 @@ export function render() {
       kind = kindOf(P),
       color = KIND_COLORS[kind] || "#888";
     const g = el("g", {}, svg);
-    const sel = S.sel && S.sel.kind === "part" && S.sel.name === part.name;
+    const sel =
+      editor.sel && editor.sel.kind === "part" && editor.sel.name === part.name;
     const r = el(
       "rect",
       {
@@ -354,10 +357,10 @@ export function render() {
       const px = l.side === "left" ? c.x0 - G.PORT_W / 2 : c.x1 - G.PORT_W / 2,
         py = q.y + l.offset;
       const armed =
-        S.armed &&
-        S.armed.kind === "part" &&
-        S.armed.part === part.name &&
-        S.armed.port === port.name;
+        editor.armed &&
+        editor.armed.kind === "part" &&
+        editor.armed.part === part.name &&
+        editor.armed.port === port.name;
       const gEnd = { kind: "part", part: part.name, port: port.name },
         gi = globalInfo(D, gEnd),
         net = byEnd[endStr(gEnd)];
@@ -478,10 +481,10 @@ export function renderSide() {
   const sheets = $("sheets");
   sheets.innerHTML = "";
   const byPkg = {};
-  for (const n of Object.keys(S.defs).sort())
-    if (S.defs[n].coll === "partDefs" && isSheet(n))
-      (byPkg[S.defs[n].pkg.model.package.name] =
-        byPkg[S.defs[n].pkg.model.package.name] || []).push(n);
+  for (const n of Object.keys(editor.defs).sort())
+    if (editor.defs[n].coll === "partDefs" && isSheet(n))
+      (byPkg[editor.defs[n].pkg.model.package.name] =
+        byPkg[editor.defs[n].pkg.model.package.name] || []).push(n);
   for (const g of Object.keys(byPkg).sort()) {
     const h = document.createElement("div");
     h.className = "group";
@@ -489,7 +492,7 @@ export function renderSide() {
     sheets.appendChild(h);
     for (const n of byPkg[g]) {
       const it = document.createElement("div");
-      it.className = "item" + (n === S.sheet ? " cur" : "");
+      it.className = "item" + (n === editor.sheet ? " cur" : "");
       it.style.borderLeftColor = KIND_COLORS[kindOf(n)] || "transparent";
       it.textContent = n;
       it.onclick = () => openSheet(n);
@@ -500,8 +503,8 @@ export function renderSide() {
   lib.innerHTML = "";
   const f = $("libFilter").value.toLowerCase();
   const byKind = {};
-  for (const n of Object.keys(S.defs).sort()) {
-    const e = S.defs[n];
+  for (const n of Object.keys(editor.defs).sort()) {
+    const e = editor.defs[n];
     if (
       e.coll !== "partDefs" ||
       e.def.isAbstract ||
@@ -523,7 +526,8 @@ export function renderSide() {
       it.style.borderLeftColor = KIND_COLORS[k] || "transparent";
       it.textContent = n;
       it.title =
-        (S.defs[n].def.doc || "") + "\nDrag onto a column to add an instance.";
+        (editor.defs[n].def.doc || "") +
+        "\nDrag onto a column to add an instance.";
       it.ondragstart = (e) => e.dataTransfer.setData("text/x-partdef", n);
       lib.appendChild(it);
     }
@@ -531,8 +535,8 @@ export function renderSide() {
   renderNets();
   const ifs = $("interfaces");
   ifs.innerHTML = "";
-  for (const n of Object.keys(S.defs).sort()) {
-    const e = S.defs[n];
+  for (const n of Object.keys(editor.defs).sort()) {
+    const e = editor.defs[n];
     if (e.coll !== "portDefs") continue;
     const it = document.createElement("div");
     it.className = "item";
@@ -559,7 +563,7 @@ export function renderNets() {
   const box = $("nets");
   if (!box) return;
   box.innerHTML = "";
-  const D = S.sheet;
+  const D = editor.sheet;
   if (!D || !partDef(D)) return;
   const { nets, byEnd } = netsOf(D);
   const div = (cls, text, parent) => {
@@ -577,7 +581,7 @@ export function renderNets() {
     return;
   }
   for (const n of nets) {
-    const row = div("net" + (S.armedNet === n.name ? " armed" : ""));
+    const row = div("net" + (editor.armedNet === n.name ? " armed" : ""));
     const sw = document.createElement("span");
     sw.className = "swatch";
     sw.style.background = n.color;
@@ -621,7 +625,7 @@ export function renderNets() {
       (n.cat !== "reset" && n.src
         ? "\nDouble-click the frequency to change it."
         : "");
-    row.onclick = () => armNet(S.armedNet === n.name ? null : n);
+    row.onclick = () => armNet(editor.armedNet === n.name ? null : n);
     if (n.src)
       fq.ondblclick = (e) => {
         e.stopPropagation();
@@ -644,22 +648,22 @@ export function renderCrumbs() {
   c.innerHTML = "";
   // the chain of sheets that contain this one (first containing def found)
   const chain = [];
-  let cur = S.sheet;
+  let cur = editor.sheet;
   const seen = new Set();
   while (cur && !seen.has(cur)) {
     seen.add(cur);
     chain.unshift(cur);
-    cur = Object.keys(S.defs).find(
+    cur = Object.keys(editor.defs).find(
       (n) =>
-        S.defs[n].coll === "partDefs" &&
-        (S.defs[n].def.parts || []).some((p) => short(p.type) === cur),
+        editor.defs[n].coll === "partDefs" &&
+        (editor.defs[n].def.parts || []).some((p) => short(p.type) === cur),
     );
   }
   chain.forEach((n, i) => {
     if (i) c.appendChild(document.createTextNode(" › "));
-    const a = document.createElement(n === S.sheet ? "span" : "a");
+    const a = document.createElement(n === editor.sheet ? "span" : "a");
     a.textContent = n;
-    if (n === S.sheet) a.className = "cur";
+    if (n === editor.sheet) a.className = "cur";
     else a.onclick = () => openSheet(n);
     c.appendChild(a);
   });
@@ -673,10 +677,10 @@ export function renderProblems() {
     d.textContent = t;
     f.appendChild(d);
   };
-  for (const p of S.saveProblems) add("err", "not saved: " + p);
-  for (const p of S.serverProblems) add("err", p);
-  if (S.sheet && partDef(S.sheet)) {
-    const D = S.sheet,
+  for (const p of editor.saveProblems) add("err", "not saved: " + p);
+  for (const p of editor.serverProblems) add("err", p);
+  if (editor.sheet && partDef(editor.sheet)) {
+    const D = editor.sheet,
       { wires } = wiresOf(D),
       sl = sheetLayout(D);
     const used = new Set(wires.flatMap((w) => [w.a, w.b]).map(endStr));

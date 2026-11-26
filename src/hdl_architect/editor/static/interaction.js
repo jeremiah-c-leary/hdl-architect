@@ -1,7 +1,7 @@
 // HA 2: Mouse, drag and drop, and keyboard.
-import { G, S } from "./state.js";
+import { G, editor } from "./state.js";
 import { $ } from "./svg.js";
-import { hint } from "./statusbar.js";
+import { showDefaultHint, showHint } from "./statusbar.js";
 import { endStr, isSheet, partDef, partType, portsOfDef } from "./model.js";
 import {
   assignNet,
@@ -46,21 +46,21 @@ export function openSheet(n) {
     !confirm(`${n} has no parts yet. Open it as a sheet to add some?`)
   )
     return;
-  if (S.sheet && S.sheet !== n) S.back.push(S.sheet);
-  S.sheet = n;
-  S.sel = null;
-  S.armed = null;
+  if (editor.sheet && editor.sheet !== n) editor.back.push(editor.sheet);
+  editor.sheet = n;
+  editor.sel = null;
+  editor.armed = null;
   history.replaceState(null, "", "#" + n);
   settle(n);
   render();
-  hint();
+  showDefaultHint();
 }
 export function goBack() {
-  const b = S.back.pop();
+  const b = editor.back.pop();
   if (b && partDef(b)) {
-    S.sheet = b;
-    S.sel = null;
-    S.armed = null;
+    editor.sheet = b;
+    editor.sel = null;
+    editor.armed = null;
     history.replaceState(null, "", "#" + b);
     settle(b);
     render();
@@ -74,7 +74,7 @@ export function svgPoint(ev) {
 export function startDrag(ev, what) {
   if (ev.button !== 0) return;
   ev.stopPropagation();
-  S.drag = Object.assign(
+  editor.drag = Object.assign(
     {
       x0: ev.clientX,
       y0m: ev.clientY,
@@ -87,13 +87,13 @@ export function startDrag(ev, what) {
   );
 }
 window.addEventListener("mousemove", (ev) => {
-  const d = S.drag;
+  const d = editor.drag;
   if (!d) return;
   const dx = ev.clientX - d.x0,
     dy = ev.clientY - d.y0m;
   if (!d.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
   d.moved = true;
-  const D = S.sheet,
+  const D = editor.sheet,
     sl = sheetLayout(D);
   if (d.kind === "part") {
     sl.parts[d.part].y = Math.max(G.TOP + 10, d.y0 + dy);
@@ -123,14 +123,14 @@ window.addEventListener("mousemove", (ev) => {
   render();
 });
 window.addEventListener("mouseup", (ev) => {
-  if (S.band) {
+  if (editor.band) {
     // Shift+drag along an edge: pick every port in the range
-    const b = S.band,
+    const b = editor.band,
       y1 = svgPoint(ev).y,
       lo = Math.min(b.y0, y1) - 6,
       hi = Math.max(b.y0, y1) + 6;
-    S.band = null;
-    const D = S.sheet,
+    editor.band = null;
+    const D = editor.sheet,
       sl = sheetLayout(D);
     for (const p of portsOfDef(D)) {
       const e = sl.edge[p.name];
@@ -141,23 +141,23 @@ window.addEventListener("mouseup", (ev) => {
         e.y <= hi &&
         !isPicked(D, p.name)
       )
-        S.picked.push({ P: D, port: p.name, isEdge: true });
+        editor.picked.push({ P: D, port: p.name, isEdge: true });
     }
     render();
-    hint(
-      S.picked.length
-        ? `${S.picked.length} port(s) picked: press F (or right-click one) to move them to the other side. Esc clears.`
+    showHint(
+      editor.picked.length
+        ? `${editor.picked.length} port(s) picked: press F (or right-click one) to move them to the other side. Esc clears.`
         : "",
     );
     return;
   }
-  const d = S.drag;
+  const d = editor.drag;
   if (!d) return;
-  S.drag = null;
+  editor.drag = null;
   if (d.moved) {
     // a move: one undo step, then settle
-    S.undo.push(d.snap);
-    S.redo = [];
+    editor.undo.push(d.snap);
+    editor.redo = [];
     // dragging a port, or a component's top past its ports, moves ports: their
     // wire partners follow them (otherwise settling would pull them back)
     const moved =
@@ -166,13 +166,13 @@ window.addEventListener("mouseup", (ev) => {
         : d.kind === "resizeTop"
           ? Object.keys(d.offs).filter(
               (n) =>
-                sheetLayout(S.sheet).parts[d.part].y +
+                sheetLayout(editor.sheet).parts[d.part].y +
                   portLayout(d.P, n).offset !==
                 d.y0 + d.offs[n],
             )
           : [];
     for (const port of moved) {
-      const D = S.sheet;
+      const D = editor.sheet;
       const end = { kind: "part", part: d.part, port };
       for (const w of drawnWires(D)) {
         // clock/reset tags have no wire: nothing follows them
@@ -190,29 +190,36 @@ window.addEventListener("mouseup", (ev) => {
   }
   // a click
   if (d.kind === "part") {
-    if (S.armed) {
+    if (editor.armed) {
       connectArmed({ part: d.part });
       return;
     }
-    if (d.ctrl && S.sel && S.sel.kind === "part" && S.sel.name !== d.part) {
-      const a = S.sel.name;
-      S.sel = null;
+    if (
+      d.ctrl &&
+      editor.sel &&
+      editor.sel.kind === "part" &&
+      editor.sel.name !== d.part
+    ) {
+      const a = editor.sel.name;
+      editor.sel = null;
       quickConnect(a, d.part);
       return;
     }
-    S.sel =
-      S.sel && S.sel.name === d.part ? null : { kind: "part", name: d.part };
+    editor.sel =
+      editor.sel && editor.sel.name === d.part
+        ? null
+        : { kind: "part", name: d.part };
     render();
-    hint(
-      S.sel
+    showHint(
+      editor.sel
         ? `Selected ${d.part}. Ctrl+click another component to connect them; F flips it; Ctrl+←/→ moves it a column; Delete removes it.`
         : "",
     );
   } else if (
     (d.kind === "port" || d.kind === "edge") &&
     !d.shift &&
-    S.armed &&
-    endStr(S.armed) !==
+    editor.armed &&
+    endStr(editor.armed) !==
       endStr(
         d.kind === "edge"
           ? { kind: "edge", port: d.port }
@@ -220,7 +227,7 @@ window.addEventListener("mouseup", (ev) => {
       )
   ) {
     connectPorts(
-      S.armed,
+      editor.armed,
       d.kind === "edge"
         ? { kind: "edge", port: d.port }
         : { kind: "part", part: d.part, port: d.port },
@@ -228,22 +235,23 @@ window.addEventListener("mouseup", (ev) => {
   } else if (
     (d.kind === "port" || d.kind === "edge") &&
     !d.shift &&
-    !S.armed &&
+    !editor.armed &&
     globalInfo(
-      S.sheet,
+      editor.sheet,
       d.kind === "edge"
         ? { kind: "edge", port: d.port }
         : { kind: "part", part: d.part, port: d.port },
     )
   ) {
-    const D = S.sheet,
+    const D = editor.sheet,
       end =
         d.kind === "edge"
           ? { kind: "edge", port: d.port }
           : { kind: "part", part: d.part, port: d.port };
     const info = globalInfo(D, end),
       { nets, byEnd } = netsOf(D);
-    const armedNet = S.armedNet && nets.find((n) => n.name === S.armedNet);
+    const armedNet =
+      editor.armedNet && nets.find((n) => n.name === editor.armedNet);
     if (armedNet && !info.source && info.cat === armedNet.cat)
       assignNet(D, end, byEnd[endStr(end)] === armedNet ? null : armedNet);
     else if (
@@ -255,28 +263,33 @@ window.addEventListener("mouseup", (ev) => {
     )
       retypeAndAssign(D, end, armedNet);
     else if (armedNet && info.source)
-      hint(
+      showHint(
         `${endStr(end)} drives a net itself, so it cannot go on ${armedNet.name}.`,
       );
     else netMenu(ev, D, end);
   } else if ((d.kind === "port" || d.kind === "edge") && d.shift) {
-    togglePick(d.kind === "edge" ? S.sheet : d.P, d.port, d.kind === "edge");
+    togglePick(
+      d.kind === "edge" ? editor.sheet : d.P,
+      d.port,
+      d.kind === "edge",
+    );
   } else if (d.kind === "port" || d.kind === "edge") {
     const end =
       d.kind === "edge"
         ? { kind: "edge", port: d.port }
         : { kind: "part", part: d.part, port: d.port };
-    S.armed = S.armed && endStr(S.armed) === endStr(end) ? null : end;
+    editor.armed =
+      editor.armed && endStr(editor.armed) === endStr(end) ? null : end;
     render();
-    hint(
-      S.armed
+    showHint(
+      editor.armed
         ? `Wiring ${endStr(end)}: click another port to wire the two, or a component (new port + wire)${end.kind === "part" ? " or a sheet edge (new sheet port + bind)" : ""}. Esc cancels.`
         : "",
     );
   }
 });
 export function edgeClick(ev, side) {
-  if (S.armed && S.armed.kind === "part")
+  if (editor.armed && editor.armed.kind === "part")
     connectArmed({ edge: side, y: svgPoint(ev).y });
 }
 
@@ -285,7 +298,7 @@ export const canvas = $("canvas");
 canvas.addEventListener("dragover", (e) => e.preventDefault());
 canvas.addEventListener("drop", (e) => {
   e.preventDefault();
-  const D = S.sheet;
+  const D = editor.sheet;
   if (!D) return;
   const def = e.dataTransfer.getData("text/x-partdef");
   const pd = e.dataTransfer.getData("text/x-portdef");
@@ -294,7 +307,7 @@ canvas.addEventListener("drop", (e) => {
     if (target.dataset.port)
       setPortType(partType(D, target.dataset.part), target.dataset.port, pd);
     else if (target.dataset.edge) setPortType(D, target.dataset.edge, pd);
-    else hint("Drop an interface onto a port.");
+    else showHint("Drop an interface onto a port.");
     return;
   }
   if (def)
@@ -323,25 +336,29 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     redo();
   } else if (e.key === "Escape") {
-    S.armed = null;
-    S.sel = null;
-    S.picked = [];
-    S.armedNet = null;
+    editor.armed = null;
+    editor.sel = null;
+    editor.picked = [];
+    editor.armedNet = null;
     hideMenu();
     render();
-    hint();
+    showDefaultHint();
   } else if (!mod && !e.altKey && e.key.toLowerCase() === "f") {
-    if (S.picked.length) {
-      const l = S.picked;
-      S.picked = [];
+    if (editor.picked.length) {
+      const l = editor.picked;
+      editor.picked = [];
       flipPorts(l);
-    } else if (S.sel) flipComponent(S.sheet, S.sel.name);
-  } else if ((e.key === "Delete" || e.key === "Backspace") && S.sel) {
+    } else if (editor.sel) flipComponent(editor.sheet, editor.sel.name);
+  } else if ((e.key === "Delete" || e.key === "Backspace") && editor.sel) {
     e.preventDefault();
-    deletePart(S.sheet, S.sel.name);
+    deletePart(editor.sheet, editor.sel.name);
   } else if (e.altKey && e.key === "ArrowLeft") goBack();
-  else if (mod && S.sel && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+  else if (
+    mod &&
+    editor.sel &&
+    (e.key === "ArrowLeft" || e.key === "ArrowRight")
+  ) {
     e.preventDefault();
-    moveColumn(S.sheet, S.sel.name, e.key === "ArrowLeft" ? -1 : 1);
+    moveColumn(editor.sheet, editor.sel.name, e.key === "ArrowLeft" ? -1 : 1);
   }
 });

@@ -1,4 +1,5 @@
-// HA 2: Constants and the editor's shared state (S).
+// HA 2: Constants, and `editor`: everything the editor knows (the loaded
+// model files, the open sheet, the selection, undo/redo, what was saved).
 
 export const NAME_RE = /^[A-Za-z](_?[A-Za-z0-9])*$/;
 export const KIND_COLORS = {
@@ -45,7 +46,7 @@ export const COLLS = [
   "actionDefs",
 ];
 
-export const S = {
+export const editor = {
   pkgs: [], // {file, model, layout}
   defs: {}, // name -> {pkg, coll, def}
   sheet: null,

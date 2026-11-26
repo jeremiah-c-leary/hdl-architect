@@ -14,7 +14,7 @@ after(async () => {
 });
 
 test("the export is a standalone light-theme SVG without editing marks", async () => {
-  await E(page, "(S.sel = { kind: 'part', name: 'adc_if' }, render())");
+  await E(page, "(editor.sel = { kind: 'part', name: 'adc_if' }, render())");
   assert.ok(
     await E(page, "!!document.querySelector('#canvas .sel')"),
     "the selection is drawn on screen",

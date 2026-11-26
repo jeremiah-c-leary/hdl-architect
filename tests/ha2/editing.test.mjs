@@ -83,8 +83,8 @@ test("setting a port's interface keeps its name", async () => {
 });
 
 test("typing in the text box does not trigger the single-key shortcuts", async () => {
-  await E(page, "S.sel = { kind: 'part', name: 'adc_if' }");
-  const layouts = "JSON.stringify(S.pkgs.map(p => p.layout))";
+  await E(page, "editor.sel = { kind: 'part', name: 'adc_if' }");
+  const layouts = "JSON.stringify(editor.pkgs.map(p => p.layout))";
   const before = await E(page, layouts);
   await E(
     page,

@@ -1,7 +1,7 @@
 // HA 2: export what is on screen (a sheet, the clock tree, the reset tree) as SVG or PNG,
 // for documentation. Always in the light theme, without editing marks (selection, armed
 // ports, resize grips), as a standalone file: styles are inlined, CSS variables resolved.
-import { S } from "./state.js";
+import { editor } from "./state.js";
 import { menu } from "./menus.js";
 import { CT } from "./clocktree.js";
 
@@ -98,19 +98,27 @@ export function fileBase(s) {
 }
 
 document.getElementById("exportBtn").onclick = (ev) => {
-  if (!S.sheet) return;
+  if (!editor.sheet) return;
   const r = ev.target.getBoundingClientRect();
   menu(r.left, r.bottom + 4, [
-    { head: `Export ${S.sheet}` },
+    { head: `Export ${editor.sheet}` },
     {
       label: "Sheet as SVG",
       act: () =>
-        exportAs(document.getElementById("canvas"), fileBase(S.sheet), "svg"),
+        exportAs(
+          document.getElementById("canvas"),
+          fileBase(editor.sheet),
+          "svg",
+        ),
     },
     {
       label: "Sheet as PNG (2x)",
       act: () =>
-        exportAs(document.getElementById("canvas"), fileBase(S.sheet), "png"),
+        exportAs(
+          document.getElementById("canvas"),
+          fileBase(editor.sheet),
+          "png",
+        ),
     },
   ]);
 };
@@ -118,6 +126,6 @@ for (const fmt of ["svg", "png"])
   document.getElementById("ctExport" + fmt.toUpperCase()).onclick = () =>
     exportAs(
       document.getElementById("ctSvg"),
-      fileBase(`${S.sheet}-${CT.mode}-tree`),
+      fileBase(`${editor.sheet}-${CT.mode}-tree`),
       fmt,
     );

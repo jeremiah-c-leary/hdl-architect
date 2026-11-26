@@ -1,25 +1,25 @@
 // HA 2: The model index and queries; the wires on a sheet.
-import { COLLS, CONTAINER_KINDS, KIND_COLORS, S } from "./state.js";
+import { COLLS, CONTAINER_KINDS, KIND_COLORS, editor } from "./state.js";
 
 // ------------------------------------------------------------------ model index and queries
 export function rebuildIndex() {
-  S.defs = {};
-  for (const pkg of S.pkgs)
+  editor.defs = {};
+  for (const pkg of editor.pkgs)
     for (const coll of COLLS)
       for (const d of pkg.model.package[coll] || [])
-        S.defs[d.name] = { pkg, coll, def: d };
+        editor.defs[d.name] = { pkg, coll, def: d };
 }
 export const short = (n) => (n || "").split("::").pop();
 export function partDef(n) {
-  const e = S.defs[short(n)];
+  const e = editor.defs[short(n)];
   return e && e.coll === "partDefs" ? e.def : null;
 }
 export function portDef(n) {
-  const e = S.defs[short(n)];
+  const e = editor.defs[short(n)];
   return e && e.coll === "portDefs" ? e.def : null;
 }
 export function pkgOf(n) {
-  const e = S.defs[short(n)];
+  const e = editor.defs[short(n)];
   return e ? e.pkg : null;
 }
 export function kindOf(n, seen = new Set()) {
@@ -57,15 +57,15 @@ export function counterpart(t) {
   if (!t) return undefined;
   const d = portDef(t);
   if (d && d.conjugateOf) return d.conjugateOf;
-  for (const n in S.defs) {
-    const e = S.defs[n];
+  for (const n in editor.defs) {
+    const e = editor.defs[n];
     if (e.coll === "portDefs" && e.def.conjugateOf === short(t)) return n;
   }
   return t;
 }
 export function visibleIn(pkg, n) {
   // is definition n usable in pkg without a new import?
-  const e = S.defs[short(n)];
+  const e = editor.defs[short(n)];
   if (!e) return true;
   if (e.pkg === pkg) return true;
   return (pkg.model.package.imports || []).some(
@@ -74,7 +74,7 @@ export function visibleIn(pkg, n) {
 }
 export function ensureImport(pkg, n) {
   if (visibleIn(pkg, n)) return;
-  const target = S.defs[short(n)].pkg.model.package.name;
+  const target = editor.defs[short(n)].pkg.model.package.name;
   (pkg.model.package.imports = pkg.model.package.imports || []).push({
     name: target + "::*",
   });
