@@ -1,8 +1,8 @@
 {
-  "schemaVersion": "0.4",
+  "schemaVersion": "0.8",
   "package": {
     "name": "WifiPacketRouterBehavior",
-    "doc": "The Wi-Fi packet router FPGA's behaviour: what it does, as actions and the items that flow between them. The FPGA part def performs these and allocates each step to a subsystem; a flow between steps in different subsystems is an interface.",
+    "doc": "The Wi-Fi packet router FPGA's behaviour: what it does, as actions and the items that flow between them. The FPGA part def performs these and allocates each step to a subsystem; a flow between steps in different subsystems is an interface. Each step is an action def of its own, so the part that does it can perform it: the part says which of its ports each item enters and leaves by.",
     "itemDefs": [
       {
         "name": "EthFrame",
@@ -44,83 +44,28 @@
         "actions": [
           {
             "name": "receiveFrame",
-            "doc": "Receive the command frame.",
-            "parameters": [
-              {
-                "name": "ethFrame",
-                "direction": "in",
-                "type": "EthFrame"
-              },
-              {
-                "name": "cmd",
-                "direction": "out",
-                "type": "Command"
-              }
-            ]
+            "type": "ReceiveFrame",
+            "doc": "Receive the command frame."
           },
           {
             "name": "decodeCommand",
-            "doc": "Decode the command: it asks for the temperature.",
-            "parameters": [
-              {
-                "name": "cmd",
-                "direction": "in",
-                "type": "Command"
-              },
-              {
-                "name": "request",
-                "direction": "out",
-                "type": "TemperatureRequest"
-              }
-            ]
+            "type": "DecodeCommand",
+            "doc": "Decode the command: it asks for the temperature."
           },
           {
             "name": "readSensor",
-            "doc": "Read the TMP117's temperature register over I2C.",
-            "parameters": [
-              {
-                "name": "request",
-                "direction": "in",
-                "type": "TemperatureRequest"
-              },
-              {
-                "name": "temperature",
-                "direction": "out",
-                "type": "Temperature"
-              }
-            ]
+            "type": "ReadSensor",
+            "doc": "Read the TMP117's temperature register over I2C."
           },
           {
             "name": "buildResponse",
-            "doc": "Build the response from the reading.",
-            "parameters": [
-              {
-                "name": "temperature",
-                "direction": "in",
-                "type": "Temperature"
-              },
-              {
-                "name": "response",
-                "direction": "out",
-                "type": "Response"
-              }
-            ]
+            "type": "BuildResponse",
+            "doc": "Build the response from the reading."
           },
           {
             "name": "sendFrame",
-            "doc": "Put the response in a frame and send it.",
-            "parameters": [
-              {
-                "name": "response",
-                "direction": "in",
-                "type": "Response"
-              },
-              {
-                "name": "ethFrame",
-                "direction": "out",
-                "type": "EthFrame"
-              }
-            ]
+            "type": "SendFrame",
+            "doc": "Put the response in a frame and send it."
           }
         ],
         "bindings": [
@@ -157,6 +102,86 @@
             "from": "buildResponse.response",
             "to": "sendFrame.response",
             "succession": true
+          }
+        ]
+      },
+      {
+        "name": "ReceiveFrame",
+        "doc": "Receive the command frame.",
+        "parameters": [
+          {
+            "name": "ethFrame",
+            "direction": "in",
+            "type": "EthFrame"
+          },
+          {
+            "name": "cmd",
+            "direction": "out",
+            "type": "Command"
+          }
+        ]
+      },
+      {
+        "name": "DecodeCommand",
+        "doc": "Decode the command: it asks for the temperature.",
+        "parameters": [
+          {
+            "name": "cmd",
+            "direction": "in",
+            "type": "Command"
+          },
+          {
+            "name": "request",
+            "direction": "out",
+            "type": "TemperatureRequest"
+          }
+        ]
+      },
+      {
+        "name": "ReadSensor",
+        "doc": "Read the TMP117's temperature register over I2C.",
+        "parameters": [
+          {
+            "name": "request",
+            "direction": "in",
+            "type": "TemperatureRequest"
+          },
+          {
+            "name": "temperature",
+            "direction": "out",
+            "type": "Temperature"
+          }
+        ]
+      },
+      {
+        "name": "BuildResponse",
+        "doc": "Build the response from the reading.",
+        "parameters": [
+          {
+            "name": "temperature",
+            "direction": "in",
+            "type": "Temperature"
+          },
+          {
+            "name": "response",
+            "direction": "out",
+            "type": "Response"
+          }
+        ]
+      },
+      {
+        "name": "SendFrame",
+        "doc": "Put the response in a frame and send it.",
+        "parameters": [
+          {
+            "name": "response",
+            "direction": "in",
+            "type": "Response"
+          },
+          {
+            "name": "ethFrame",
+            "direction": "out",
+            "type": "EthFrame"
           }
         ]
       }

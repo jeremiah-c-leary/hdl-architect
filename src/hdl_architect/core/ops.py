@@ -385,7 +385,17 @@ def rename_port(model: Model, def_name: str, old: str, new: str) -> Result:
     for u in owner.get("ports", []):
         if (u.get("redefines") or {}).get("clock_port") == old:
             u["redefines"]["clock_port"] = new
+    _rename_in_flows(owner, old, new)
     return Result(changed)
+
+
+def _rename_in_flows(owner: dict, old: str, new: str) -> None:
+    """A renamed port, in the flows that say which port an action's item uses."""
+    for flow in owner.get("flows", []):
+        for end in ("from", "to"):
+            port, dot, item = flow[end].partition(".")
+            if port == old:
+                flow[end] = new + dot + item
 
 
 def delete_port(model: Model, def_name: str, port: str) -> Result:
@@ -421,7 +431,29 @@ def delete_port(model: Model, def_name: str, port: str) -> Result:
             notes.append(f"{ident(u)} is no longer paired with a clock.")
     if removed:
         notes.insert(0, f"Removed {removed} wire(s) to {def_name}.{port}.")
+    notes += _remove_from_flows(owner, port)
     return Result(changed, notes)
+
+
+def _flow_uses_port(flow: dict, port: str) -> bool:
+    return port in (flow["from"].split(".")[0], flow["to"].split(".")[0])
+
+
+def _remove_from_flows(owner: dict, port: str) -> list[str]:
+    """A deleted port's flows go: its actions' items no longer say their port."""
+    flows = owner.get("flows", [])
+    kept = [flow for flow in flows if not _flow_uses_port(flow, port)]
+    if len(kept) == len(flows):
+        return []
+    if kept:
+        owner["flows"] = kept
+    else:
+        del owner["flows"]
+    removed = len(flows) - len(kept)
+    return [
+        f"Removed {removed} flow(s) through {port}: those items no longer say "
+        "which port they use."
+    ]
 
 
 def connect_new(model: Model, sheet_name: str, a, b) -> Result:

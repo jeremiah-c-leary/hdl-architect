@@ -17,7 +17,7 @@ Phases (from `HANDOFF.md`): **0** consolidate, **1** HA 2 for architecture, **2*
 | **D** | Descriptions | `doc` on blocks, interfaces, ports | HA 2 | partly |
 | **CO** | Cores | `.core` per block: files, library, version, licence | designer, scaffolder | partly (trial; files still in `@HdlSource`) |
 | **E** | Estimates | resources (and effort) per block | HA 2 | partly (resources: model, device library and `ha report resources`; HA 2 editing to come; effort later) |
-| **F** | Features | feature arcs / scenarios (Gherkin) | HA 2, `.feature` files | partly (action defs in the Wi-Fi model) |
+| **F** | Features | performed actions (HA 1's feature arcs) / scenarios (Gherkin) | HA 2, `.feature` files | partly (model, core and `ha report actions`; HA 2 views next) |
 | **A** | Address map | a window (base, size) per register-bearing block | HA 2 | no |
 | **R** | Registers | leaf `.rdl` files | designer | no |
 | **SQ** | Sequences | register sequences by name (proposed input) | designer | no (needs your OK) |
