@@ -5,16 +5,20 @@ import {
   brokenEnds,
   counterpart,
   endStr,
-  isSheet,
+  instantiablePartDefNames,
   kindOf,
+  packageNameOf,
+  packageOf,
   partDef,
   partType,
   partsOf,
-  pkgOf,
   portDef,
+  portDefNames,
   portsOfDef,
-  short,
+  sheetContaining,
+  sheetNames,
   shown,
+  unqualifiedName,
   wiresOf,
 } from "./model.js";
 import {
@@ -127,7 +131,7 @@ export function render() {
     "text",
     { x: G.LEFT, y: 38, class: "subtitle" },
     svg,
-    `${kindOf(D) || "part def"} · package ${pkgOf(D).model.package.name}${hidden ? ` · ${hidden} wire(s) through deeper features not drawn` : ""}`,
+    `${kindOf(D) || "part def"} · package ${packageOf(D).model.package.name}${hidden ? ` · ${hidden} wire(s) through deeper features not drawn` : ""}`,
   );
   el(
     "text",
@@ -226,7 +230,7 @@ export function render() {
     );
     const sub =
       (gi && net && net.freq
-        ? `${short(port.type)} · ${fmtHz(net.freq)}`
+        ? `${unqualifiedName(port.type)} · ${fmtHz(net.freq)}`
         : port.type) + (pairedClock(port) ? ` @${pairedClock(port)}` : "");
     if (sub)
       el(
@@ -249,7 +253,7 @@ export function render() {
     const q = sl.parts[part.name],
       c = geo.cols[q.col];
     if (!c) continue;
-    const P = short(part.type),
+    const P = unqualifiedName(part.type),
       kind = kindOf(P),
       color = KIND_COLORS[kind] || "#888";
     const g = el("g", {}, svg);
@@ -443,7 +447,7 @@ export function render() {
       );
       const label =
         port.type && !crowded && !gi
-          ? `${shown(port)} · ${short(port.type)}`
+          ? `${shown(port)} · ${unqualifiedName(port.type)}`
           : pc
             ? `${shown(port)} @${pc}`
             : shown(port);
@@ -481,10 +485,8 @@ export function renderSide() {
   const sheets = $("sheets");
   sheets.innerHTML = "";
   const byPkg = {};
-  for (const n of Object.keys(editor.sysmlDefinitions).sort())
-    if (editor.sysmlDefinitions[n].coll === "partDefs" && isSheet(n))
-      (byPkg[editor.sysmlDefinitions[n].pkg.model.package.name] =
-        byPkg[editor.sysmlDefinitions[n].pkg.model.package.name] || []).push(n);
+  for (const n of sheetNames())
+    (byPkg[packageNameOf(n)] = byPkg[packageNameOf(n)] || []).push(n);
   for (const g of Object.keys(byPkg).sort()) {
     const h = document.createElement("div");
     h.className = "group";
@@ -503,15 +505,8 @@ export function renderSide() {
   lib.innerHTML = "";
   const f = $("libFilter").value.toLowerCase();
   const byKind = {};
-  for (const n of Object.keys(editor.sysmlDefinitions).sort()) {
-    const e = editor.sysmlDefinitions[n];
-    if (
-      e.coll !== "partDefs" ||
-      e.def.isAbstract ||
-      KIND_COLORS[n] ||
-      (f && !n.toLowerCase().includes(f))
-    )
-      continue;
+  for (const n of instantiablePartDefNames()) {
+    if (f && !n.toLowerCase().includes(f)) continue;
     (byKind[kindOf(n) || "other"] = byKind[kindOf(n) || "other"] || []).push(n);
   }
   for (const k of Object.keys(byKind).sort()) {
@@ -526,8 +521,7 @@ export function renderSide() {
       it.style.borderLeftColor = KIND_COLORS[k] || "transparent";
       it.textContent = n;
       it.title =
-        (editor.sysmlDefinitions[n].def.doc || "") +
-        "\nDrag onto a column to add an instance.";
+        (partDef(n).doc || "") + "\nDrag onto a column to add an instance.";
       it.ondragstart = (e) => e.dataTransfer.setData("text/x-partdef", n);
       lib.appendChild(it);
     }
@@ -535,23 +529,25 @@ export function renderSide() {
   renderNets();
   const ifs = $("interfaces");
   ifs.innerHTML = "";
-  for (const n of Object.keys(editor.sysmlDefinitions).sort()) {
-    const e = editor.sysmlDefinitions[n];
-    if (e.coll !== "portDefs") continue;
+  for (const n of portDefNames()) {
+    const definition = portDef(n);
     const it = document.createElement("div");
     it.className = "item";
     it.draggable = true;
-    it.textContent = n + (e.def.conjugateOf ? ` ↔ ${e.def.conjugateOf}` : "");
-    const base = e.def.conjugateOf ? portDef(e.def.conjugateOf) : e.def;
+    it.textContent =
+      n + (definition.conjugateOf ? ` ↔ ${definition.conjugateOf}` : "");
+    const base = definition.conjugateOf
+      ? portDef(definition.conjugateOf)
+      : definition;
     it.title =
-      (e.def.doc || "") +
+      (definition.doc || "") +
       "\n" +
       ((base && base.attributes) || [])
         .concat((base && base.items) || [])
         .filter((a) => a.direction)
         .map(
           (a) =>
-            `${e.def.conjugateOf ? { in: "out", out: "in", inout: "inout" }[a.direction] : a.direction} ${a.name}`,
+            `${definition.conjugateOf ? { in: "out", out: "in", inout: "inout" }[a.direction] : a.direction} ${a.name}`,
         )
         .join(", ") +
       "\nDrag onto a port to set its interface.";
@@ -653,13 +649,7 @@ export function renderCrumbs() {
   while (cur && !seen.has(cur)) {
     seen.add(cur);
     chain.unshift(cur);
-    cur = Object.keys(editor.sysmlDefinitions).find(
-      (n) =>
-        editor.sysmlDefinitions[n].coll === "partDefs" &&
-        (editor.sysmlDefinitions[n].def.parts || []).some(
-          (p) => short(p.type) === cur,
-        ),
-    );
+    cur = sheetContaining(cur);
   }
   chain.forEach((n, i) => {
     if (i) c.appendChild(document.createTextNode(" › "));
@@ -695,7 +685,7 @@ export function renderProblems() {
     const freePorts = [],
       untyped = [];
     for (const part of partsOf(D))
-      for (const port of portsOfDef(short(part.type))) {
+      for (const port of portsOfDef(unqualifiedName(part.type))) {
         const e = { kind: "part", part: part.name, port: port.name };
         if (!used.has(endStr(e)) && !isG(e)) freePorts.push(endStr(e));
         if (!port.type) untyped.push(endStr(e));
@@ -855,15 +845,15 @@ export function renderProblems() {
       const a = portUsage(D, w.a),
         b = portUsage(D, w.b);
       if (!a || !b || !a.type || !b.type) continue;
-      const ta = short(a.type) + (a.conjugated ? "~" : ""),
-        tb = short(b.type) + (b.conjugated ? "~" : "");
+      const ta = unqualifiedName(a.type) + (a.conjugated ? "~" : ""),
+        tb = unqualifiedName(b.type) + (b.conjugated ? "~" : "");
       const ok =
         w.kind === "bind"
           ? ta === tb
-          : (counterpart(short(a.type)) === short(b.type) &&
+          : (counterpart(unqualifiedName(a.type)) === unqualifiedName(b.type) &&
               !a.conjugated &&
               !b.conjugated) ||
-            (short(a.type) === short(b.type) &&
+            (unqualifiedName(a.type) === unqualifiedName(b.type) &&
               !!a.conjugated !== !!b.conjugated);
       if (!ok)
         roleErr.push(

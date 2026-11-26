@@ -16,9 +16,9 @@ import {
   columnAt,
   fitHeights,
   geometry,
+  layOutSheet,
   portLayout,
   setAbsY,
-  layOutSheet,
   sheetLayout,
 } from "./layout.js";
 import { changed, redo, snapshot, undo } from "./store.js";
