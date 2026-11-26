@@ -5,6 +5,7 @@
     ha ir       --path DIR ... --top NAME      dump the elaborated IR as JSON
     ha gen NAME ...                            run a generator (ha gen --list)
     ha scaffold ...                            create or update a workspace
+    ha report resources                        estimates vs the target device
     ha connect [--sheet NAME] A B              wire two existing ports (a.p or p)
     ha set-interface DEF.PORT... --type T      set ports' interface (--none clears)
     ha add-port DEF.PORT [--type T]            add a port
@@ -292,6 +293,19 @@ OP_COMMANDS = (
 )
 
 
+REPORTS = {"resources": "hdl_architect.reports.resources"}
+
+
+def _report(argv) -> int:
+    """`ha report NAME`: print what the model says; no files are written."""
+    from importlib import import_module
+
+    if not argv or argv[0] not in REPORTS:
+        print(f"usage: ha report {{{','.join(sorted(REPORTS))}}} ...", file=sys.stderr)
+        return 2
+    return import_module(REPORTS[argv[0]]).main(argv[1:])
+
+
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
@@ -312,6 +326,8 @@ def main(argv=None) -> int:
         return _op_command(cmd, rest)
     if cmd == "op":
         return _op_generic(rest)
+    if cmd == "report":
+        return _report(rest)
     if cmd == "scaffold":
         from hdl_architect.flow.scaffold import main as run
 

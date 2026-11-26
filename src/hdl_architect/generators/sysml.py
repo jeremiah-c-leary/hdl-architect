@@ -64,8 +64,7 @@ def attribute(a: dict, indent: str) -> list[str]:
     body = []
     if "doc" in a:
         body += doc(a["doc"], indent + IND)
-    for name, v in a.get("redefines", {}).items():
-        body.append(f"{indent}{IND}attribute :>> {name} = {value(v)};")
+    body += redefinitions(a.get("redefines", {}), indent + IND)
     if not body:
         return [line + ";"]
     return [line + " {"] + body + [f"{indent}}}"]
@@ -97,11 +96,15 @@ def definition(
     body = doc(d["doc"], indent + IND) if "doc" in d else []
     for a in attrs:
         body += attribute(a, indent + IND)
+    body += redefinitions(d.get("redefines", {}), indent + IND)
     for i in items:
         body += item(i, indent + IND)
+    head = f"{indent}{'abstract ' if d.get('isAbstract') else ''}{keyword} {d['name']}"
+    if d.get("specializes"):
+        head += " :> " + ", ".join(d["specializes"])
     if not body:
-        return [f"{indent}{keyword} {d['name']};"]
-    return [f"{indent}{keyword} {d['name']} {{"] + body + [f"{indent}}}"]
+        return [head + ";"]
+    return [head + " {"] + body + [f"{indent}}}"]
 
 
 def comment(text: str, indent: str) -> list[str]:
@@ -116,7 +119,22 @@ def comment(text: str, indent: str) -> list[str]:
 
 
 def redefinitions(values: dict, indent: str) -> list[str]:
-    return [f"{indent}attribute :>> {k} = {value(v)};" for k, v in values.items()]
+    """`attribute :>> name = value;` for each value; a nested object gives values
+    for that feature's own features: `attribute :>> capacity { ... }`."""
+    lines = []
+    for name, v in values.items():
+        if is_nested_values(v):
+            lines.append(f"{indent}attribute :>> {name} {{")
+            lines += redefinitions(v, indent + IND)
+            lines.append(f"{indent}}}")
+        else:
+            lines.append(f"{indent}attribute :>> {name} = {value(v)};")
+    return lines
+
+
+def is_nested_values(v) -> bool:
+    """A JSON object that is not an Expression: values for a feature's features."""
+    return isinstance(v, dict) and "expr" not in v
 
 
 def usage(keyword: str, u: dict, indent: str) -> list[str]:

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sysmlpy-spike.local/schema/sysml-json/0.6",
-  "title": "SysML-shaped JSON, version 0.6",
-  "description": "A compact JSON form of a SysML v2 subset for FPGA models. One JSON object is one SysML element; relationship objects (memberships, typings, specializations) are folded into fields. Rule: no concept that SysML does not have. Generated to SysML text by layered/gen_sysml.py. Version 0.5 covers packages, attribute defs, item defs, port defs (with attributes and items), metadata defs, part defs (attributes and values, constraints, ports incl. conjugated, parts incl. subsetting and multiplicity ranges, bind, connect, perform, allocate, metadata, comments) and action defs (parameters, steps, bind, flows). A port may be untyped (`port cmd;`): valid SysML, used while exploring; generating HDL needs a port def.",
+  "$id": "https://sysmlpy-spike.local/schema/sysml-json/0.7",
+  "title": "SysML-shaped JSON, version 0.7",
+  "description": "A compact JSON form of a SysML v2 subset for FPGA models. One JSON object is one SysML element; relationship objects (memberships, typings, specializations) are folded into fields. Rule: no concept that SysML does not have. Generated to SysML text by layered/gen_sysml.py. Version 0.5 covers packages, attribute defs, item defs, port defs (with attributes and items), metadata defs, part defs (attributes and values, constraints, ports incl. conjugated, parts incl. subsetting and multiplicity ranges, bind, connect, perform, allocate, metadata, comments) and action defs (parameters, steps, bind, flows). A port may be untyped (`port cmd;`): valid SysML, used while exploring; generating HDL needs a port def. Version 0.7 adds attribute defs that specialize others and give values (`attribute def XCZU9EG :> ZynqUltraScalePlusDevice { :>> capacity { :>> lut = 274080; } }`): nested values, for a feature's own features.",
   "type": "object",
   "required": [
     "schemaVersion",
@@ -14,7 +14,8 @@
       "enum": [
         "0.4",
         "0.5",
-        "0.6"
+        "0.6",
+        "0.7"
       ]
     },
     "package": {
@@ -167,7 +168,7 @@
       }
     },
     "AttributeDef": {
-      "description": "SysML `attribute def`: a value type (Logic, LogicVector, Analog).",
+      "description": "SysML `attribute def`: a value type (Logic, LogicVector, Analog), or a record of values (a device family's resources, a device).",
       "type": "object",
       "required": [
         "name"
@@ -180,11 +181,26 @@
         "doc": {
           "$ref": "#/$defs/Doc"
         },
+        "isAbstract": {
+          "type": "boolean",
+          "default": false
+        },
+        "specializes": {
+          "description": "`:> A, B`",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QualifiedName"
+          }
+        },
         "attributes": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/Attribute"
           }
+        },
+        "redefines": {
+          "description": "`attribute :>> name = value;` for inherited attributes; a nested object gives values for that attribute's own features (`:>> capacity { :>> lut = 274080; }`).",
+          "$ref": "#/$defs/Values"
         }
       }
     },
@@ -309,13 +325,29 @@
       "minLength": 1
     },
     "Values": {
-      "description": "Values for features of the type, written `attribute :>> name = value;` (a port's lanes, a metadata field).",
+      "description": "Values for features of the type, written `attribute :>> name = value;` (a port's lanes, a metadata field). A nested object gives values for that feature's own features: `{\"capacity\": {\"lut\": 274080}}` is `attribute :>> capacity { attribute :>> lut = 274080; }`. (`expr` is not a feature name here: `{\"expr\": ...}` is an Expression.)",
       "type": "object",
       "propertyNames": {
-        "$ref": "#/$defs/Name"
+        "allOf": [
+          {
+            "$ref": "#/$defs/Name"
+          },
+          {
+            "not": {
+              "const": "expr"
+            }
+          }
+        ]
       },
       "additionalProperties": {
-        "$ref": "#/$defs/Value"
+        "oneOf": [
+          {
+            "$ref": "#/$defs/Value"
+          },
+          {
+            "$ref": "#/$defs/Values"
+          }
+        ]
       }
     },
     "MetadataDef": {

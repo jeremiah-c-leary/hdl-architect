@@ -33,6 +33,7 @@ commands, activate it:
     ha gen sysml $SP --out gen/sysml              # SysML v2 text (for SysON)
 
     cd examples/wifi_router && ha scaffold        # settings from its ha.toml; workspace in ws/wifi
+    ha report resources                           # estimates rolled up, against the target device
     ha connect adc_if.cfg Control.adc_cfg         # wire two ports (from a design folder)
     ha set-interface Uart.irq --type BitIn        # set a port's interface
     ha rename-port AdcInterface.ref_clk jesd_clk  # its wires and clock pairings follow

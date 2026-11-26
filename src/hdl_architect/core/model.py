@@ -22,7 +22,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator
 
-RESOURCE_ATTRS = {"lut", "ff", "dsp", "bram", "uram"}
+RESOURCE_ATTRS = {"lut", "ff", "dsp", "bram", "uram"}  # FpgaOne's older, flat form
+# SysML's scalar value types: an attribute of one of these on a part def is a
+# VHDL generic. Others (a device, a resource estimate) are model data only.
+SCALAR_TYPES = {"Integer", "Natural", "Positive", "Real", "Boolean", "String"}
 
 
 @dataclass
@@ -354,12 +357,16 @@ def _jvalue(v):
     return v["expr"] if isinstance(v, dict) else v
 
 
+def _is_generic(attribute: dict) -> bool:
+    """A part def's attribute that becomes a VHDL generic: one of a scalar type."""
+    is_scalar = attribute["type"].split("::")[-1] in SCALAR_TYPES
+    return is_scalar and attribute["name"] not in RESOURCE_ATTRS
+
+
 def _jelaborate(
     model: _JsonModel, defn: dict, source_file: Path, name: str, path: str
 ) -> Instance:
-    gen_attrs = [
-        a for a in defn.get("attributes", []) if a["name"] not in RESOURCE_ATTRS
-    ]
+    gen_attrs = [a for a in defn.get("attributes", []) if _is_generic(a)]
     spec = defn.get("specializes", [])
     inst = Instance(
         name=name,

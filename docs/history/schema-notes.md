@@ -158,3 +158,38 @@ package's imports, and the same elaboration rules build the IR. FpgaOne from
 JSON: the IR equals the sysmlpy IR except `source_file`; `compile.do` is
 byte-identical; the VHDL differs only in its header line ("generated ... from
 fpga_one.json"); Questa compiles it with 0 errors.
+
+## Version 0.7: devices and resource estimates (2026-11-25)
+
+Attribute defs may now be abstract, specialize other attribute defs and give
+values (`redefines`), and values may nest: `{"capacity": {"lut": 274080}}` is
+`attribute :>> capacity { attribute :>> lut = 274080; }`. The shape, in
+`examples/wifi_router/fpga_devices.json`:
+
+| JSON | SysML |
+|---|---|
+| `attributeDefs[] {name: ZynqUltraScalePlusResources, specializes: [FpgaResources], attributes: [lut, ...]}` | a device family's resources: what blocks estimate |
+| `attributeDefs[] {name: XCZU9EG, specializes: [ZynqUltraScalePlusDevice], redefines: {capacity: {lut: 274080, ...}}}` | a device and its capacity |
+| part def `attributes[] {name: device, type: XCZU9EG}` | the FPGA's target device |
+| part def `attributes[] {name: zynqUltraScalePlusEstimate, type: ZynqUltraScalePlusResources, redefines: {lut: 120}}` | a block's estimate |
+
+Only attributes of a scalar type (Integer, Natural, Positive, Real, Boolean,
+String) become VHDL generics; a device or an estimate is model data only.
+
+SysON check: the 12 files generated from the Wi-Fi example were inserted into
+a new SysON v2026.11 project (`resource-estimates-check-2`): all accepted, no
+messages (a first try warned that `FpgaDevices` used `Integer` without
+importing `ScalarValues`: fixed in the JSON). Read back with AQL: all 30
+redefinitions of the new attributes resolve to the right element (29 to the
+same-named attribute of `ZynqUltraScalePlusResources`, `capacity` to
+`ZynqUltraScalePlusDevice`'s); `device` is typed by `FpgaDevices::XCZU9EG`,
+the 9 estimates by `ZynqUltraScalePlusResources`; XCZU9EG specializes
+`ZynqUltraScalePlusDevice`; `lut = 274080` sits under `XCZU9EG.capacity`.
+
+Rule (decided 2026-11-25): only leaves (Rtl, VendorIp, HardMacro,
+RegisterFile) carry estimates. A roll-up block (one with parts, or of a
+roll-up kind: Subsystem, FpgaPart, ...) is the sum of its parts and may not
+have an estimate: a subsystem is broken down, never estimated. An estimate on
+one is an error in `ha report resources`; a roll-up block without parts is
+listed "to break down". The Wi-Fi subsystems' estimates (in the SysON check
+above) were removed accordingly.

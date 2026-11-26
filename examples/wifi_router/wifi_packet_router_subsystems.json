@@ -8,6 +8,9 @@
         "name": "PartKinds::*"
       },
       {
+        "name": "FpgaDevices::*"
+      },
+      {
         "name": "PortDefs::*"
       },
       {
@@ -176,6 +179,17 @@
         "specializes": [
           "Rtl"
         ],
+        "attributes": [
+          {
+            "name": "zynqUltraScalePlusEstimate",
+            "type": "ZynqUltraScalePlusResources",
+            "redefines": {
+              "lut": 300,
+              "ff": 250
+            },
+            "doc": "Estimate for Zynq UltraScale+ devices (illustrative numbers for this example)."
+          }
+        ],
         "ports": [
           {
             "name": "temp_i2c",
@@ -207,6 +221,17 @@
         "doc": "Status out over the UART to the USB-UART bridge.",
         "specializes": [
           "Rtl"
+        ],
+        "attributes": [
+          {
+            "name": "zynqUltraScalePlusEstimate",
+            "type": "ZynqUltraScalePlusResources",
+            "redefines": {
+              "lut": 250,
+              "ff": 200
+            },
+            "doc": "Estimate for Zynq UltraScale+ devices (illustrative numbers for this example)."
+          }
         ],
         "ports": [
           {
