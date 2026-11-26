@@ -12,8 +12,11 @@ The model (examples/wifi_router/fpga_devices.json shows the shape):
 - A block's estimate is an attribute typed by the family's resources:
   `attribute zynqUltraScalePlusEstimate : ZynqUltraScalePlusResources {...}`.
 
-A block with parts uses the sum of its parts; a block without parts uses its
-own estimate, or is "not estimated" (counted as zero, and listed).
+Roll-up blocks (with parts, or of a roll-up kind: Subsystem, FpgaPart, ...)
+are the sum of their parts and may not have an estimate of their own: a
+subsystem is broken down, never estimated. Leaves (Rtl, VendorIp, ...) carry
+the estimates; a leaf without one is "not estimated" (counted as zero, and
+listed), and a roll-up block without parts is "to break down".
 """
 
 from __future__ import annotations
@@ -24,6 +27,13 @@ from hdl_architect.core.model import ModelError, _JsonModel
 
 DEVICE_ROOT = "FpgaDevice"
 RESOURCES_ROOT = "FpgaResources"
+ROLL_UP_KINDS = {"SystemPart", "FpgaPart", "Fpga", "Subsystem", "Container"}
+
+# How a block's resources are known.
+ESTIMATED = "estimated"  # a leaf with an estimate
+NOT_ESTIMATED = "not estimated"  # a leaf without one
+SUM_OF_PARTS = "sum of parts"  # a roll-up block with parts
+TO_BREAK_DOWN = "to break down"  # a roll-up block without parts yet
 
 
 @dataclass
@@ -33,7 +43,7 @@ class BlockUse:
     path: str
     definition: str
     used: dict[str, int]
-    estimated: bool  # False: a block without parts and without an estimate
+    status: str  # ESTIMATED, NOT_ESTIMATED, SUM_OF_PARTS or TO_BREAK_DOWN
     children: list[BlockUse] = field(default_factory=list)
 
 
@@ -51,10 +61,16 @@ class Target:
 class ResourceReport:
     target: Target
     top: BlockUse
-    notes: list[str]
+    problems: list[str]  # model errors: an estimate on a roll-up block
 
     def not_estimated(self) -> list[str]:
-        return [block.path for block in leaves(self.top) if not block.estimated]
+        return self.paths_with_status(NOT_ESTIMATED)
+
+    def to_break_down(self) -> list[str]:
+        return self.paths_with_status(TO_BREAK_DOWN)
+
+    def paths_with_status(self, status: str) -> list[str]:
+        return [block.path for block in leaves(self.top) if block.status == status]
 
     def over_capacity(self) -> list[str]:
         """The resources the FPGA needs more of than its device has."""
@@ -76,10 +92,10 @@ def resource_report(search_path, top: str) -> ResourceReport:
     model = _JsonModel(search_path)
     top_definition = part_def(model, top)
     target = target_of(model, top_definition)
-    notes: list[str] = []
-    walk = HierarchyWalk(model, target, notes)
+    problems: list[str] = []
+    walk = HierarchyWalk(model, target, problems)
     top_use = walk.block(top_definition, path=top)
-    return ResourceReport(target, top_use, notes)
+    return ResourceReport(target, top_use, problems)
 
 
 # ---------------------------------------------------------------- the target device
@@ -132,28 +148,39 @@ def resource_names(model: _JsonModel, family: str) -> list[str]:
 class HierarchyWalk:
     """Walks the part hierarchy, summing each block's resources."""
 
-    def __init__(self, model: _JsonModel, target: Target, notes: list[str]):
+    def __init__(self, model: _JsonModel, target: Target, problems: list[str]):
         self.model = model
         self.target = target
-        self.notes = notes
+        self.problems = problems
 
     def block(self, definition: dict, path: str) -> BlockUse:
-        parts = concrete_parts(definition)
-        if parts:
-            return self.container(definition, parts, path)
+        if self.is_roll_up(definition):
+            return self.roll_up(definition, path)
         return self.leaf(definition, path)
 
-    def container(self, definition: dict, parts: list[dict], path: str) -> BlockUse:
+    def is_roll_up(self, definition: dict) -> bool:
+        if concrete_parts(definition):
+            return True
+        return bool(ROLL_UP_KINDS & part_generals(self.model, definition["name"]))
+
+    def roll_up(self, definition: dict, path: str) -> BlockUse:
+        self.refuse_own_estimate(definition, path)
+        parts = concrete_parts(definition)
         children = [self.part(part, path) for part in parts]
         used = self.zeros()
         for child, part in zip(children, parts):
             add_into(used, child.used, part_count(part))
-        if self.estimate_of(definition) is not None:
-            self.notes.append(
-                f"{path}: its own estimate is not used: it has parts, so it "
-                "uses the sum of its parts"
-            )
-        return BlockUse(path, definition["name"], used, True, children)
+        status = SUM_OF_PARTS if parts else TO_BREAK_DOWN
+        return BlockUse(path, definition["name"], used, status, children)
+
+    def refuse_own_estimate(self, definition: dict, path: str) -> None:
+        if self.estimate_of(definition) is None:
+            return
+        self.problems.append(
+            f"{path} ({definition['name']}) may not have an estimate: it is a "
+            "roll-up block, the sum of its parts. Break it down, and estimate "
+            "the parts."
+        )
 
     def part(self, part: dict, parent_path: str) -> BlockUse:
         definition = part_def(self.model, part["type"])
@@ -162,9 +189,9 @@ class HierarchyWalk:
     def leaf(self, definition: dict, path: str) -> BlockUse:
         estimate = self.estimate_of(definition)
         if estimate is None:
-            return BlockUse(path, definition["name"], self.zeros(), False)
+            return BlockUse(path, definition["name"], self.zeros(), NOT_ESTIMATED)
         used = with_zeros(estimate, self.target.resource_names)
-        return BlockUse(path, definition["name"], used, True)
+        return BlockUse(path, definition["name"], used, ESTIMATED)
 
     def estimate_of(self, definition: dict) -> dict | None:
         """The block's estimate in the target's family, or None."""
@@ -203,6 +230,20 @@ def with_zeros(values: dict, names: list[str]) -> dict[str, int]:
 def part_def(model: _JsonModel, name: str) -> dict:
     definition, _ = model.get(unqualified(name), "partDefs", name)
     return definition
+
+
+def part_generals(model: _JsonModel, name: str) -> set[str]:
+    """A part def and every part def it specializes, directly or not."""
+    found: set[str] = set()
+    pending = [unqualified(name)]
+    while pending:
+        current = pending.pop()
+        entry = model.defs.get(current)
+        if current in found or entry is None or entry[0] != "partDefs":
+            continue
+        found.add(current)
+        pending += [unqualified(n) for n in entry[1].get("specializes", [])]
+    return found
 
 
 def attribute_def(model: _JsonModel, name: str) -> dict | None:

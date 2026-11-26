@@ -24,18 +24,6 @@
         "specializes": [
           "Subsystem"
         ],
-        "attributes": [
-          {
-            "name": "zynqUltraScalePlusEstimate",
-            "type": "ZynqUltraScalePlusResources",
-            "redefines": {
-              "lut": 9000,
-              "ff": 12000,
-              "bram36": 24
-            },
-            "doc": "Estimate for Zynq UltraScale+ devices (illustrative numbers for this example)."
-          }
-        ],
         "ports": [
           {
             "name": "eth_rgmii",
@@ -77,18 +65,6 @@
         "doc": "The AD9208: its JESD204B link (receive) and its SPI configuration. Gives ADC samples.",
         "specializes": [
           "Subsystem"
-        ],
-        "attributes": [
-          {
-            "name": "zynqUltraScalePlusEstimate",
-            "type": "ZynqUltraScalePlusResources",
-            "redefines": {
-              "lut": 6500,
-              "ff": 9000,
-              "bram36": 8
-            },
-            "doc": "Estimate for Zynq UltraScale+ devices (illustrative numbers for this example)."
-          }
         ],
         "ports": [
           {
@@ -138,18 +114,6 @@
         "doc": "The AD9172: its JESD204B link (transmit), its SPI configuration, TXEN, reset and IRQ. Takes DAC samples.",
         "specializes": [
           "Subsystem"
-        ],
-        "attributes": [
-          {
-            "name": "zynqUltraScalePlusEstimate",
-            "type": "ZynqUltraScalePlusResources",
-            "redefines": {
-              "lut": 5500,
-              "ff": 7500,
-              "bram36": 4
-            },
-            "doc": "Estimate for Zynq UltraScale+ devices (illustrative numbers for this example)."
-          }
         ],
         "ports": [
           {
@@ -294,19 +258,6 @@
         "doc": "Takes commands from Ethernet and answers them; turns ADC samples into Ethernet packets. May hold subsystems of its own.",
         "specializes": [
           "Subsystem"
-        ],
-        "attributes": [
-          {
-            "name": "zynqUltraScalePlusEstimate",
-            "type": "ZynqUltraScalePlusResources",
-            "redefines": {
-              "lut": 60000,
-              "ff": 90000,
-              "bram36": 200,
-              "dsp48": 600
-            },
-            "doc": "Estimate for Zynq UltraScale+ devices (illustrative numbers for this example)."
-          }
         ],
         "ports": [
           {

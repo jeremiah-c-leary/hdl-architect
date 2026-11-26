@@ -185,3 +185,11 @@ same-named attribute of `ZynqUltraScalePlusResources`, `capacity` to
 `ZynqUltraScalePlusDevice`'s); `device` is typed by `FpgaDevices::XCZU9EG`,
 the 9 estimates by `ZynqUltraScalePlusResources`; XCZU9EG specializes
 `ZynqUltraScalePlusDevice`; `lut = 274080` sits under `XCZU9EG.capacity`.
+
+Rule (decided 2026-11-25): only leaves (Rtl, VendorIp, HardMacro,
+RegisterFile) carry estimates. A roll-up block (one with parts, or of a
+roll-up kind: Subsystem, FpgaPart, ...) is the sum of its parts and may not
+have an estimate: a subsystem is broken down, never estimated. An estimate on
+one is an error in `ha report resources`; a roll-up block without parts is
+listed "to break down". The Wi-Fi subsystems' estimates (in the SysON check
+above) were removed accordingly.

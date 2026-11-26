@@ -510,18 +510,6 @@
         "specializes": [
           "Subsystem"
         ],
-        "attributes": [
-          {
-            "name": "zynqUltraScalePlusEstimate",
-            "type": "ZynqUltraScalePlusResources",
-            "redefines": {
-              "lut": 4000,
-              "ff": 5000,
-              "bram36": 4
-            },
-            "doc": "Estimate for Zynq UltraScale+ devices (illustrative numbers for this example)."
-          }
-        ],
         "ports": [
           {
             "name": "UART CSR",

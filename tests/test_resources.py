@@ -45,17 +45,18 @@ def test_the_wifi_design_rolls_up_and_fits():
     assert report.target.device == "XCZU9EG"
     assert report.target.capacity["lut"] == 274080
     assert report.top.used == {
-        "lut": 85960,
-        "ff": 124312,
-        "bram36": 240,
+        "lut": 960,
+        "ff": 812,
+        "bram36": 0,
         "uram": 0,
-        "dsp48": 600,
+        "dsp48": 0,
     }
     assert report.over_capacity() == []
     assert report.not_estimated() == []
+    assert report.problems == []
 
 
-def test_a_container_is_the_sum_of_its_parts():
+def test_a_block_with_parts_is_the_sum_of_its_parts():
     report = resource_report([WIFI], TOP)
     clock_reset = next(
         c for c in report.top.children if c.path.endswith("CLK_RST_CTRL")
@@ -67,14 +68,14 @@ def test_a_block_without_an_estimate_is_listed_and_counts_zero(wifi_copy):
     change_def(wifi_copy, SUBSYSTEMS, "Uart", remove_estimate)
     report = resource_report([wifi_copy], TOP)
     assert report.not_estimated() == [f"{TOP}.uart"]
-    assert report.top.used["lut"] == 85960 - 250
+    assert report.top.used["lut"] == 960 - 250
 
 
 def test_a_design_that_does_not_fit(wifi_copy, capsys):
     change_def(
         wifi_copy,
         SUBSYSTEMS,
-        "Processing",
+        "Uart",
         lambda d: estimate_of(d)["redefines"].update(lut=300000),
     )
     assert resource_report([wifi_copy], TOP).over_capacity() == ["lut"]
@@ -98,21 +99,39 @@ def test_an_fpga_without_a_target_device(wifi_copy, capsys):
     assert "no target device" in capsys.readouterr().err
 
 
-def test_a_container_s_own_estimate_is_not_used_and_says_so(wifi_copy):
-    rst_sync_estimate = {
-        "name": "zynqUltraScalePlusEstimate",
-        "type": "ZynqUltraScalePlusResources",
-        "redefines": {"lut": 999},
-    }
-    change_def(
-        wifi_copy,
-        FPGA,
-        "CLKRSTCTRL",
-        lambda d: d.setdefault("attributes", []).append(rst_sync_estimate),
+def add_estimate(definition: dict) -> None:
+    definition.setdefault("attributes", []).append(
+        {
+            "name": "zynqUltraScalePlusEstimate",
+            "type": "ZynqUltraScalePlusResources",
+            "redefines": {"lut": 999},
+        }
     )
+
+
+def test_a_block_with_parts_may_not_have_an_estimate(wifi_copy, capsys):
+    change_def(wifi_copy, FPGA, "CLKRSTCTRL", add_estimate)
     report = resource_report([wifi_copy], TOP)
-    assert report.top.used["lut"] == 85960
-    assert any("CLK_RST_CTRL: its own estimate is not used" in n for n in report.notes)
+    assert report.top.used["lut"] == 960
+    assert len(report.problems) == 1
+    assert "CLK_RST_CTRL (CLKRSTCTRL) may not have an estimate" in report.problems[0]
+    assert ha(["report", "resources", "--path", str(wifi_copy), "--top", TOP]) == 1
+    assert "error: " in capsys.readouterr().out
+
+
+def test_a_subsystem_without_parts_may_not_have_an_estimate(wifi_copy):
+    change_def(wifi_copy, SUBSYSTEMS, "Ethernet", add_estimate)
+    report = resource_report([wifi_copy], TOP)
+    assert report.top.used["lut"] == 960
+    assert "ethernet (Ethernet) may not have an estimate" in report.problems[0]
+
+
+def test_subsystems_without_parts_are_listed_to_break_down():
+    report = resource_report([WIFI], TOP)
+    assert report.to_break_down() == [
+        f"{TOP}.{name}"
+        for name in ["ethernet", "adc_if", "dac_if", "processing", "Control"]
+    ]
 
 
 def test_a_part_s_multiplicity_multiplies_its_estimate(wifi_copy):
@@ -120,7 +139,7 @@ def test_a_part_s_multiplicity_multiplies_its_estimate(wifi_copy):
         definition["parts"][0]["multiplicity"] = 3
 
     change_def(wifi_copy, FPGA, "CLKRSTCTRL", three_reset_syncs)
-    assert resource_report([wifi_copy], TOP).top.used["lut"] == 85960 + 2 * 10
+    assert resource_report([wifi_copy], TOP).top.used["lut"] == 960 + 2 * 10
 
 
 def test_the_report_prints_the_table_and_the_fit(capsys):
@@ -128,7 +147,7 @@ def test_the_report_prints_the_table_and_the_fit(capsys):
     out = capsys.readouterr().out
     assert "Resources on XCZU9EG (ZynqUltraScalePlusResources)" in out
     assert "  uart : Uart" in out
-    assert "31%" in out
+    assert "to break down (no parts yet): " in out
 
 
 def test_estimates_and_the_device_are_not_vhdl_generics():

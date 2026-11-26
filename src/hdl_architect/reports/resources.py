@@ -8,7 +8,13 @@ import sys
 
 from hdl_architect.core import config
 from hdl_architect.core.model import ModelError
-from hdl_architect.core.resources import BlockUse, ResourceReport, resource_report
+from hdl_architect.core.resources import (
+    NOT_ESTIMATED,
+    TO_BREAK_DOWN,
+    BlockUse,
+    ResourceReport,
+    resource_report,
+)
 
 INDENT = "  "
 
@@ -49,7 +55,7 @@ def model_settings(args) -> tuple[list[str], str]:
 
 
 def exit_code(report: ResourceReport) -> int:
-    if report.over_capacity():
+    if report.over_capacity() or report.problems:
         return 1
     return 0
 
@@ -89,7 +95,7 @@ class Table:
         return lines
 
     def used_cells(self, block: BlockUse) -> list[str]:
-        if not block.estimated:
+        if block.status in (NOT_ESTIMATED, TO_BREAK_DOWN):
             return ["-" for _ in self.names]
         return [str(block.used[name]) for name in self.names]
 
@@ -131,9 +137,12 @@ def problem_lines(report: ResourceReport) -> list[str]:
     lines = [""]
     for name in report.over_capacity():
         lines.append(f"warning: {name}: the design needs more than the device has")
+    for problem in report.problems:
+        lines.append(f"error: {problem}")
     missing = report.not_estimated()
     if missing:
         lines.append("not estimated (counted as 0): " + ", ".join(missing))
-    for note in report.notes:
-        lines.append(f"note: {note}")
+    unbroken = report.to_break_down()
+    if unbroken:
+        lines.append("to break down (no parts yet): " + ", ".join(unbroken))
     return lines
