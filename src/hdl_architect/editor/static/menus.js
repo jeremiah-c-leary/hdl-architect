@@ -64,8 +64,8 @@ export function hideMenu() {
 }
 export function portDefMenu(x, y, P, port, cur) {
   const groups = {};
-  for (const n of Object.keys(editor.defs).sort()) {
-    const e = editor.defs[n];
+  for (const n of Object.keys(editor.sysmlDefinitions).sort()) {
+    const e = editor.sysmlDefinitions[n];
     if (e.coll !== "portDefs") continue;
     (groups[e.pkg.model.package.name] =
       groups[e.pkg.model.package.name] || []).push(n);
@@ -83,8 +83,8 @@ export function portDefMenu(x, y, P, port, cur) {
         label:
           (n === cur ? "✓ " : "") +
           n +
-          (editor.defs[n].def.conjugateOf
-            ? `  (mirror of ${editor.defs[n].def.conjugateOf})`
+          (editor.sysmlDefinitions[n].def.conjugateOf
+            ? `  (mirror of ${editor.sysmlDefinitions[n].def.conjugateOf})`
             : ""),
         act: () => setPortType(P, port, n),
       });
@@ -93,8 +93,8 @@ export function portDefMenu(x, y, P, port, cur) {
 }
 export function libraryMenu(x, y, D, col, yy) {
   const items = [{ head: "Add an instance of" }];
-  for (const n of Object.keys(editor.defs).sort()) {
-    const e = editor.defs[n];
+  for (const n of Object.keys(editor.sysmlDefinitions).sort()) {
+    const e = editor.sysmlDefinitions[n];
     if (
       e.coll === "partDefs" &&
       !e.def.isAbstract &&
@@ -240,7 +240,7 @@ export function compMenu(ev, D, name) {
       act: () => {
         const n = askName("Definition name", P);
         if (n && n !== P) {
-          if (editor.defs[n]) alert(`${n} already exists.`);
+          if (editor.sysmlDefinitions[n]) alert(`${n} already exists.`);
           else renameDef(P, n);
         }
       },
@@ -265,10 +265,10 @@ export function compMenu(ev, D, name) {
       label: "Change definition…",
       act: () => {
         const items = [{ head: `Type of ${name}` }];
-        for (const n of Object.keys(editor.defs).sort())
+        for (const n of Object.keys(editor.sysmlDefinitions).sort())
           if (
-            editor.defs[n].coll === "partDefs" &&
-            !editor.defs[n].def.isAbstract &&
+            editor.sysmlDefinitions[n].coll === "partDefs" &&
+            !editor.sysmlDefinitions[n].def.isAbstract &&
             !KIND_COLORS[n] &&
             n !== D
           )
@@ -290,7 +290,8 @@ export async function editDoc(title, target, hintText) {
   // target: { def } or { def, port }
   const obj = target.port
     ? portsOfDef(target.def).find((p) => p.name === target.port)
-    : editor.defs[target.def] && editor.defs[target.def].def;
+    : editor.sysmlDefinitions[target.def] &&
+      editor.sysmlDefinitions[target.def].def;
   if (!obj) return;
   const text = await askText(title, obj.doc, hintText);
   if (text === null) return;
@@ -341,8 +342,8 @@ export function portMenu(ev, P, name, isEdge) {
         label: "Set their interface…",
         act: () => {
           const items = [{ head: `Interface of ${n} ports` }];
-          for (const t of Object.keys(editor.defs).sort())
-            if (editor.defs[t].coll === "portDefs")
+          for (const t of Object.keys(editor.sysmlDefinitions).sort())
+            if (editor.sysmlDefinitions[t].coll === "portDefs")
               items.push({
                 label: t,
                 act: () => setPortsType(editor.picked, t),

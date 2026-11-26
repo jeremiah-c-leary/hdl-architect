@@ -481,10 +481,10 @@ export function renderSide() {
   const sheets = $("sheets");
   sheets.innerHTML = "";
   const byPkg = {};
-  for (const n of Object.keys(editor.defs).sort())
-    if (editor.defs[n].coll === "partDefs" && isSheet(n))
-      (byPkg[editor.defs[n].pkg.model.package.name] =
-        byPkg[editor.defs[n].pkg.model.package.name] || []).push(n);
+  for (const n of Object.keys(editor.sysmlDefinitions).sort())
+    if (editor.sysmlDefinitions[n].coll === "partDefs" && isSheet(n))
+      (byPkg[editor.sysmlDefinitions[n].pkg.model.package.name] =
+        byPkg[editor.sysmlDefinitions[n].pkg.model.package.name] || []).push(n);
   for (const g of Object.keys(byPkg).sort()) {
     const h = document.createElement("div");
     h.className = "group";
@@ -503,8 +503,8 @@ export function renderSide() {
   lib.innerHTML = "";
   const f = $("libFilter").value.toLowerCase();
   const byKind = {};
-  for (const n of Object.keys(editor.defs).sort()) {
-    const e = editor.defs[n];
+  for (const n of Object.keys(editor.sysmlDefinitions).sort()) {
+    const e = editor.sysmlDefinitions[n];
     if (
       e.coll !== "partDefs" ||
       e.def.isAbstract ||
@@ -526,7 +526,7 @@ export function renderSide() {
       it.style.borderLeftColor = KIND_COLORS[k] || "transparent";
       it.textContent = n;
       it.title =
-        (editor.defs[n].def.doc || "") +
+        (editor.sysmlDefinitions[n].def.doc || "") +
         "\nDrag onto a column to add an instance.";
       it.ondragstart = (e) => e.dataTransfer.setData("text/x-partdef", n);
       lib.appendChild(it);
@@ -535,8 +535,8 @@ export function renderSide() {
   renderNets();
   const ifs = $("interfaces");
   ifs.innerHTML = "";
-  for (const n of Object.keys(editor.defs).sort()) {
-    const e = editor.defs[n];
+  for (const n of Object.keys(editor.sysmlDefinitions).sort()) {
+    const e = editor.sysmlDefinitions[n];
     if (e.coll !== "portDefs") continue;
     const it = document.createElement("div");
     it.className = "item";
@@ -653,10 +653,12 @@ export function renderCrumbs() {
   while (cur && !seen.has(cur)) {
     seen.add(cur);
     chain.unshift(cur);
-    cur = Object.keys(editor.defs).find(
+    cur = Object.keys(editor.sysmlDefinitions).find(
       (n) =>
-        editor.defs[n].coll === "partDefs" &&
-        (editor.defs[n].def.parts || []).some((p) => short(p.type) === cur),
+        editor.sysmlDefinitions[n].coll === "partDefs" &&
+        (editor.sysmlDefinitions[n].def.parts || []).some(
+          (p) => short(p.type) === cur,
+        ),
     );
   }
   chain.forEach((n, i) => {
