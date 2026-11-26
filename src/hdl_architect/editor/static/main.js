@@ -29,7 +29,7 @@ import { $ } from "./svg.js";
 import { setStatus, showDefaultHint } from "./statusbar.js";
 import { isSheet, kindOf, partDef, indexSysmlDefinitions } from "./model.js";
 import { settle } from "./layout.js";
-import { checkModel, markAllPackagesSaved, redo, undo } from "./store.js";
+import { checkModel, markAllSysmlPackagesSaved, redo, undo } from "./store.js";
 import { render, renderSide } from "./render.js";
 import { goBack } from "./interaction.js";
 
@@ -79,8 +79,8 @@ async function start() {
 /** Every model file, with its layout, from the server. */
 async function loadModel() {
   const response = await fetch("/api/model");
-  editor.pkgs = (await response.json()).packages;
-  markAllPackagesSaved(); // what was loaded is what is on disk
+  editor.sysmlPackages = (await response.json()).packages;
+  markAllSysmlPackagesSaved(); // what was loaded is what is on disk
   indexSysmlDefinitions(); // name -> definition, for lookups
 }
 
@@ -90,8 +90,8 @@ async function loadModel() {
  */
 function openFirstSheet() {
   const named = decodeURIComponent(location.hash.slice(1));
-  const sheets = Object.keys(editor.defs)
-    .filter((n) => editor.defs[n].coll === "partDefs" && isSheet(n))
+  const sheets = Object.keys(editor.sysmlDefinitions)
+    .filter((n) => editor.sysmlDefinitions[n].coll === "partDefs" && isSheet(n))
     .sort();
   const isFpga = (n) => ["Fpga", "FpgaPart"].includes(kindOf(n));
   const first = partDef(named) ? named : sheets.find(isFpga) || sheets[0];

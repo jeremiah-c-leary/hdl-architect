@@ -47,8 +47,8 @@ export const COLLS = [
 ];
 
 export const editor = {
-  pkgs: [], // {file, model, layout}
-  defs: {}, // name -> {pkg, coll, def}
+  sysmlPackages: [], // the model files: {file, model (one SysML package), layout, version}
+  sysmlDefinitions: {}, // every SysML definition by name: {pkg, coll, def}
   sheet: null,
   back: [],
   sel: null, // {kind:'part', name}

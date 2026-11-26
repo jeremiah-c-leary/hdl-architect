@@ -12,12 +12,14 @@ import { render, renderProblems } from "./render.js";
 
 // ------------------------------------------------------------------ change, undo, save
 export function snapshot() {
-  return JSON.stringify(editor.pkgs.map((p) => [p.model, p.layout || null]));
+  return JSON.stringify(
+    editor.sysmlPackages.map((p) => [p.model, p.layout || null]),
+  );
 }
 export function restore(snap) {
   JSON.parse(snap).forEach(([m, l], i) => {
-    editor.pkgs[i].model = m;
-    editor.pkgs[i].layout = l;
+    editor.sysmlPackages[i].model = m;
+    editor.sysmlPackages[i].layout = l;
   });
 }
 export function mutate(fn) {
@@ -51,7 +53,7 @@ export function changed() {
 }
 export function repairImports() {
   // every definition a package refers to must be visible in it: add missing imports
-  for (const pkg of editor.pkgs)
+  for (const pkg of editor.sysmlPackages)
     for (const coll of COLLS)
       for (const d of pkg.model.package[coll] || []) {
         const refs = [
@@ -68,7 +70,7 @@ export function repairImports() {
           ].map((u) => u.type),
         ];
         for (const r of refs)
-          if (r && editor.defs[short(r)]) ensureImport(pkg, r);
+          if (r && editor.sysmlDefinitions[short(r)]) ensureImport(pkg, r);
       }
 }
 export function undo() {
@@ -101,7 +103,9 @@ export async function put(url, body) {
 }
 /** Run a model operation on the server (core.ops via POST /api/op). */
 export async function runOp(op, args) {
-  const bases = Object.fromEntries(editor.pkgs.map((p) => [p.file, p.version]));
+  const bases = Object.fromEntries(
+    editor.sysmlPackages.map((p) => [p.file, p.version]),
+  );
   const r = await fetch("/api/op", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -115,8 +119,8 @@ export async function runOp(op, args) {
  * Record every file's model and layout, as text, as what is on disk now.
  * saveAll compares against this to send only what has changed since.
  */
-export function markAllPackagesSaved() {
-  for (const pkg of editor.pkgs)
+export function markAllSysmlPackagesSaved() {
+  for (const pkg of editor.sysmlPackages)
     editor.saved[pkg.file] = {
       modelText: JSON.stringify(pkg.model),
       layoutText: JSON.stringify(pkg.layout || null),
@@ -125,7 +129,7 @@ export function markAllPackagesSaved() {
 /** Take the files an operation changed: they are now saved as they are. */
 export function takeChanged(changed) {
   for (const c of changed) {
-    const p = editor.pkgs.find((x) => x.file === c.file);
+    const p = editor.sysmlPackages.find((x) => x.file === c.file);
     p.model = c.model;
     p.version = c.version;
     editor.saved[p.file] = Object.assign(editor.saved[p.file] || {}, {
@@ -172,7 +176,7 @@ export async function flushSave() {
 export async function saveAll() {
   setStatus("saving…");
   const problems = [];
-  for (const pkg of editor.pkgs) {
+  for (const pkg of editor.sysmlPackages) {
     // what is in the page now, and what was last saved, as text
     const modelText = JSON.stringify(pkg.model),
       layoutText = JSON.stringify(pkg.layout || null);

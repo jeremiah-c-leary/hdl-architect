@@ -3,28 +3,28 @@ import { COLLS, CONTAINER_KINDS, KIND_COLORS, editor } from "./state.js";
 
 // ------------------------------------------------------------------ model index and queries
 /**
- * Build editor.defs: every SysML definition in every package (part, port,
+ * Build editor.sysmlDefinitions: every SysML definition in every package (part, port,
  * attribute, item, metadata and action defs), by name, with its package.
  * Rebuilt after every change, so lookups like partDef("Uart") stay current.
  */
 export function indexSysmlDefinitions() {
-  editor.defs = {};
-  for (const pkg of editor.pkgs)
+  editor.sysmlDefinitions = {};
+  for (const pkg of editor.sysmlPackages)
     for (const coll of COLLS)
       for (const d of pkg.model.package[coll] || [])
-        editor.defs[d.name] = { pkg, coll, def: d };
+        editor.sysmlDefinitions[d.name] = { pkg, coll, def: d };
 }
 export const short = (n) => (n || "").split("::").pop();
 export function partDef(n) {
-  const e = editor.defs[short(n)];
+  const e = editor.sysmlDefinitions[short(n)];
   return e && e.coll === "partDefs" ? e.def : null;
 }
 export function portDef(n) {
-  const e = editor.defs[short(n)];
+  const e = editor.sysmlDefinitions[short(n)];
   return e && e.coll === "portDefs" ? e.def : null;
 }
 export function pkgOf(n) {
-  const e = editor.defs[short(n)];
+  const e = editor.sysmlDefinitions[short(n)];
   return e ? e.pkg : null;
 }
 export function kindOf(n, seen = new Set()) {
@@ -62,15 +62,15 @@ export function counterpart(t) {
   if (!t) return undefined;
   const d = portDef(t);
   if (d && d.conjugateOf) return d.conjugateOf;
-  for (const n in editor.defs) {
-    const e = editor.defs[n];
+  for (const n in editor.sysmlDefinitions) {
+    const e = editor.sysmlDefinitions[n];
     if (e.coll === "portDefs" && e.def.conjugateOf === short(t)) return n;
   }
   return t;
 }
 export function visibleIn(pkg, n) {
   // is definition n usable in pkg without a new import?
-  const e = editor.defs[short(n)];
+  const e = editor.sysmlDefinitions[short(n)];
   if (!e) return true;
   if (e.pkg === pkg) return true;
   return (pkg.model.package.imports || []).some(
@@ -79,7 +79,7 @@ export function visibleIn(pkg, n) {
 }
 export function ensureImport(pkg, n) {
   if (visibleIn(pkg, n)) return;
-  const target = editor.defs[short(n)].pkg.model.package.name;
+  const target = editor.sysmlDefinitions[short(n)].pkg.model.package.name;
   (pkg.model.package.imports = pkg.model.package.imports || []).push({
     name: target + "::*",
   });
