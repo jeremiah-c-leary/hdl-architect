@@ -29,7 +29,7 @@ import { $ } from "./svg.js";
 import { setStatus, showDefaultHint } from "./statusbar.js";
 import { isSheet, kindOf, partDef, rebuildIndex } from "./model.js";
 import { settle } from "./layout.js";
-import { checkModel, redo, undo } from "./store.js";
+import { checkModel, markAllSaved, redo, undo } from "./store.js";
 import { render, renderSide } from "./render.js";
 import { goBack } from "./interaction.js";
 
@@ -76,18 +76,11 @@ async function start() {
   checkModel(); // the server checks the whole model; problems appear under the sheet
 }
 
-/**
- * Every model file, with its layout, from the server. What was loaded is
- * also what is saved: editor.saved lets a later save tell what has changed.
- */
+/** Every model file, with its layout, from the server. */
 async function loadModel() {
   const response = await fetch("/api/model");
   editor.pkgs = (await response.json()).packages;
-  for (const pkg of editor.pkgs)
-    editor.saved[pkg.file] = {
-      modelText: JSON.stringify(pkg.model),
-      layoutText: JSON.stringify(pkg.layout || null),
-    };
+  markAllSaved(); // what was loaded is what is on disk
   rebuildIndex();
 }
 
