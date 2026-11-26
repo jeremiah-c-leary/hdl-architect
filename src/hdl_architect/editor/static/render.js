@@ -481,80 +481,134 @@ export function render() {
   renderProblems();
   if (typeof CT !== "undefined" && CT.open) renderClockTree(); // keep the clock tree in step
 }
+/** The side panel: the sheets, the clocks and resets, the library, the interfaces. */
 export function renderSide() {
-  const sheets = $("sheets");
-  sheets.innerHTML = "";
-  const byPkg = {};
-  for (const n of sheetNames())
-    (byPkg[packageNameOf(n)] = byPkg[packageNameOf(n)] || []).push(n);
-  for (const g of Object.keys(byPkg).sort()) {
-    const h = document.createElement("div");
-    h.className = "group";
-    h.textContent = g;
-    sheets.appendChild(h);
-    for (const n of byPkg[g]) {
-      const it = document.createElement("div");
-      it.className = "item" + (n === editor.sheet ? " cur" : "");
-      it.style.borderLeftColor = KIND_COLORS[kindOf(n)] || "transparent";
-      it.textContent = n;
-      it.onclick = () => openSheet(n);
-      sheets.appendChild(it);
-    }
-  }
-  const lib = $("library");
-  lib.innerHTML = "";
-  const f = $("libFilter").value.toLowerCase();
-  const byKind = {};
-  for (const n of instantiablePartDefNames()) {
-    if (f && !n.toLowerCase().includes(f)) continue;
-    (byKind[kindOf(n) || "other"] = byKind[kindOf(n) || "other"] || []).push(n);
-  }
-  for (const k of Object.keys(byKind).sort()) {
-    const h = document.createElement("div");
-    h.className = "group";
-    h.textContent = k;
-    lib.appendChild(h);
-    for (const n of byKind[k]) {
-      const it = document.createElement("div");
-      it.className = "item";
-      it.draggable = true;
-      it.style.borderLeftColor = KIND_COLORS[k] || "transparent";
-      it.textContent = n;
-      it.title =
-        (partDef(n).doc || "") + "\nDrag onto a column to add an instance.";
-      it.ondragstart = (e) => e.dataTransfer.setData("text/x-partdef", n);
-      lib.appendChild(it);
-    }
-  }
+  renderSheetList();
+  renderLibrary();
   renderNets();
-  const ifs = $("interfaces");
-  ifs.innerHTML = "";
-  for (const n of portDefNames()) {
-    const definition = portDef(n);
-    const it = document.createElement("div");
-    it.className = "item";
-    it.draggable = true;
-    it.textContent =
-      n + (definition.conjugateOf ? ` ↔ ${definition.conjugateOf}` : "");
-    const base = definition.conjugateOf
-      ? portDef(definition.conjugateOf)
-      : definition;
-    it.title =
-      (definition.doc || "") +
-      "\n" +
-      ((base && base.attributes) || [])
-        .concat((base && base.items) || [])
-        .filter((a) => a.direction)
-        .map(
-          (a) =>
-            `${definition.conjugateOf ? { in: "out", out: "in", inout: "inout" }[a.direction] : a.direction} ${a.name}`,
-        )
-        .join(", ") +
-      "\nDrag onto a port to set its interface.";
-    it.ondragstart = (ev) => ev.dataTransfer.setData("text/x-portdef", n);
-    ifs.appendChild(it);
+  renderInterfaces();
+}
+
+/** Every sheet, grouped by package; the open one marked. */
+function renderSheetList() {
+  const list = $("sheets");
+  list.innerHTML = "";
+  const byPackage = groupBy(sheetNames(), packageNameOf);
+  for (const packageName of Object.keys(byPackage).sort()) {
+    list.appendChild(groupHeading(packageName));
+    for (const sheetName of byPackage[packageName])
+      list.appendChild(sheetItem(sheetName));
   }
 }
+
+function sheetItem(sheetName) {
+  const item = sideItem(sheetName, kindColor(kindOf(sheetName)));
+  if (sheetName === editor.sheet) item.classList.add("cur");
+  item.onclick = () => openSheet(sheetName);
+  return item;
+}
+
+/** The part defs you can add an instance of, by kind, filtered by the box above. */
+function renderLibrary() {
+  const list = $("library");
+  list.innerHTML = "";
+  const filter = $("libFilter").value.toLowerCase();
+  const shown = instantiablePartDefNames().filter((name) =>
+    name.toLowerCase().includes(filter),
+  );
+  const byKind = groupBy(shown, (name) => kindOf(name) || "other");
+  for (const kind of Object.keys(byKind).sort()) {
+    list.appendChild(groupHeading(kind));
+    for (const name of byKind[kind]) list.appendChild(libraryItem(name, kind));
+  }
+}
+
+function libraryItem(name, kind) {
+  const item = sideItem(name, kindColor(kind));
+  item.draggable = true;
+  item.title =
+    (partDef(name).doc || "") + "\nDrag onto a column to add an instance.";
+  item.ondragstart = (event) =>
+    event.dataTransfer.setData("text/x-partdef", name);
+  return item;
+}
+
+/** Every interface (port def), with its mirror role and signals as a tooltip. */
+function renderInterfaces() {
+  const list = $("interfaces");
+  list.innerHTML = "";
+  for (const name of portDefNames()) list.appendChild(interfaceItem(name));
+}
+
+function interfaceItem(name) {
+  const mirrorOf = portDef(name).conjugateOf;
+  const item = sideItem(name);
+  if (mirrorOf) item.textContent += ` ↔ ${mirrorOf}`;
+  item.draggable = true;
+  item.title =
+    (portDef(name).doc || "") +
+    "\n" +
+    signalSummary(name) +
+    "\nDrag onto a port to set its interface.";
+  item.ondragstart = (event) =>
+    event.dataTransfer.setData("text/x-portdef", name);
+  return item;
+}
+
+/**
+ * An interface's signals with their directions from its own side
+ * ("in clk, out data"). A mirror role (conjugateOf) has its base's signals,
+ * directions swapped.
+ */
+function signalSummary(name) {
+  const mirrorOf = portDef(name).conjugateOf;
+  const base = mirrorOf ? portDef(mirrorOf) : portDef(name);
+  if (!base) return "";
+  const features = [...(base.attributes || []), ...(base.items || [])];
+  const directed = features.filter((feature) => feature.direction);
+  return directed
+    .map((feature) => `${direction(feature, mirrorOf)} ${feature.name}`)
+    .join(", ");
+}
+
+function direction(feature, mirrored) {
+  if (!mirrored) return feature.direction;
+  return { in: "out", out: "in", inout: "inout" }[feature.direction];
+}
+
+/** A side panel group heading. */
+function groupHeading(text) {
+  const heading = document.createElement("div");
+  heading.className = "group";
+  heading.textContent = text;
+  return heading;
+}
+
+/** A side panel item; with a colour, as its left border. */
+function sideItem(text, borderColor) {
+  const item = document.createElement("div");
+  item.className = "item";
+  item.textContent = text;
+  if (borderColor) item.style.borderLeftColor = borderColor;
+  return item;
+}
+
+/** A kind's colour, or transparent for a def without a kind. */
+function kindColor(kind) {
+  return KIND_COLORS[kind] || "transparent";
+}
+
+/** Names grouped by a key: {key: [names in their order]}. */
+function groupBy(names, keyOf) {
+  const groups = {};
+  for (const name of names) {
+    const key = keyOf(name);
+    groups[key] = groups[key] || [];
+    groups[key].push(name);
+  }
+  return groups;
+}
+
 export function renderNets() {
   const box = $("nets");
   if (!box) return;

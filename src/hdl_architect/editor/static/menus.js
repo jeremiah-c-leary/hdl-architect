@@ -175,109 +175,139 @@ export function colMenu(ev, col) {
   );
   menu(ev.clientX, ev.clientY, items);
 }
+/**
+ * The right-click menu of a component (a part on a sheet). `component` holds
+ * what every item needs: {sheet, part, def}: the sheet it is on, its part
+ * name, and its part def.
+ */
 export function compMenu(ev, D, name) {
-  const P = partType(D, name);
-  menu(ev.clientX, ev.clientY, [
-    { head: `${name} : ${P}` },
-    { label: "Open its sheet", act: () => openSheet(P) },
+  const component = { sheet: D, part: name, def: partType(D, name) };
+  const position = { x: ev.clientX, y: ev.clientY };
+  menu(position.x, position.y, [
+    { head: `${component.part} : ${component.def}` },
+    ...arrangeItems(component),
+    ...addPortItems(component),
+    { sep: true },
+    ...definitionItems(component, position),
+    { sep: true },
+    {
+      label: "Delete",
+      danger: true,
+      act: () => deletePart(component.sheet, component.part),
+    },
+  ]);
+}
+
+/** Open its sheet, and move it on this one. */
+function arrangeItems(component) {
+  const { sheet, part, def } = component;
+  return [
+    { label: "Open its sheet", act: () => openSheet(def) },
     {
       label: "Flip: swap its ports' sides  (F)",
-      act: () => flipComponent(D, name),
+      act: () => flipComponent(sheet, part),
     },
     {
       label: "Move one column left  (Ctrl+←)",
-      act: () => moveColumn(D, name, -1),
+      act: () => moveColumn(sheet, part, -1),
     },
     {
       label: "Move one column right (Ctrl+→)",
-      act: () => moveColumn(D, name, +1),
+      act: () => moveColumn(sheet, part, +1),
+    },
+  ];
+}
+
+/** Add a clock, reset or SYSREF port, or any port, to its part def. */
+function addPortItems(component) {
+  const def = component.def;
+  const globalPort = (label, category, portDirection, name) => ({
+    label,
+    act: () => addGlobalPort(def, category, portDirection, name),
+  });
+  return [
+    globalPort("Add a clock input…", "clock", "in", "clk"),
+    globalPort("Add a reset input…", "reset", "in", "rst"),
+    globalPort("Add a clock output…", "clock", "out", "clk_out"),
+    globalPort("Add a reset output…", "reset", "out", "rst_out"),
+    globalPort("Add a SYSREF input…", "sysref", "in", "sysref"),
+    { label: "Add a port…", act: () => askAndAddPort(def) },
+  ];
+}
+
+function askAndAddPort(def) {
+  const name = askName(`New port of ${def}`, uniquePortName(def, "port"));
+  if (!name) return;
+  if (portsOfDef(def).some((port) => port.name === name)) {
+    alert(`${def} already has a port ${name}.`);
+    return;
+  }
+  newPort(def, name, "left");
+}
+
+/** Its description, names, kind and definition. */
+function definitionItems(component, position) {
+  const { sheet, part, def } = component;
+  const hasDoc = partDef(def) && partDef(def).doc;
+  return [
+    {
+      label: `Description of ${def}${hasDoc ? " ✓" : ""}…`,
+      act: () => editDoc(`Description of ${def} (every instance)`, { def }),
+    },
+    { label: "Rename instance…", act: () => askAndRenamePart(sheet, part) },
+    {
+      label: `Rename definition ${def}…`,
+      act: () => askAndRenameDef(def),
     },
     {
-      label: "Add a clock input…",
-      act: () => addGlobalPort(P, "clock", "in", "clk"),
-    },
-    {
-      label: "Add a reset input…",
-      act: () => addGlobalPort(P, "reset", "in", "rst"),
-    },
-    {
-      label: "Add a clock output…",
-      act: () => addGlobalPort(P, "clock", "out", "clk_out"),
-    },
-    {
-      label: "Add a reset output…",
-      act: () => addGlobalPort(P, "reset", "out", "rst_out"),
-    },
-    {
-      label: "Add a SYSREF input…",
-      act: () => addGlobalPort(P, "sysref", "in", "sysref"),
-    },
-    {
-      label: "Add a port…",
-      act: () => {
-        const n = askName(`New port of ${P}`, uniquePortName(P, "port"));
-        if (!n) return;
-        if (portsOfDef(P).some((p) => p.name === n)) {
-          alert(`${P} already has a port ${n}.`);
-          return;
-        }
-        newPort(P, n, "left");
-      },
-    },
-    { sep: true },
-    {
-      label: `Description of ${P}${partDef(P) && partDef(P).doc ? " ✓" : ""}…`,
-      act: () => editDoc(`Description of ${P} (every instance)`, { def: P }),
-    },
-    {
-      label: "Rename instance…",
-      act: () => {
-        const n = askName("Instance name", name);
-        if (n && n !== name) renamePart(D, name, n);
-      },
-    },
-    {
-      label: `Rename definition ${P}…`,
-      act: () => {
-        const n = askName("Definition name", P);
-        if (n && n !== P) {
-          if (isDefined(n)) alert(`${n} already exists.`);
-          else renameDef(P, n);
-        }
-      },
-    },
-    {
-      label: `Kind: ${kindOf(P) || "none"}…`,
-      act: () => {
-        const items = [{ head: `${P} is a…` }];
-        for (const k of kindsAvailable())
-          items.push({
-            label: (k === kindOf(P) ? "✓ " : "") + k,
-            act: () => setKind(P, k),
-          });
-        if (items.length === 1)
-          items.push({
-            head: "No kinds in the model (part defs named Rtl, VendorIp, ...)",
-          });
-        menu(ev.clientX, ev.clientY, items);
-      },
+      label: `Kind: ${kindOf(def) || "none"}…`,
+      act: () => kindMenu(def, position),
     },
     {
       label: "Change definition…",
-      act: () => {
-        const items = [{ head: `Type of ${name}` }];
-        for (const n of instantiablePartDefNames())
-          if (n !== D)
-            items.push({
-              label: (n === P ? "✓ " : "") + n,
-              act: () => setPartDef(D, name, n),
-            });
-        menu(ev.clientX, ev.clientY, items);
-      },
+      act: () => changeDefinitionMenu(component, position),
     },
-    { sep: true },
-    { label: "Delete", danger: true, act: () => deletePart(D, name) },
-  ]);
+  ];
+}
+
+function askAndRenamePart(sheet, part) {
+  const name = askName("Instance name", part);
+  if (name && name !== part) renamePart(sheet, part, name);
+}
+
+function askAndRenameDef(def) {
+  const name = askName("Definition name", def);
+  if (!name || name === def) return;
+  if (isDefined(name)) alert(`${name} already exists.`);
+  else renameDef(def, name);
+}
+
+/** Choose the part def's kind (Rtl, Subsystem, ...). */
+function kindMenu(def, position) {
+  const items = [{ head: `${def} is a…` }];
+  for (const kind of kindsAvailable())
+    items.push({
+      label: (kind === kindOf(def) ? "✓ " : "") + kind,
+      act: () => setKind(def, kind),
+    });
+  if (items.length === 1)
+    items.push({
+      head: "No kinds in the model (part defs named Rtl, VendorIp, ...)",
+    });
+  menu(position.x, position.y, items);
+}
+
+/** Make the part an instance of another part def. */
+function changeDefinitionMenu(component, position) {
+  const { sheet, part, def } = component;
+  const items = [{ head: `Type of ${part}` }];
+  for (const name of instantiablePartDefNames())
+    if (name !== sheet)
+      items.push({
+        label: (name === def ? "✓ " : "") + name,
+        act: () => setPartDef(sheet, part, name),
+      });
+  menu(position.x, position.y, items);
 }
 // ------------------------------------------------------------------ descriptions (SysML `doc`)
 // A description (SysML doc) and a port's readable name are model operations
