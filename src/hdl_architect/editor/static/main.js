@@ -87,9 +87,8 @@ async function loadModel() {
 /** Open the first sheet and lay it out. */
 function openFirstSheet() {
   if (modelHasNoSheets()) return;
-  const sheet = chooseFirstSheet();
-  editor.sheet = sheet;
-  layOutSheet(sheet);
+  editor.sheet = chooseFirstSheet();
+  layOutSheet(editor.sheet);
 }
 
 function modelHasNoSheets() {
