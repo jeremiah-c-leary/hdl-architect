@@ -185,6 +185,34 @@ never estimated.
 - Both follow every change. The numbers come from the core, the same as
   `ha report resources`.
 
+## Performed actions
+
+What a part def does is a SysML `perform action`; a composed action has
+steps, each performed by a part of the sheet; an item a step gets or gives
+travels "via a port" (HANDOFF decision 13). Read-only in HA 2 for now: the
+model is edited with the operations (`ha op add_step ...`, `ha op --list`).
+
+- **Performs** (side panel) lists the actions the open sheet performs:
+  how many steps, how many are performed or still to break down, and how
+  many items have no wire to travel on. Click one for its sequence;
+  right-click to show its footprint.
+- **The sequence view**: a lifeline per part that performs a step (the
+  sheet's own ports on the left), the steps down the page in each part's
+  kind colour, and an arrow per item: solid where a wire carries it, red
+  and dashed where none does, grey and dotted where a port is not said.
+  Hover an arrow for the wires it travels on. **▶** on a lifeline expands
+  a part whose steps are broken down: its parts' lifelines in a bracket,
+  its steps as their sub-steps (1.1, 1.2), the items going on to the
+  sub-step that takes them. **▼** folds it; **Expand all** / **Collapse
+  all**. Esc closes it.
+- **Footprint** (the view's button, or right-click in Performs) shows the
+  action on the sheet: the parts that perform its steps with their step
+  numbers, the wires its items travel on thicker, the rest dimmed, and a
+  red dashed line for each item with no wire. ✕ in the bar above the
+  sheet hides it.
+- All three follow every change; the data is the core's, as
+  `ha report actions` prints it.
+
 ## Checks
 
 The footer lists, for the open sheet: edge ports not wired inside,
@@ -237,5 +265,6 @@ page to pick up the change; edits made since the last good save are lost.
 
 - a CSR bus as a global net;
 - importing HA 1 drawings (`fpga-hierarchy (*.json)`);
-- protocol (port def) and HW part editors; feature arcs and the sequence view;
+- protocol (port def) and HW part editors; editing performed actions in HA 2
+  (the steps editor);
 - effort estimates; a new package (file) from the tool; a device from the tool.

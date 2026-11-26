@@ -656,3 +656,142 @@ svg text {
   background: var(--bg);
   color: var(--ink);
 }
+
+/* the Performs section (performspanel.js) */
+.perform {
+  white-space: normal;
+  padding: 3px 6px;
+}
+.perform-head {
+  display: flex;
+  gap: 6px;
+}
+.perform-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+.perform-summary {
+  color: var(--muted);
+  font-size: 11px;
+}
+.perform-summary.has-missing {
+  color: var(--err);
+}
+/* an action's footprint on the sheet (footprint.js) */
+#footprintBar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+#footprintBar[hidden] {
+  display: none;
+}
+.fp-dim {
+  opacity: 0.3;
+}
+.wire.fp-used {
+  stroke-width: 3;
+}
+.fp-missing {
+  fill: none;
+  stroke: var(--err);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+.fp-badge {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+/* the sequence view (sequenceview.js) */
+#sequenceView {
+  position: fixed;
+  inset: 40px 30px;
+  z-index: 5;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+}
+#sequenceView[hidden] {
+  display: none;
+}
+#seqSvg text {
+  font-size: 11px;
+  text-anchor: middle;
+  fill: var(--ink);
+}
+.seq-lane-name {
+  font-weight: 600;
+}
+#seqSvg .seq-lane-def {
+  fill: var(--muted);
+}
+.seq-lane.expandable {
+  cursor: pointer;
+}
+.seq-lifeline {
+  stroke: var(--line);
+  stroke-dasharray: 4 4;
+}
+.seq-bracket {
+  cursor: pointer;
+}
+.seq-bracket-box {
+  fill: none;
+  stroke: var(--muted);
+  stroke-dasharray: 3 3;
+}
+#seqSvg .seq-bracket-name {
+  text-anchor: start;
+  font-weight: 600;
+}
+.seq-step-box {
+  stroke: #8795a8;
+}
+#seqSvg .seq-step-name {
+  font-weight: 600;
+  fill: #ffffff;
+}
+#seqSvg .seq-step-detail {
+  font-size: 10px;
+  fill: rgba(255, 255, 255, 0.85);
+}
+.seq-arrow {
+  fill: none;
+  stroke: var(--wire);
+  stroke-width: 1.6;
+  marker-end: url(#seq-head);
+}
+.seq-head {
+  fill: var(--wire);
+}
+.seq-head-missing {
+  fill: var(--err);
+}
+.seq-missing .seq-arrow {
+  stroke: var(--err);
+  stroke-dasharray: 6 4;
+  marker-end: url(#seq-head-missing);
+}
+#seqSvg .seq-missing .seq-label {
+  fill: var(--err);
+}
+.seq-unknown .seq-arrow {
+  stroke: var(--muted);
+  stroke-dasharray: 2 3;
+}
+#seqSvg .seq-note {
+  text-anchor: start;
+  fill: var(--muted);
+}

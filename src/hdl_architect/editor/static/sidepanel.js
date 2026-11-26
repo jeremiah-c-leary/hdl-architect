@@ -1,15 +1,18 @@
-// HA 2: the side panel: the sheets, the clocks and resets (netpanel.js), the
+// HA 2: the side panel: the sheets, what the sheet performs (performspanel.js),
+// the clocks and resets (netpanel.js), the
 // library of part defs to drag onto a sheet, and the interfaces (port defs)
 // to drag onto a port.
 import * as interaction from "./interaction.js";
 import * as model from "./model.js";
 import * as netPanel from "./netpanel.js";
+import * as performsPanel from "./performspanel.js";
 import * as state from "./state.js";
 import * as svg from "./svg.js";
 
 /** Redraw every section of the side panel. */
 export function renderSide() {
   renderSheetList();
+  performsPanel.renderPerforms();
   renderLibrary();
   netPanel.renderNets();
   renderInterfaces();

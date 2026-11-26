@@ -13,6 +13,8 @@ this server is an editor for them, like SysON is for its model. It:
   - runs model operations (core.ops, POST /api/op) on the files and writes them.
   - reports the resource roll-up of an FPGA, and its fit on every device of
     its family (core.resources, GET /api/resources, GET /api/devices).
+  - says what a part def performs, step by step (core.actions, GET
+    /api/actions?def=...).
 It listens on 127.0.0.1 only and writes only the files it loaded (and their
 sidecars).
 """
@@ -235,6 +237,17 @@ class Store:
             return {"error": str(e)}
         return resources.report_as_dict(report)
 
+    def actions(self, def_name: str) -> dict:
+        """What part def `def_name` performs, step by step (core.actions), or
+        {"error": ...}."""
+        from hdl_architect.core import actions
+
+        try:
+            report = actions.action_report(self.paths, def_name)
+        except core_model.ModelError as e:
+            return {"error": str(e)}
+        return actions.report_as_dict(report)
+
     def devices(self, top: str) -> dict:
         """`top` on every device of its family (core.resources), or {"error"}."""
         from hdl_architect.core import resources
@@ -304,6 +317,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/check":
             with LOCK:
                 return self._json({"errors": self.store.check()})
+        if path == "/api/actions":
+            def_name = parse_qs(urlsplit(self.path).query).get("def", [""])[0]
+            with LOCK:
+                return self._json(self.store.actions(def_name))
         if path in ("/api/resources", "/api/devices"):
             top = parse_qs(urlsplit(self.path).query).get("top", [""])[0]
             report = {
