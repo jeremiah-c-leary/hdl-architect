@@ -61,6 +61,8 @@ class Model:
         self.part_defs: dict[str, tuple[str, dict, dict]] = {}
         self.port_defs: dict[str, tuple[str, dict, dict]] = {}
         self.attribute_defs: dict[str, tuple[str, dict, dict]] = {}
+        self.action_defs: dict[str, tuple[str, dict, dict]] = {}
+        self.item_defs: dict[str, tuple[str, dict, dict]] = {}
         # id(package dict) -> qualified name
         self.package_name: dict[int, str] = {}
         for fid, doc in self.docs.items():
@@ -76,6 +78,10 @@ class Model:
             self.port_defs[d["name"]] = (fid, pkg, d)
         for d in pkg.get("attributeDefs", []):
             self.attribute_defs[d["name"]] = (fid, pkg, d)
+        for d in pkg.get("actionDefs", []):
+            self.action_defs[d["name"]] = (fid, pkg, d)
+        for d in pkg.get("itemDefs", []):
+            self.item_defs[d["name"]] = (fid, pkg, d)
         for sub in pkg.get("packages", []):
             self._index(fid, sub, qname + "::")
 
@@ -110,6 +116,17 @@ class Model:
     def ensure_attribute_import(self, pkg: dict, def_name: str) -> None:
         """Make attribute def `def_name` visible in package `pkg` (add `Pkg::*`)."""
         entry = self.attribute_defs.get(short(def_name))
+        if entry is None or entry[1] is pkg:
+            return
+        owner = self.package_name[id(entry[1])]
+        names = {i["name"] for i in pkg.get("imports", [])}
+        if f"{owner}::*" not in names and f"{owner}::{short(def_name)}" not in names:
+            pkg.setdefault("imports", []).append({"name": f"{owner}::*"})
+
+    def ensure_def_import(self, pkg: dict, index: dict, def_name: str) -> None:
+        """Make a definition in `index` (e.g. self.action_defs) visible in
+        package `pkg` (add `Pkg::*`)."""
+        entry = index.get(short(def_name))
         if entry is None or entry[1] is pkg:
             return
         owner = self.package_name[id(entry[1])]
@@ -1296,12 +1313,21 @@ OPERATIONS = {
 }
 
 
+def operations() -> dict:
+    """Every operation: this module's, and the performed actions' (action_ops,
+    which builds on this module, so it is imported here, when first needed)."""
+    from hdl_architect.core.action_ops import ACTION_OPERATIONS
+
+    return {**OPERATIONS, **ACTION_OPERATIONS}
+
+
 def run(model: Model, name: str, args: dict) -> Result:
     """Run operation `name` with `args`; unknown names, missing or unknown
     arguments are refused (a typo is never ignored)."""
-    if name not in OPERATIONS:
+    every = operations()
+    if name not in every:
         raise OpError("unknown_op", f"no operation {name!r} (see `ha op --list`)")
-    call, required, optional = OPERATIONS[name]
+    call, required, optional = every[name]
     missing = [k for k in required if k not in args]
     extra = [k for k in args if k not in required and k not in optional]
     if missing or extra:
