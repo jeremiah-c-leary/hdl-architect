@@ -12,7 +12,13 @@
  */
 import { KIND_COLORS, editor } from "./state.js";
 import { el, tip, trunc } from "./svg.js";
-import { kindOf, partDef, partType, partsOf, short } from "./model.js";
+import {
+  kindOf,
+  partDef,
+  partType,
+  partsOf,
+  unqualifiedName,
+} from "./model.js";
 import { NET_COLORS, fmtHz, netsOf, portUsage } from "./nets.js";
 
 export const CT = { open: false, mode: "clock", sysref: true, flatten: false }; // mode: 'clock' or 'reset'
@@ -50,7 +56,7 @@ export function buildClockTree(D) {
     // flattened subsystems first, inputs resolved from this sheet's nets
     for (const p of partsOf(Dx)) {
       if (!flat(p.name)) continue;
-      const P = short(p.type),
+      const P = unqualifiedName(p.type),
         inc = {};
       for (const n of nets)
         if (cats.has(n.cat))

@@ -2,12 +2,12 @@
 import { G } from "./state.js";
 import {
   endStr,
+  packageOf,
   partDef,
   partType,
   partsOf,
-  pkgOf,
   portsOfDef,
-  short,
+  unqualifiedName,
   wiresOf,
 } from "./model.js";
 import { drawnWires } from "./nets.js";
@@ -20,16 +20,16 @@ export function layoutOf(pkg) {
   return pkg.layout;
 }
 export function sheetLayout(D) {
-  const L = layoutOf(pkgOf(D));
+  const L = layoutOf(packageOf(D));
   return L.sheets[D] || (L.sheets[D] = { columns: 0, parts: {}, edge: {} });
 }
 export function portLayout(P, port) {
-  const L = layoutOf(pkgOf(P));
+  const L = layoutOf(packageOf(P));
   const m = L.ports[P] || (L.ports[P] = {});
   return m[port] || (m[port] = { side: "left", offset: G.PMT });
 }
 export function hasPortLayout(P, port) {
-  const L = layoutOf(pkgOf(P));
+  const L = layoutOf(packageOf(P));
   return !!(L.ports[P] && L.ports[P][port]);
 }
 
@@ -98,7 +98,7 @@ export function ensureLayout(D) {
   }
   // ports of each component's def: face their peer
   for (const p of parts) {
-    const P = short(p.type);
+    const P = unqualifiedName(p.type);
     if (!partDef(P)) continue;
     for (const port of portsOfDef(P)) {
       if (hasPortLayout(P, port.name)) continue;
@@ -144,7 +144,7 @@ export function fitHeights(D) {
       .map(endStr),
   );
   for (const p of partsOf(D)) {
-    const P = short(p.type),
+    const P = unqualifiedName(p.type),
       q = sl.parts[p.name];
     if (!q) continue;
     let need = G.MINH;

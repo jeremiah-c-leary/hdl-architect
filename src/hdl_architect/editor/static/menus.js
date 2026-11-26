@@ -3,7 +3,18 @@ import { KIND_COLORS, editor } from "./state.js";
 import { $, trunc } from "./svg.js";
 import { showDefaultHint } from "./statusbar.js";
 import { askName, askText } from "./dialogs.js";
-import { kindOf, partDef, partType, portsOfDef } from "./model.js";
+import {
+  definition,
+  instantiablePartDefNames,
+  isDefined,
+  kindOf,
+  packageNameOf,
+  partDef,
+  partType,
+  portDef,
+  portDefNames,
+  portsOfDef,
+} from "./model.js";
 import { addGlobalPort, pairMenu, pairable, pairedClock } from "./nets.js";
 import { applyOp } from "./store.js";
 import {
@@ -64,12 +75,8 @@ export function hideMenu() {
 }
 export function portDefMenu(x, y, P, port, cur) {
   const groups = {};
-  for (const n of Object.keys(editor.sysmlDefinitions).sort()) {
-    const e = editor.sysmlDefinitions[n];
-    if (e.coll !== "portDefs") continue;
-    (groups[e.pkg.model.package.name] =
-      groups[e.pkg.model.package.name] || []).push(n);
-  }
+  for (const n of portDefNames())
+    (groups[packageNameOf(n)] = groups[packageNameOf(n)] || []).push(n);
   const items = [
     { head: `Interface of ${port}` },
     cur
@@ -83,8 +90,8 @@ export function portDefMenu(x, y, P, port, cur) {
         label:
           (n === cur ? "✓ " : "") +
           n +
-          (editor.sysmlDefinitions[n].def.conjugateOf
-            ? `  (mirror of ${editor.sysmlDefinitions[n].def.conjugateOf})`
+          (portDef(n).conjugateOf
+            ? `  (mirror of ${portDef(n).conjugateOf})`
             : ""),
         act: () => setPortType(P, port, n),
       });
@@ -93,14 +100,8 @@ export function portDefMenu(x, y, P, port, cur) {
 }
 export function libraryMenu(x, y, D, col, yy) {
   const items = [{ head: "Add an instance of" }];
-  for (const n of Object.keys(editor.sysmlDefinitions).sort()) {
-    const e = editor.sysmlDefinitions[n];
-    if (
-      e.coll === "partDefs" &&
-      !e.def.isAbstract &&
-      !KIND_COLORS[n] &&
-      n !== D
-    )
+  for (const n of instantiablePartDefNames()) {
+    if (n !== D)
       items.push({
         label: `${n}  (${kindOf(n) || "part"})`,
         act: () => addComponent(D, col, yy, n, true),
@@ -240,7 +241,7 @@ export function compMenu(ev, D, name) {
       act: () => {
         const n = askName("Definition name", P);
         if (n && n !== P) {
-          if (editor.sysmlDefinitions[n]) alert(`${n} already exists.`);
+          if (isDefined(n)) alert(`${n} already exists.`);
           else renameDef(P, n);
         }
       },
@@ -265,13 +266,8 @@ export function compMenu(ev, D, name) {
       label: "Change definition…",
       act: () => {
         const items = [{ head: `Type of ${name}` }];
-        for (const n of Object.keys(editor.sysmlDefinitions).sort())
-          if (
-            editor.sysmlDefinitions[n].coll === "partDefs" &&
-            !editor.sysmlDefinitions[n].def.isAbstract &&
-            !KIND_COLORS[n] &&
-            n !== D
-          )
+        for (const n of instantiablePartDefNames())
+          if (n !== D)
             items.push({
               label: (n === P ? "✓ " : "") + n,
               act: () => setPartDef(D, name, n),
@@ -290,8 +286,7 @@ export async function editDoc(title, target, hintText) {
   // target: { def } or { def, port }
   const obj = target.port
     ? portsOfDef(target.def).find((p) => p.name === target.port)
-    : editor.sysmlDefinitions[target.def] &&
-      editor.sysmlDefinitions[target.def].def;
+    : definition(target.def);
   if (!obj) return;
   const text = await askText(title, obj.doc, hintText);
   if (text === null) return;
@@ -342,12 +337,11 @@ export function portMenu(ev, P, name, isEdge) {
         label: "Set their interface…",
         act: () => {
           const items = [{ head: `Interface of ${n} ports` }];
-          for (const t of Object.keys(editor.sysmlDefinitions).sort())
-            if (editor.sysmlDefinitions[t].coll === "portDefs")
-              items.push({
-                label: t,
-                act: () => setPortsType(editor.picked, t),
-              });
+          for (const t of portDefNames())
+            items.push({
+              label: t,
+              act: () => setPortsType(editor.picked, t),
+            });
           menu(ev.clientX, ev.clientY, items);
         },
       },

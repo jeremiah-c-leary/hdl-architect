@@ -84,7 +84,7 @@ test("setting a port's interface keeps its name", async () => {
 
 test("typing in the text box does not trigger the single-key shortcuts", async () => {
   await E(page, "editor.sel = { kind: 'part', name: 'adc_if' }");
-  const layouts = "JSON.stringify(editor.sysmlPackages.map(p => p.layout))";
+  const layouts = "JSON.stringify(allSysmlPackages().map(p => p.layout))";
   const before = await E(page, layouts);
   await E(
     page,

@@ -18,7 +18,6 @@ const NOT_YET_CLEAN = [
   "interaction.js",
   "layout.js",
   "menus.js",
-  "model.js",
   "nets.js",
   "render.js",
   "state.js",

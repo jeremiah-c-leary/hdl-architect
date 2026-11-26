@@ -8,7 +8,7 @@ import {
   partsOf,
   portDef,
   portsOfDef,
-  short,
+  unqualifiedName,
   wiresOf,
 } from "./model.js";
 import { hasPortLayout, portLayout, sheetLayout } from "./layout.js";
@@ -49,7 +49,7 @@ export function portUsage(D, end) {
 export function globalInfo(D, end) {
   // {cat, source} or null; source as seen inside sheet D
   const u = portUsage(D, end);
-  const g = u && u.type && GLOBAL_DEFS[short(u.type)];
+  const g = u && u.type && GLOBAL_DEFS[unqualifiedName(u.type)];
   if (!g) return null;
   let dir = u.conjugated ? (g[1] === "in" ? "out" : "in") : g[1];
   return {
@@ -72,7 +72,7 @@ export function globalEnds(D) {
     if (globalInfo(D, e)) out.push(e);
   }
   for (const part of partsOf(D))
-    for (const p of portsOfDef(short(part.type))) {
+    for (const p of portsOfDef(unqualifiedName(part.type))) {
       const e = { kind: "part", part: part.name, port: p.name };
       if (globalInfo(D, e)) out.push(e);
     }
@@ -130,7 +130,7 @@ export function fmtHz(f) {
 }
 // ---- pairing: a SYSREF or a synchronous reset is sampled by one of its block's clock ports
 export function catOfUsage(u) {
-  const g = u && u.type && GLOBAL_DEFS[short(u.type)];
+  const g = u && u.type && GLOBAL_DEFS[unqualifiedName(u.type)];
   return g ? g[0] : null;
 }
 export function hasAttr(type, name) {
