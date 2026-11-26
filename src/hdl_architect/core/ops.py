@@ -1091,6 +1091,71 @@ def _remove_estimate(definition: dict, family: str) -> None:
         definition.pop("attributes", None)
 
 
+# ---------------------------------------------------------------- the target device
+FPGA_KINDS = {"FpgaPart", "Fpga"}
+
+
+def set_device(model: Model, def_name: str, device: str) -> Result:
+    """Make `device` the FPGA's target device (`attribute device : <device>`)."""
+    from hdl_architect.core.resources import DEVICE_ROOT
+
+    file, pkg, fpga = model.part_def(def_name)
+    if not FPGA_KINDS & _part_generals(model, def_name):
+        raise OpError("not_an_fpga", f"{def_name} is not an FPGA: it has no device.")
+    chain = _attribute_generals(model, short(device))
+    is_abstract = chain and model.attribute_defs[chain[0]][2].get("isAbstract")
+    if DEVICE_ROOT not in chain or is_abstract:
+        raise OpError("not_found", f"no device {device}")
+    current = _device_attribute(model, fpga)
+    notes = _family_change_notes(model, current, short(device))
+    _set_device_attribute(fpga, current, short(device))
+    model.ensure_attribute_import(pkg, device)
+    return Result({file}, notes)
+
+
+def _device_attribute(model: Model, fpga: dict) -> dict | None:
+    """The FPGA's attribute typed by a device, if it has one."""
+    from hdl_architect.core.resources import DEVICE_ROOT
+
+    for attribute in fpga.get("attributes", []):
+        if DEVICE_ROOT in _attribute_generals(model, short(attribute["type"])):
+            return attribute
+    return None
+
+
+def _set_device_attribute(fpga: dict, current: dict | None, device: str) -> None:
+    if current is not None:
+        current["type"] = device
+        return
+    attributes = fpga.setdefault("attributes", [])
+    attributes.append({"name": "device", "type": device})
+
+
+def _family_change_notes(model: Model, current: dict | None, device: str) -> list:
+    """A note when the new device is of another family: estimates do not carry."""
+    if current is None:
+        return []
+    before = _device_family(model, short(current["type"]))
+    after = _device_family(model, device)
+    if before == after:
+        return []
+    return [
+        f"{device} is a {after} device; the estimates are in {before}. "
+        f"Leaves need estimates in {after}."
+    ]
+
+
+def _device_family(model: Model, device: str) -> str | None:
+    """The resources def a device's capacity is given in."""
+    from hdl_architect.core.resources import RESOURCES_ROOT
+
+    for name in _attribute_generals(model, device):
+        for attribute in model.attribute_defs[name][2].get("attributes", []):
+            if RESOURCES_ROOT in _attribute_generals(model, short(attribute["type"])):
+                return short(attribute["type"])
+    return None
+
+
 OPERATIONS = {
     "connect": (
         lambda m, a: connect(m, a["sheet"], a["a"], a["b"]),
@@ -1185,6 +1250,11 @@ OPERATIONS = {
         lambda m, a: set_port_name(m, a["def"], a["port"], a.get("name")),
         ["def", "port"],
         ["name"],
+    ),
+    "set_device": (
+        lambda m, a: set_device(m, a["def"], a["device"]),
+        ["def", "device"],
+        [],
     ),
     "set_estimate": (
         lambda m, a: set_estimate(m, a["def"], a["family"], a.get("values") or {}),

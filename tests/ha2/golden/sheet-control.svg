@@ -90,7 +90,7 @@ svg text { fill: #1d2430; font-size: 12px; user-select: none; }
 .dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; }
 #resourceBanner { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 5px 12px; background: #ffffff; border-bottom: 1px solid #d8dde5; font-size: 12px; }
 #resourceBanner:empty { display: none; }
-.rb-resource { display: inline-flex; align-items: center; gap: 6px; }
+.rb-resource, .rb-bar { display: inline-flex; align-items: center; gap: 6px; }
 .rb-name { color: #6b7686; min-width: 3.5em; text-align: right; }
 .rb-track { position: relative; width: 110px; height: 16px; border: 1px solid #d8dde5; background: #f6f7f9; overflow: hidden; }
 .rb-fill { position: absolute; inset: 0px auto 0px 0px; }
@@ -103,6 +103,20 @@ svg text { fill: #1d2430; font-size: 12px; user-select: none; }
 .rb-error { color: rgb(180, 35, 24); }
 .rb-incomplete { color: rgb(154, 103, 0); }
 .rb-hierarchy { margin-left: auto; }
+#deviceView { position: fixed; inset: 40px 30px; z-index: 5; background: #ffffff; border: 1px solid #d8dde5; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.25) 0px 10px 40px; display: flex; flex-direction: column; }
+#deviceView[hidden] { display: none; }
+#dvNote { margin: 10px 12px 0px; color: rgb(154, 103, 0); }
+#dvTable { border-collapse: collapse; margin: 12px; font-size: 12px; }
+#dvTable td { padding: 3px 8px; white-space: nowrap; }
+.dv-head td { color: #6b7686; }
+.dv-row { border-top: 1px solid #d8dde5; }
+.dv-bar .rb-track { width: 80px; }
+.dv-target { background: #f6f7f9; font-weight: 600; }
+.dv-smallest .dv-device { font-weight: 600; }
+.dv-tag { margin-left: 8px; padding: 0px 5px; border: 1px solid rgb(47, 143, 87); color: rgb(47, 143, 87); font-size: 11px; font-weight: 400; }
+.dv-fits { color: rgb(47, 143, 87); }
+.dv-uses-margin { color: rgb(154, 103, 0); }
+.dv-does-not-fit { color: rgb(180, 35, 24); }
 #resourceView { position: fixed; inset: 40px 30px; z-index: 5; background: #ffffff; border: 1px solid #d8dde5; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.25) 0px 10px 40px; display: flex; flex-direction: column; }
 #resourceView[hidden] { display: none; }
 .rv-spacer { flex: 1 1 0%; }

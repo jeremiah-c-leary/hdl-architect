@@ -38,7 +38,7 @@ const bar = (name) =>
     page,
     `(() => {
       const item = [...document.querySelectorAll('.rb-resource')]
-        .find((r) => r.querySelector('.rb-name').textContent === '${name}');
+        .find((r) => r.dataset.resource === '${name}');
       const fill = item.querySelector('.rb-fill');
       const line = item.querySelector('.rb-margin-line');
       return {
@@ -46,7 +46,7 @@ const bar = (name) =>
         level: fill && fill.className.replace('rb-fill ', ''),
         width: fill && fill.style.width,
         marginAt: line && line.style.left,
-        tooltip: item.title,
+        tooltip: item.querySelector('.rb-bar').title,
       };
     })()`,
   );
@@ -94,7 +94,11 @@ test("the banner: the device, a bar per resource with its margin line", async ()
     "960 of 274080 lut (0%); margin 30%: budget 191856",
   );
   assert.equal((await bar("bram36")).marginAt, "80%"); // the design's own margin
-  assert.equal((await bar("uram")).percent, "none on device");
+  assert.equal(
+    await E(page, "document.querySelector('[data-resource=uram]')"),
+    null,
+    "a resource the device lacks and the design does not use is left out",
+  );
 });
 
 test("a bar turns amber in the margin and red past the device", async () => {
@@ -190,11 +194,11 @@ test("Hierarchy… opens the view: every block, its counts, tinted by kind", asy
     /WifiPacketRouterFpga on XCZU9EG/,
   );
   assert.equal((await rowTexts()).length, 11); // the FPGA, its 9 parts, RST_SYNC
-  assert.equal(await rowOf("uart "), "uart Uart 400 200 0 0 3");
+  assert.equal(await rowOf("uart "), "uart Uart 400 200 0 0 3 0 0");
   assert.equal(await rowOf("ethernet "), "ethernet Ethernet to break down");
   assert.equal(
     await rowOf("▼ (top)"),
-    "▼ (top) WifiPacketRouterFpga 1110 812 0 0 3",
+    "▼ (top) WifiPacketRouterFpga 1110 812 0 0 3 0 0",
   );
   assert.equal(
     await E(
@@ -213,11 +217,11 @@ test("folding a block hides its parts; percent instead of counts", async () => {
   assert.equal(await rowOf("RST_SYNC"), undefined);
   assert.equal(
     await rowOf("▶ CLK_RST_CTRL"),
-    "▶ CLK_RST_CTRL CLKRSTCTRL 10 12 0 0 0",
+    "▶ CLK_RST_CTRL CLKRSTCTRL 10 12 0 0 0 0 0",
   );
   assert.equal((await rowTexts()).length, 10);
   await E(page, "document.getElementById('rvToggle').click()");
-  assert.match(await rowOf("uart "), /^uart Uart 0% 0% 0% - 0%$/);
+  assert.match(await rowOf("uart "), /^uart Uart 0% 0% 0% - 0% 0% -$/);
   await E(page, "document.getElementById('rvToggle').click()");
 });
 

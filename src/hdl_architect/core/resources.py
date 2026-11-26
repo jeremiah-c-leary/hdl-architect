@@ -64,7 +64,25 @@ class Target:
 
     def budget(self, name: str) -> int:
         """What the design may use of a resource: capacity less its margin."""
-        return self.capacity[name] * (100 - self.margins[name]) // 100
+        return budget_of(self.capacity[name], self.margins[name])
+
+
+def budget_of(capacity: int, margin: int) -> int:
+    return capacity * (100 - margin) // 100
+
+
+# How much of one resource a design uses on a device.
+WITHIN_BUDGET = "ok"
+IN_MARGIN = "margin"
+PAST_DEVICE = "over"
+
+
+def level_of(used: int, capacity: int, budget: int) -> str:
+    if used > capacity:
+        return PAST_DEVICE
+    if used > budget:
+        return IN_MARGIN
+    return WITHIN_BUDGET
 
 
 @dataclass
@@ -345,12 +363,24 @@ def report_as_dict(report: ResourceReport) -> dict:
         "capacity": target.capacity,
         "margins": target.margins,
         "budget": {name: target.budget(name) for name in target.resource_names},
+        "levels": target_levels(report),
         "top": report.top.definition,
         "definitions": totals_by_definition(report.top),
         "tree": block_as_dict(report.top),
         "notEstimated": report.not_estimated(),
         "toBreakDown": report.to_break_down(),
         "problems": report.problems,
+    }
+
+
+def target_levels(report: ResourceReport) -> dict[str, str]:
+    """Each resource's level on the target: within budget, in margin, past it."""
+    target = report.target
+    return {
+        name: level_of(
+            report.top.used[name], target.capacity[name], target.budget(name)
+        )
+        for name in target.resource_names
     }
 
 
@@ -371,3 +401,104 @@ def totals_by_definition(block: BlockUse) -> dict:
     for child in block.children:
         totals.update(totals_by_definition(child))
     return totals
+
+
+# ---------------------------------------------------------------- other devices
+
+FITS = "fits"
+USES_MARGIN = "uses margin"
+DOES_NOT_FIT = "does not fit"
+
+
+@dataclass
+class DeviceFit:
+    """The design on one device of its family: each resource's level, and a verdict."""
+
+    device: str
+    capacity: dict[str, int]
+    budget: dict[str, int]
+    levels: dict[str, str]  # WITHIN_BUDGET, IN_MARGIN or PAST_DEVICE
+
+    def verdict(self) -> str:
+        if PAST_DEVICE in self.levels.values():
+            return DOES_NOT_FIT
+        if IN_MARGIN in self.levels.values():
+            return USES_MARGIN
+        return FITS
+
+
+def device_fits(search_path, top: str) -> tuple[ResourceReport, list[DeviceFit]]:
+    """The design against every device of its target's family, smallest first."""
+    report = resource_report(search_path, top)
+    model = _JsonModel(search_path)
+    devices = family_devices(model, report.target.family)
+    fits = [device_fit(model, report, device) for device in devices]
+    return report, sorted(fits, key=lambda fit: (size_of(fit), fit.device))
+
+
+def family_devices(model: _JsonModel, family: str) -> list[str]:
+    """The devices (non-abstract FpgaDevice specializations) of a family."""
+    return [
+        name
+        for name, entry in model.defs.items()
+        if entry[0] == "attributeDefs"
+        and not entry[1].get("isAbstract")
+        and specializes(model, name, DEVICE_ROOT)
+        and unqualified(family_attribute(model, name)["type"]) == family
+    ]
+
+
+def device_fit(model: _JsonModel, report: ResourceReport, device: str) -> DeviceFit:
+    target = report.target
+    capacity_name = family_attribute(model, device)["name"]
+    values = inherited_values(model, device).get(capacity_name, {})
+    capacity = with_zeros(values, target.resource_names)
+    budget = {
+        name: budget_of(capacity[name], target.margins[name])
+        for name in target.resource_names
+    }
+    levels = {
+        name: level_of(report.top.used[name], capacity[name], budget[name])
+        for name in target.resource_names
+    }
+    return DeviceFit(device, capacity, budget, levels)
+
+
+def size_of(fit: DeviceFit) -> list[int]:
+    """Devices compare by their capacity, resource by resource."""
+    return list(fit.capacity.values())
+
+
+def smallest_fit(fits: list[DeviceFit]) -> str | None:
+    """The first device (smallest first) the design fits within its budgets."""
+    fitting = [fit.device for fit in fits if fit.verdict() == FITS]
+    if not fitting:
+        return None
+    return fitting[0]
+
+
+def device_fits_as_dict(report: ResourceReport, fits: list[DeviceFit]) -> dict:
+    """The device comparison as JSON for HA 2."""
+    target = report.target
+    return {
+        "top": report.top.definition,
+        "target": target.device,
+        "family": target.family,
+        "resourceNames": target.resource_names,
+        "margins": target.margins,
+        "used": report.top.used,
+        "smallestFit": smallest_fit(fits),
+        "devices": [fit_as_dict(fit) for fit in fits],
+        "toBreakDown": report.to_break_down(),
+        "notEstimated": report.not_estimated(),
+    }
+
+
+def fit_as_dict(fit: DeviceFit) -> dict:
+    return {
+        "device": fit.device,
+        "capacity": fit.capacity,
+        "budget": fit.budget,
+        "levels": fit.levels,
+        "verdict": fit.verdict(),
+    }

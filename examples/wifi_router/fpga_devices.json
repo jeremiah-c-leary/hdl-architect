@@ -60,12 +60,24 @@
             "type": "Integer",
             "default": 0,
             "doc": "DSP48E2 slices."
+          },
+          {
+            "name": "gth",
+            "type": "Integer",
+            "default": 0,
+            "doc": "GTH transceivers (16.3 Gb/s)."
+          },
+          {
+            "name": "gty",
+            "type": "Integer",
+            "default": 0,
+            "doc": "GTY transceivers (32.75 Gb/s)."
           }
         ]
       },
       {
         "name": "ZynqUltraScalePlusMargins",
-        "doc": "AMD Zynq UltraScale+ resource margins, in percent; the defaults apply unless a design gives its own.",
+        "doc": "AMD Zynq UltraScale+ resource margins, in percent; the defaults apply unless a design gives its own. Transceivers default to no margin: a design has the lanes it needs, or not.",
         "specializes": [
           "FpgaResourceMargins"
         ],
@@ -94,6 +106,16 @@
             "name": "dsp48",
             "type": "Integer",
             "default": 30
+          },
+          {
+            "name": "gth",
+            "type": "Integer",
+            "default": 0
+          },
+          {
+            "name": "gty",
+            "type": "Integer",
+            "default": 0
           }
         ]
       },
@@ -113,8 +135,152 @@
         ]
       },
       {
-        "name": "XCZU9EG",
-        "doc": "AMD Zynq UltraScale+ XCZU9EG (the ZCU102 board's device). Capacity from AMD DS891, Zynq UltraScale+ MPSoC Data Sheet: Overview.",
+        "name": "XCZU1CG",
+        "doc": "AMD Zynq UltraScale+ XCZU1CG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 1; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 37440,
+            "ff": 74880,
+            "bram36": 108,
+            "uram": 0,
+            "dsp48": 216,
+            "gth": 0,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU2CG",
+        "doc": "AMD Zynq UltraScale+ XCZU2CG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 1; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 47232,
+            "ff": 94464,
+            "bram36": 150,
+            "uram": 0,
+            "dsp48": 240,
+            "gth": 0,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU3CG",
+        "doc": "AMD Zynq UltraScale+ XCZU3CG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 1; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 70560,
+            "ff": 141120,
+            "bram36": 216,
+            "uram": 0,
+            "dsp48": 360,
+            "gth": 0,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU3TCG",
+        "doc": "AMD Zynq UltraScale+ XCZU3TCG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 1; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 72000,
+            "ff": 144000,
+            "bram36": 144,
+            "uram": 48,
+            "dsp48": 576,
+            "gth": 8,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU4CG",
+        "doc": "AMD Zynq UltraScale+ XCZU4CG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 1; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 87840,
+            "ff": 175680,
+            "bram36": 128,
+            "uram": 48,
+            "dsp48": 728,
+            "gth": 16,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU5CG",
+        "doc": "AMD Zynq UltraScale+ XCZU5CG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 1; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 117120,
+            "ff": 234240,
+            "bram36": 144,
+            "uram": 64,
+            "dsp48": 1248,
+            "gth": 16,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU6CG",
+        "doc": "AMD Zynq UltraScale+ XCZU6CG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 1; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 214604,
+            "ff": 429208,
+            "bram36": 714,
+            "uram": 0,
+            "dsp48": 1973,
+            "gth": 24,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU7CG",
+        "doc": "AMD Zynq UltraScale+ XCZU7CG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 1; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 230400,
+            "ff": 460800,
+            "bram36": 312,
+            "uram": 96,
+            "dsp48": 1728,
+            "gth": 24,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU9CG",
+        "doc": "AMD Zynq UltraScale+ XCZU9CG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 1; transceivers are the device's maximum (a package may bond out fewer).",
         "specializes": [
           "ZynqUltraScalePlusDevice"
         ],
@@ -124,7 +290,297 @@
             "ff": 548160,
             "bram36": 912,
             "uram": 0,
-            "dsp48": 2520
+            "dsp48": 2520,
+            "gth": 24,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU1EG",
+        "doc": "AMD Zynq UltraScale+ XCZU1EG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 3; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 37440,
+            "ff": 74880,
+            "bram36": 108,
+            "uram": 0,
+            "dsp48": 216,
+            "gth": 0,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU2EG",
+        "doc": "AMD Zynq UltraScale+ XCZU2EG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 3; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 47232,
+            "ff": 94464,
+            "bram36": 150,
+            "uram": 0,
+            "dsp48": 240,
+            "gth": 0,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU3EG",
+        "doc": "AMD Zynq UltraScale+ XCZU3EG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 3; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 70560,
+            "ff": 141120,
+            "bram36": 216,
+            "uram": 0,
+            "dsp48": 360,
+            "gth": 0,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU3TEG",
+        "doc": "AMD Zynq UltraScale+ XCZU3TEG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 3; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 72000,
+            "ff": 144000,
+            "bram36": 144,
+            "uram": 48,
+            "dsp48": 576,
+            "gth": 8,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU4EG",
+        "doc": "AMD Zynq UltraScale+ XCZU4EG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 3; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 87840,
+            "ff": 175680,
+            "bram36": 128,
+            "uram": 48,
+            "dsp48": 728,
+            "gth": 16,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU5EG",
+        "doc": "AMD Zynq UltraScale+ XCZU5EG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 3; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 117120,
+            "ff": 234240,
+            "bram36": 144,
+            "uram": 64,
+            "dsp48": 1248,
+            "gth": 16,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU6EG",
+        "doc": "AMD Zynq UltraScale+ XCZU6EG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 3; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 214604,
+            "ff": 429208,
+            "bram36": 714,
+            "uram": 0,
+            "dsp48": 1973,
+            "gth": 24,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU7EG",
+        "doc": "AMD Zynq UltraScale+ XCZU7EG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 3; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 230400,
+            "ff": 460800,
+            "bram36": 312,
+            "uram": 96,
+            "dsp48": 1728,
+            "gth": 24,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU9EG",
+        "doc": "AMD Zynq UltraScale+ XCZU9EG (the ZCU102 board's device). Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 3; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 274080,
+            "ff": 548160,
+            "bram36": 912,
+            "uram": 0,
+            "dsp48": 2520,
+            "gth": 24,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU11EG",
+        "doc": "AMD Zynq UltraScale+ XCZU11EG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 3; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 298560,
+            "ff": 597120,
+            "bram36": 600,
+            "uram": 80,
+            "dsp48": 2928,
+            "gth": 32,
+            "gty": 16
+          }
+        }
+      },
+      {
+        "name": "XCZU15EG",
+        "doc": "AMD Zynq UltraScale+ XCZU15EG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 3; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 341280,
+            "ff": 682560,
+            "bram36": 744,
+            "uram": 112,
+            "dsp48": 3528,
+            "gth": 24,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU17EG",
+        "doc": "AMD Zynq UltraScale+ XCZU17EG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 3; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 423403,
+            "ff": 846806,
+            "bram36": 796,
+            "uram": 102,
+            "dsp48": 1590,
+            "gth": 44,
+            "gty": 28
+          }
+        }
+      },
+      {
+        "name": "XCZU19EG",
+        "doc": "AMD Zynq UltraScale+ XCZU19EG. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 3; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 522720,
+            "ff": 1045440,
+            "bram36": 984,
+            "uram": 128,
+            "dsp48": 1968,
+            "gth": 44,
+            "gty": 28
+          }
+        }
+      },
+      {
+        "name": "XCZU4EV",
+        "doc": "AMD Zynq UltraScale+ XCZU4EV. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 5; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 87840,
+            "ff": 175680,
+            "bram36": 128,
+            "uram": 48,
+            "dsp48": 728,
+            "gth": 16,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU5EV",
+        "doc": "AMD Zynq UltraScale+ XCZU5EV. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 5; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 117120,
+            "ff": 234240,
+            "bram36": 144,
+            "uram": 64,
+            "dsp48": 1248,
+            "gth": 16,
+            "gty": 0
+          }
+        }
+      },
+      {
+        "name": "XCZU7EV",
+        "doc": "AMD Zynq UltraScale+ XCZU7EV. Capacity from AMD DS891 v1.11.1 (2025-03-18), Table 5; transceivers are the device's maximum (a package may bond out fewer).",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 230400,
+            "ff": 460800,
+            "bram36": 312,
+            "uram": 96,
+            "dsp48": 1728,
+            "gth": 24,
+            "gty": 0
           }
         }
       }

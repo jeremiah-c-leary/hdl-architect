@@ -1,8 +1,10 @@
 // HA 2: the resource banner under the toolbar: the target device, and one bar
-// per resource that fills as estimates are added. A bar is green within the
-// budget (the device less the margin), amber in the margin, red past the
-// device; a line marks where the margin starts. "Hierarchy…" opens the
-// utilization view, so the architect can find what uses a resource.
+// per resource that fills as estimates are added (resourcebar.js). Resources
+// the device does not have, and the design does not use, are left out.
+// "Devices…" compares the design with every device of the family;
+// "Hierarchy…" shows what uses each resource.
+import * as deviceView from "./deviceview.js";
+import * as resourceBar from "./resourcebar.js";
 import * as resourceView from "./resourceview.js";
 import * as svg from "./svg.js";
 
@@ -15,27 +17,21 @@ export function showBanner(report) {
 
 function bannerContents(report) {
   if (report.error) return [element("span", report.error, "rb-error")];
-  const bars = report.resourceNames.map((name) => resourceBar(report, name));
   return [
+    devicesButton(),
     element("b", report.device, "rb-device"),
-    ...bars,
+    ...shownResources(report).map((use) => namedBar(use)),
     ...incompleteNote(report),
     hierarchyButton(report),
   ];
 }
 
-// ------------------------------------------------------------------ one resource
-
-/** A resource's name, its bar with the margin line, and its percentage. */
-function resourceBar(report, name) {
-  const use = resourceUse(report, name);
-  const item = element("span", "", "rb-resource");
-  item.title = useText(use);
-  item.append(element("span", name, "rb-name"), barOf(use), percentText(use));
-  return item;
+/** What the design uses of each resource the banner shows. */
+function shownResources(report) {
+  const uses = report.resourceNames.map((name) => resourceUse(report, name));
+  return uses.filter(resourceBar.isWorthShowing);
 }
 
-/** What the design uses of a resource, and what it has. */
 function resourceUse(report, name) {
   return {
     name,
@@ -43,48 +39,20 @@ function resourceUse(report, name) {
     capacity: report.capacity[name],
     margin: report.margins[name],
     budget: report.budget[name],
+    level: report.levels[name],
   };
 }
 
-function barOf(use) {
-  const track = element("span", "", "rb-track");
-  if (use.capacity === 0) return track;
-  const fill = element("span", "", `rb-fill rb-level-${levelOf(use)}`);
-  fill.style.width = `${Math.min(100, percentOf(use))}%`;
-  const marginLine = element("span", "", "rb-margin-line");
-  marginLine.style.left = `${100 - use.margin}%`;
-  track.append(fill, marginLine);
-  return track;
+/** A resource's name, then its bar. */
+function namedBar(use) {
+  const item = element("span", "", "rb-resource");
+  item.dataset.resource = use.name;
+  item.append(
+    element("span", use.name, "rb-name"),
+    resourceBar.resourceBar(use),
+  );
+  return item;
 }
-
-/** "ok" within the budget, "margin" in the margin, "over" past the device. */
-function levelOf(use) {
-  if (use.used > use.capacity) return "over";
-  if (use.used > use.budget) return "margin";
-  return "ok";
-}
-
-function percentOf(use) {
-  return Math.round((100 * use.used) / use.capacity);
-}
-
-function percentText(use) {
-  if (use.capacity === 0 && use.used === 0) {
-    return element("span", "none on device", "rb-percent");
-  }
-  if (use.capacity === 0)
-    return element("span", "no room", "rb-percent rb-no-room");
-  return element("span", `${percentOf(use)}%`, "rb-percent");
-}
-
-/** The tooltip: "85960 of 274080 lut (31%); margin 30%: budget 191856". */
-function useText(use) {
-  const share = use.capacity ? ` (${percentOf(use)}%)` : "";
-  const budget = `margin ${use.margin}%: budget ${use.budget}`;
-  return `${use.used} of ${use.capacity} ${use.name}${share}; ${budget}`;
-}
-
-// ------------------------------------------------------------------ the rest
 
 /** "⚠ 5 to break down · 1 not estimated": the bars are not the whole design. */
 function incompleteNote(report) {
@@ -98,6 +66,13 @@ function incompleteNote(report) {
   note.title = "The bars leave these blocks out. Click for the hierarchy.";
   note.onclick = () => resourceView.openView(report);
   return [note];
+}
+
+function devicesButton() {
+  const button = element("button", "Devices…", "rb-devices");
+  button.title = "The design on every device of this family; choose another";
+  button.onclick = () => deviceView.openDeviceView();
+  return button;
 }
 
 function hierarchyButton(report) {

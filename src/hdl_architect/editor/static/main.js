@@ -25,6 +25,10 @@ import * as interaction from "./interaction.js";
 import * as clocktree from "./clocktree.js";
 import * as diagramExport from "./export.js";
 import * as estimates from "./estimates.js";
+import * as resourceBar from "./resourcebar.js";
+import * as resourceBanner from "./resourcebanner.js";
+import * as resourceView from "./resourceview.js";
+import * as deviceView from "./deviceview.js";
 
 // Every module's functions and state, by name: for the tests and the browser
 // console (e.g. ha2.partDef('Control')). Not used by HA 2 itself.
@@ -45,6 +49,10 @@ window.ha2 = Object.assign(
   clocktree,
   diagramExport,
   estimates,
+  resourceBar,
+  resourceBanner,
+  resourceView,
+  deviceView,
 );
 
 // ------------------------------------------------------------------ start
