@@ -16,6 +16,8 @@ export const KIND_COLORS = {
   RegisterFile: "#b8960c",
   FpgaComponent: "#8a8f98",
 };
+/** Sent on window when model files on disk change (an operation, or a save). */
+export const MODEL_SAVED_EVENT = "ha2:model-saved";
 export const CONTAINER_KINDS = new Set([
   "SystemPart",
   "FpgaPart",

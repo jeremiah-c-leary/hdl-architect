@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "PartMetadata",
+    "doc": "PartMetadata - metadata defs: facts recorded about a part (spike8). One responsibility: what we record about a part besides its structure. Changes when we decide to record a new kind of fact.",
+    "imports": [
+      {
+        "name": "ScalarValues::*"
+      }
+    ],
+    "metadataDefs": [
+      {
+        "name": "Datasheet",
+        "doc": "Datasheet reference (convention 5): every attribute must be set.",
+        "attributes": [
+          {
+            "name": "manufacturer",
+            "type": "String"
+          },
+          {
+            "name": "partNumber",
+            "type": "String"
+          },
+          {
+            "name": "revision",
+            "type": "String"
+          },
+          {
+            "name": "url",
+            "type": "String"
+          }
+        ]
+      }
+    ]
+  }
+}

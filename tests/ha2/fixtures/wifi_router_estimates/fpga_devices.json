@@ -1,0 +1,133 @@
+{
+  "schemaVersion": "0.7",
+  "package": {
+    "name": "FpgaDevices",
+    "doc": "FPGA devices and their resources. Each device family defines the resources its devices have and blocks use up (an attribute def specializing FpgaResources); each device gives its capacity as values of its family's resources. A block's estimate is a value of the same def, so estimates and capacity add up and compare type by type. Families are not converted into one another.",
+    "imports": [
+      {
+        "name": "ScalarValues::*"
+      }
+    ],
+    "attributeDefs": [
+      {
+        "name": "FpgaResources",
+        "doc": "The resources a design uses up, counted; each device family specializes this with its own resource types.",
+        "isAbstract": true
+      },
+      {
+        "name": "FpgaDevice",
+        "doc": "An FPGA device: its family, and its capacity in that family's resources.",
+        "isAbstract": true
+      },
+      {
+        "name": "FpgaResourceMargins",
+        "doc": "The share of each resource to keep free, in percent: a design is over its budget when it uses more than (100 - margin)% of the device. Each device family specializes this with its own resources.",
+        "isAbstract": true
+      },
+      {
+        "name": "ZynqUltraScalePlusResources",
+        "doc": "AMD Zynq UltraScale+ resources.",
+        "specializes": [
+          "FpgaResources"
+        ],
+        "attributes": [
+          {
+            "name": "lut",
+            "type": "Integer",
+            "default": 0,
+            "doc": "CLB look-up tables (LUT6)."
+          },
+          {
+            "name": "ff",
+            "type": "Integer",
+            "default": 0,
+            "doc": "CLB flip-flops."
+          },
+          {
+            "name": "bram36",
+            "type": "Integer",
+            "default": 0,
+            "doc": "36 Kb block RAMs."
+          },
+          {
+            "name": "uram",
+            "type": "Integer",
+            "default": 0,
+            "doc": "288 Kb UltraRAMs."
+          },
+          {
+            "name": "dsp48",
+            "type": "Integer",
+            "default": 0,
+            "doc": "DSP48E2 slices."
+          }
+        ]
+      },
+      {
+        "name": "ZynqUltraScalePlusMargins",
+        "doc": "AMD Zynq UltraScale+ resource margins, in percent; the defaults apply unless a design gives its own.",
+        "specializes": [
+          "FpgaResourceMargins"
+        ],
+        "attributes": [
+          {
+            "name": "lut",
+            "type": "Integer",
+            "default": 30
+          },
+          {
+            "name": "ff",
+            "type": "Integer",
+            "default": 30
+          },
+          {
+            "name": "bram36",
+            "type": "Integer",
+            "default": 30
+          },
+          {
+            "name": "uram",
+            "type": "Integer",
+            "default": 30
+          },
+          {
+            "name": "dsp48",
+            "type": "Integer",
+            "default": 30
+          }
+        ]
+      },
+      {
+        "name": "ZynqUltraScalePlusDevice",
+        "doc": "An AMD Zynq UltraScale+ device.",
+        "isAbstract": true,
+        "specializes": [
+          "FpgaDevice"
+        ],
+        "attributes": [
+          {
+            "name": "capacity",
+            "type": "ZynqUltraScalePlusResources",
+            "doc": "What the device has."
+          }
+        ]
+      },
+      {
+        "name": "XCZU9EG",
+        "doc": "AMD Zynq UltraScale+ XCZU9EG (the ZCU102 board's device). Capacity from AMD DS891, Zynq UltraScale+ MPSoC Data Sheet: Overview.",
+        "specializes": [
+          "ZynqUltraScalePlusDevice"
+        ],
+        "redefines": {
+          "capacity": {
+            "lut": 274080,
+            "ff": 548160,
+            "bram36": 912,
+            "uram": 0,
+            "dsp48": 2520
+          }
+        }
+      }
+    ]
+  }
+}

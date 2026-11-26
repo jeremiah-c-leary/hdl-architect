@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "Tmp117Lib",
+    "doc": "TMP117: digital temperature sensor, ±0.1 °C, I2C.",
+    "imports": [
+      {
+        "name": "PartKinds::*"
+      },
+      {
+        "name": "PartMetadata::*"
+      },
+      {
+        "name": "PortDefs::*"
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "Tmp117",
+        "specializes": [
+          "HwPart"
+        ],
+        "comments": [
+          "Not modelled: ADD0 (address select, strapped on the board)."
+        ],
+        "metadata": [
+          {
+            "type": "Datasheet",
+            "values": {
+              "manufacturer": "Texas Instruments",
+              "partNumber": "TMP117",
+              "revision": "SNOSD82D",
+              "url": "https://www.ti.com/product/TMP117"
+            }
+          }
+        ],
+        "ports": [
+          {
+            "name": "i2c",
+            "type": "I2cTarget",
+            "doc": "SCL, SDA."
+          },
+          {
+            "name": "alert",
+            "type": "BitOut",
+            "doc": "ALERT (open drain, needs a pull-up)."
+          }
+        ]
+      }
+    ]
+  }
+}

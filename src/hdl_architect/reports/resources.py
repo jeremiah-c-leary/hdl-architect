@@ -55,7 +55,7 @@ def model_settings(args) -> tuple[list[str], str]:
 
 
 def exit_code(report: ResourceReport) -> int:
-    if report.over_capacity() or report.problems:
+    if report.over_capacity() or report.over_budget() or report.problems:
         return 1
     return 0
 
@@ -100,11 +100,14 @@ class Table:
         return [str(block.used[name]) for name in self.names]
 
     def footer(self, report: ResourceReport) -> list[str]:
-        capacity = report.target.capacity
+        target = report.target
+        capacity = target.capacity
         used = report.top.used
         return [
             "",
             self.row("capacity", [str(capacity[name]) for name in self.names]),
+            self.row("margin", [f"{target.margins[name]}%" for name in self.names]),
+            self.row("budget", [str(target.budget(name)) for name in self.names]),
             self.row(
                 "used", [percent(used[name], capacity[name]) for name in self.names]
             ),
@@ -137,6 +140,8 @@ def problem_lines(report: ResourceReport) -> list[str]:
     lines = [""]
     for name in report.over_capacity():
         lines.append(f"warning: {name}: the design needs more than the device has")
+    for name in report.over_budget():
+        lines.append(f"warning: {name}: the design uses part of its margin")
     for problem in report.problems:
         lines.append(f"error: {problem}")
     missing = report.not_estimated()

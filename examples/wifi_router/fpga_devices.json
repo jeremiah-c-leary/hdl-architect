@@ -20,6 +20,11 @@
         "isAbstract": true
       },
       {
+        "name": "FpgaResourceMargins",
+        "doc": "The share of each resource to keep free, in percent: a design is over its budget when it uses more than (100 - margin)% of the device. Each device family specializes this with its own resources.",
+        "isAbstract": true
+      },
+      {
         "name": "ZynqUltraScalePlusResources",
         "doc": "AMD Zynq UltraScale+ resources.",
         "specializes": [
@@ -55,6 +60,40 @@
             "type": "Integer",
             "default": 0,
             "doc": "DSP48E2 slices."
+          }
+        ]
+      },
+      {
+        "name": "ZynqUltraScalePlusMargins",
+        "doc": "AMD Zynq UltraScale+ resource margins, in percent; the defaults apply unless a design gives its own.",
+        "specializes": [
+          "FpgaResourceMargins"
+        ],
+        "attributes": [
+          {
+            "name": "lut",
+            "type": "Integer",
+            "default": 30
+          },
+          {
+            "name": "ff",
+            "type": "Integer",
+            "default": 30
+          },
+          {
+            "name": "bram36",
+            "type": "Integer",
+            "default": 30
+          },
+          {
+            "name": "uram",
+            "type": "Integer",
+            "default": 30
+          },
+          {
+            "name": "dsp48",
+            "type": "Integer",
+            "default": 30
           }
         ]
       },

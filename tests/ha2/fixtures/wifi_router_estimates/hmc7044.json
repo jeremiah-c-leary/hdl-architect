@@ -1,0 +1,120 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "Hmc7044Lib",
+    "doc": "HMC7044: JESD204B clock generator with 14 outputs.",
+    "imports": [
+      {
+        "name": "PartKinds::*"
+      },
+      {
+        "name": "PartMetadata::*"
+      },
+      {
+        "name": "PortDefs::*"
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "Hmc7044",
+        "specializes": [
+          "HwPart"
+        ],
+        "comments": [
+          "14 output channels. Each channel can be configured as a device clock or as SYSREF; the usual pairing is used here: even channels device clocks, odd channels SYSREF. Output frequencies depend on how the chip is configured in each system, so they are not set here."
+        ],
+        "metadata": [
+          {
+            "type": "Datasheet",
+            "values": {
+              "manufacturer": "Analog Devices",
+              "partNumber": "HMC7044",
+              "revision": "E",
+              "url": "https://www.analog.com/en/products/hmc7044.html"
+            }
+          }
+        ],
+        "ports": [
+          {
+            "name": "oscin",
+            "type": "ClockIn",
+            "doc": "Reference from a VCXO.",
+            "redefines": {
+              "frequency_hz": 122880000.0,
+              "duty_cycle": 0.5
+            }
+          },
+          {
+            "name": "reset",
+            "type": "ResetIn",
+            "doc": "RESET, not tied to a clock.",
+            "redefines": {
+              "synchronous": false
+            }
+          },
+          {
+            "name": "spi",
+            "type": "Spi3WireTarget",
+            "doc": "Configuration: SCLK, SDATA, SLEN."
+          },
+          {
+            "name": "ch0",
+            "type": "ClockOut"
+          },
+          {
+            "name": "ch1",
+            "type": "SysrefOut"
+          },
+          {
+            "name": "ch2",
+            "type": "ClockOut"
+          },
+          {
+            "name": "ch3",
+            "type": "SysrefOut"
+          },
+          {
+            "name": "ch4",
+            "type": "ClockOut"
+          },
+          {
+            "name": "ch5",
+            "type": "SysrefOut"
+          },
+          {
+            "name": "ch6",
+            "type": "ClockOut"
+          },
+          {
+            "name": "ch7",
+            "type": "SysrefOut"
+          },
+          {
+            "name": "ch8",
+            "type": "ClockOut"
+          },
+          {
+            "name": "ch9",
+            "type": "SysrefOut"
+          },
+          {
+            "name": "ch10",
+            "type": "ClockOut"
+          },
+          {
+            "name": "ch11",
+            "type": "SysrefOut"
+          },
+          {
+            "name": "ch12",
+            "type": "ClockOut"
+          },
+          {
+            "name": "ch13",
+            "type": "SysrefOut"
+          }
+        ]
+      }
+    ]
+  }
+}

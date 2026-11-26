@@ -1,0 +1,190 @@
+{
+  "layoutVersion": 1,
+  "ports": {
+    "AdcInterface": {
+      "Control": {
+        "offset": 50,
+        "side": "right"
+      },
+      "adc_jesd": {
+        "offset": 50,
+        "side": "left"
+      },
+      "adc_spi": {
+        "offset": 72,
+        "side": "left"
+      },
+      "clk": {
+        "offset": 160,
+        "side": "left"
+      },
+      "processing": {
+        "offset": 131,
+        "side": "right"
+      },
+      "ref_clk": {
+        "offset": 94,
+        "side": "left"
+      },
+      "rst": {
+        "offset": 138,
+        "side": "left"
+      },
+      "sysref": {
+        "offset": 116,
+        "side": "left"
+      }
+    },
+    "DacInterface": {
+      "Control": {
+        "offset": 123,
+        "side": "right"
+      },
+      "clk": {
+        "offset": 206,
+        "side": "left"
+      },
+      "dac_jesd": {
+        "offset": 50,
+        "side": "left"
+      },
+      "dac_reset": {
+        "offset": 116,
+        "side": "left"
+      },
+      "dac_spi": {
+        "offset": 72,
+        "side": "left"
+      },
+      "dac_tx_en": {
+        "offset": 94,
+        "side": "left"
+      },
+      "processing": {
+        "offset": 50,
+        "side": "right"
+      },
+      "ref_clk": {
+        "offset": 138,
+        "side": "left"
+      },
+      "rst": {
+        "offset": 184,
+        "side": "left"
+      },
+      "sysref": {
+        "offset": 161,
+        "side": "left"
+      }
+    },
+    "Ethernet": {
+      "clk": {
+        "offset": 76,
+        "side": "left"
+      },
+      "cmd": {
+        "offset": 53,
+        "side": "left"
+      },
+      "eth_mdio": {
+        "offset": 72,
+        "side": "right"
+      },
+      "eth_reset_f": {
+        "offset": 94,
+        "side": "right"
+      },
+      "eth_rgmii": {
+        "offset": 50,
+        "side": "right"
+      },
+      "rst": {
+        "offset": 98,
+        "side": "left"
+      }
+    },
+    "Processing": {
+      "Control": {
+        "offset": 111,
+        "side": "right"
+      },
+      "adc_if": {
+        "offset": 66,
+        "side": "left"
+      },
+      "clk": {
+        "offset": 206,
+        "side": "left"
+      },
+      "dac_if": {
+        "offset": 183,
+        "side": "left"
+      },
+      "rst": {
+        "offset": 228,
+        "side": "left"
+      }
+    },
+    "TempSensorInterface": {
+      "clk": {
+        "offset": 77,
+        "side": "left"
+      },
+      "rst": {
+        "offset": 99,
+        "side": "left"
+      },
+      "temp_alert": {
+        "offset": 72,
+        "side": "right"
+      },
+      "temp_i2c": {
+        "offset": 50,
+        "side": "right"
+      },
+      "temp_read": {
+        "offset": 52,
+        "side": "left"
+      }
+    },
+    "Uart": {
+      "clk": {
+        "offset": 73,
+        "side": "left"
+      },
+      "processing": {
+        "offset": 51,
+        "side": "left"
+      },
+      "rst": {
+        "offset": 95,
+        "side": "left"
+      },
+      "status_uart": {
+        "offset": 50,
+        "side": "right"
+      }
+    }
+  },
+  "sheets": {
+    "Processing": {
+      "columns": 3,
+      "edge": {},
+      "parts": {}
+    },
+    "Uart": {
+      "columns": 3,
+      "edge": {
+        "processing": {
+          "side": "left",
+          "y": 108
+        },
+        "status_uart": {
+          "side": "right",
+          "y": 86
+        }
+      },
+      "parts": {}
+    }
+  }
+}

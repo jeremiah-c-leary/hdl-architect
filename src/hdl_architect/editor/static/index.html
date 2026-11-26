@@ -29,6 +29,7 @@
         Export
       </button>
     </header>
+    <div id="resourceBanner"></div>
     <main>
       <aside id="side">
         <section>
@@ -72,6 +73,17 @@
         </div>
       </form>
     </dialog>
+    <div id="resourceView" hidden>
+      <div class="ct-bar">
+        <b id="rvTitle">Resource utilization</b>
+        <span class="rv-spacer"></span>
+        <button id="rvToggle">Show percent</button>
+        <button id="rvClose" title="Close (Esc)">Close</button>
+      </div>
+      <div class="ct-body">
+        <table id="rvTable"></table>
+      </div>
+    </div>
     <div id="clockTree" hidden>
       <div class="ct-bar">
         <b id="ctTitle">Clock tree</b>

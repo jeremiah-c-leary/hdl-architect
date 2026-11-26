@@ -11,6 +11,7 @@ this server is an editor for them, like SysON is for its model. It:
     byte-identical and diffs show only real changes;
   - checks the whole model with the core model loader (schema, names, imports);
   - runs model operations (core.ops, POST /api/op) on the files and writes them.
+  - reports the resource roll-up of an FPGA (core.resources, GET /api/resources).
 It listens on 127.0.0.1 only and writes only the files it loaded (and their
 sidecars).
 """
@@ -25,6 +26,7 @@ import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from hdl_architect.core import model as core_model
 from hdl_architect.core import ops as core_ops
@@ -222,6 +224,16 @@ class Store:
             )
         return 200, {"changed": out, "notes": result.notes, "data": result.data}
 
+    def resources(self, top: str) -> dict:
+        """The resource roll-up of `top` (core.resources), or {"error": ...}."""
+        from hdl_architect.core import resources
+
+        try:
+            report = resources.resource_report(self.paths, top)
+        except core_model.ModelError as e:
+            return {"error": str(e)}
+        return resources.report_as_dict(report)
+
     def check(self) -> list[str]:
         try:
             core_model.check_model(self.paths)
@@ -281,6 +293,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/check":
             with LOCK:
                 return self._json({"errors": self.store.check()})
+        if path == "/api/resources":
+            top = parse_qs(urlsplit(self.path).query).get("top", [""])[0]
+            with LOCK:
+                return self._json(self.store.resources(top))
         name = (
             "index.html"
             if path in ("/", "/index.html")

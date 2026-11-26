@@ -1,5 +1,5 @@
 // HA 2: Changes, undo/redo, saving, the server check.
-import { editor } from "./state.js";
+import { MODEL_SAVED_EVENT, editor } from "./state.js";
 import { setStatus, showHint } from "./statusbar.js";
 import {
   allSysmlPackages,
@@ -105,6 +105,10 @@ export function markAllSysmlPackagesSaved() {
       layoutText: JSON.stringify(pkg.layout || null),
     };
 }
+/** Tell whoever listens (the Resources panel) that model files changed on disk. */
+function announceModelSaved() {
+  window.dispatchEvent(new Event(MODEL_SAVED_EVENT));
+}
 /** Take the files an operation changed: they are now saved as they are. */
 export function takeChanged(changed) {
   for (const c of changed) {
@@ -116,6 +120,7 @@ export function takeChanged(changed) {
     });
   }
   indexSysmlDefinitions();
+  announceModelSaved();
 }
 /**
  * Run a model operation as one undoable edit: save pending edits, run it on
@@ -155,6 +160,7 @@ export async function flushSave() {
 export async function saveAll() {
   setStatus("saving…");
   const problems = [];
+  let modelWritten = false;
   for (const pkg of allSysmlPackages()) {
     // what is in the page now, and what was last saved, as text
     const modelText = JSON.stringify(pkg.model),
@@ -170,6 +176,7 @@ export async function saveAll() {
       if (errs.length) problems.push(...errs.map((e) => `${pkg.file}: ${e}`));
       else {
         saved.modelText = modelText;
+        modelWritten = true;
         pkg.version = res.version;
       }
       if (res.stale) editor.stale = true;
@@ -192,6 +199,7 @@ export async function saveAll() {
     editor.saved[pkg.file] = saved;
   }
   editor.saveProblems = problems;
+  if (modelWritten) announceModelSaved();
   setStatus(
     editor.stale
       ? "changed on disk: reload"

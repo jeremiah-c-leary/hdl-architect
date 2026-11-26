@@ -149,6 +149,33 @@ generated clock: give the PLL block a clock output (right-click, Add a clock
 output), set its frequency in the panel, pick its net, click the ports it
 drives.
 
+## Resource estimates
+
+The FPGA names its target device (`attribute device : XCZU9EG;`; devices are
+in a device library such as `fpga_devices.json`). Only leaf blocks (Rtl,
+VendorIp, HardMacro, RegisterFile) have estimates; a roll-up block (one with
+parts, or a Subsystem, FPGA, ...) is the sum of its parts and is broken down,
+never estimated.
+
+- **Enter an estimate:** right-click a leaf block, **Estimate…**: one count
+  per resource of the device's family (LUTs, flip-flops, ...). All zeros
+  removes it. On a roll-up block the menu says "Resources: the sum of its
+  parts" instead.
+- **The resource banner** (under the toolbar) shows the target device and
+  one bar per resource. A bar is green within the budget, amber once it
+  eats into the margin, red past the device; a line marks where the margin
+  starts. Margins are per resource, on the FPGA
+  (`attribute resourceMargins : ZynqUltraScalePlusMargins { :>> bram36 = 20; }`;
+  the family's defaults apply otherwise). "⚠ 5 to break down" warns that
+  the bars leave blocks out. Hover a bar for the numbers.
+- **Hierarchy…** opens the utilization view: the whole hierarchy as a
+  table, like Vivado's hierarchical utilization report, each row in its
+  block's kind colour. ▼/▶ fold a level; "Show percent" switches to percent
+  of the device; clicking a row opens its sheet (a leaf's: the sheet it is
+  on). Esc closes it.
+- Both follow every change. The numbers come from the core, the same as
+  `ha report resources`.
+
 ## Checks
 
 The footer lists, for the open sheet: edge ports not wired inside,
@@ -202,4 +229,4 @@ page to pick up the change; edits made since the last good save are lost.
 - a CSR bus as a global net;
 - importing HA 1 drawings (`fpga-hierarchy (*.json)`);
 - protocol (port def) and HW part editors; feature arcs and the sequence view;
-- resource estimates; a new package (file) from the tool.
+- effort estimates; a new package (file) from the tool; a device from the tool.
