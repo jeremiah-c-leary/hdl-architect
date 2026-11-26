@@ -193,3 +193,34 @@ have an estimate: a subsystem is broken down, never estimated. An estimate on
 one is an error in `ha report resources`; a roll-up block without parts is
 listed "to break down". The Wi-Fi subsystems' estimates (in the SysON check
 above) were removed accordingly.
+
+## Version 0.8: performed actions through ports (2026-11-26)
+
+What HA 1 called features and feature arcs, in SysML terms (decided with the
+user: top-down composition; IP brings its own performed actions; SysML's
+`perform action`, not "feature", which means any attribute, port or part in
+SysML):
+
+| JSON | SysML |
+|---|---|
+| part def `performs[] {name, type}` | `perform action readSensor : ReadSensor;` (existed) |
+| port usage `items[] {name, direction, type}` | `port temp_read : Axi4LiteSubordinate { in item request : TemperatureRequest; }`: what the port carries |
+| part def `flows[] {from, to}` | `flow from temp_read.request to readSensor.request;`: which port an action's item enters or leaves by |
+| part def `allocations[]` | `allocate readTemperature.readSensor to temp_if;` (existed): who performs a step |
+
+A step is performed by the part it is allocated to, whose def must perform
+the step's action def; a flow between steps on two parts needs a wire
+between their ports; an item of the action itself needs a wire from the
+sheet's port. A step on a roll-up block whose action def has no steps is "to
+break down"; with steps on the block's own parts it is "decomposed"
+(`core/actions.py`, `ha report actions`).
+
+SysON check: the first form, `flow from temp_read to readSensor.request`
+(a port as a flow end), loaded without messages but SysON left the port end
+unresolved: in SysML v2 a flow end is `feature.item`, the item being a
+feature of the end's feature. Hence `items` on ports. With them, the 12 files
+generated from the Wi-Fi example load with no messages, and all 24 ends of
+the 12 part-def flows resolve to the right element (12 to a port of the
+flow's own part def, its item an item of that port; 12 to a perform of that
+part def, its item an item of the perform's action def); the 6 performs are
+typed by their action defs (project `performed-actions-check-2`).

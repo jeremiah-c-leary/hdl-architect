@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sysmlpy-spike.local/schema/sysml-json/0.7",
-  "title": "SysML-shaped JSON, version 0.7",
-  "description": "A compact JSON form of a SysML v2 subset for FPGA models. One JSON object is one SysML element; relationship objects (memberships, typings, specializations) are folded into fields. Rule: no concept that SysML does not have. Generated to SysML text by layered/gen_sysml.py. Version 0.5 covers packages, attribute defs, item defs, port defs (with attributes and items), metadata defs, part defs (attributes and values, constraints, ports incl. conjugated, parts incl. subsetting and multiplicity ranges, bind, connect, perform, allocate, metadata, comments) and action defs (parameters, steps, bind, flows). A port may be untyped (`port cmd;`): valid SysML, used while exploring; generating HDL needs a port def. Version 0.7 adds attribute defs that specialize others and give values (`attribute def XCZU9EG :> ZynqUltraScalePlusDevice { :>> capacity { :>> lut = 274080; } }`): nested values, for a feature's own features.",
+  "$id": "https://sysmlpy-spike.local/schema/sysml-json/0.8",
+  "title": "SysML-shaped JSON, version 0.8",
+  "description": "A compact JSON form of a SysML v2 subset for FPGA models. One JSON object is one SysML element; relationship objects (memberships, typings, specializations) are folded into fields. Rule: no concept that SysML does not have. Generated to SysML text by layered/gen_sysml.py. Version 0.5 covers packages, attribute defs, item defs, port defs (with attributes and items), metadata defs, part defs (attributes and values, constraints, ports incl. conjugated, parts incl. subsetting and multiplicity ranges, bind, connect, perform, allocate, metadata, comments) and action defs (parameters, steps, bind, flows). A port may be untyped (`port cmd;`): valid SysML, used while exploring; generating HDL needs a port def. Version 0.7 adds attribute defs that specialize others and give values (`attribute def XCZU9EG :> ZynqUltraScalePlusDevice { :>> capacity { :>> lut = 274080; } }`): nested values, for a feature's own features. Version 0.8 adds items on ports (what a port carries) and flows on part defs (`flow from csr.request to readSensor.request;`): where a performed action's items enter and leave the part, through its ports.",
   "type": "object",
   "required": [
     "schemaVersion",
@@ -15,7 +15,8 @@
         "0.4",
         "0.5",
         "0.6",
-        "0.7"
+        "0.7",
+        "0.8"
       ]
     },
     "package": {
@@ -421,6 +422,13 @@
         "doc": {
           "$ref": "#/$defs/Doc"
         },
+        "items": {
+          "description": "`in item request : TemperatureRequest;` in the port's body: the items this port carries, into or out of its part (what an action the part performs gets or gives through it).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          }
+        },
         "redefines": {
           "$ref": "#/$defs/Values"
         }
@@ -532,6 +540,9 @@
         },
         "type": {
           "$ref": "#/$defs/QualifiedName"
+        },
+        "doc": {
+          "$ref": "#/$defs/Doc"
         }
       }
     },
@@ -553,7 +564,7 @@
       }
     },
     "PartDef": {
-      "description": "SysML `part def`. Body order in the generated text: doc, comments, metadata, attributes, redefines, constraints, parts, bindings, connections, performs, allocations, ports.",
+      "description": "SysML `part def`. Body order in the generated text: doc, comments, metadata, attributes, redefines, constraints, parts, bindings, connections, performs, allocations, flows, ports.",
       "type": "object",
       "required": [
         "name"
@@ -634,6 +645,13 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/Allocation"
+          }
+        },
+        "flows": {
+          "description": "`flow from csr.request to readSensor.request;` / `flow from readSensor.temperature to csr.temperature;`: an action the part def performs gets and gives its items through its ports; each end is a feature and one of its items (a port's items are declared on the port).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Flow"
           }
         },
         "ports": {

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "0.4",
+  "schemaVersion": "0.8",
   "package": {
     "name": "WifiPacketRouterFpgaSys",
     "doc": "The Wi-Fi packet router's FPGA: its boundary, from the Connection Diagram.",
@@ -389,6 +389,16 @@
             "to": "ethernet"
           }
         ],
+        "flows": [
+          {
+            "from": "eth_rgmii.cmdFrame",
+            "to": "readTemperature.cmdFrame"
+          },
+          {
+            "from": "readTemperature.rspFrame",
+            "to": "eth_rgmii.rspFrame"
+          }
+        ],
         "ports": [
           {
             "name": "sys_reset_f",
@@ -480,7 +490,19 @@
           {
             "name": "eth_rgmii",
             "type": "RgmiiMac",
-            "doc": "To the Ethernet PHY: RGMII, 1G. Snapshots and commands."
+            "doc": "To the Ethernet PHY: RGMII, 1G. Snapshots and commands.",
+            "items": [
+              {
+                "name": "cmdFrame",
+                "direction": "in",
+                "type": "EthFrame"
+              },
+              {
+                "name": "rspFrame",
+                "direction": "out",
+                "type": "EthFrame"
+              }
+            ]
           },
           {
             "name": "eth_mdio",

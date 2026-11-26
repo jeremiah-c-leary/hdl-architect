@@ -150,9 +150,10 @@ def usage(keyword: str, u: dict, indent: str) -> list[str]:
     )
     if u.get("subsets"):
         head += " :> " + ", ".join(u["subsets"])
-    body = (doc(u["doc"], indent + IND) if "doc" in u else []) + redefinitions(
-        u.get("redefines", {}), indent + IND
-    )
+    body = (doc(u["doc"], indent + IND) if "doc" in u else []) + [
+        line for i in u.get("items", []) for line in item(i, indent + IND)
+    ]
+    body += redefinitions(u.get("redefines", {}), indent + IND)
     return [head + ";"] if not body else [head + " {"] + body + [f"{indent}}}"]
 
 
@@ -247,17 +248,26 @@ def part_def(d: dict, indent: str) -> list[str]:
             f"{i2}connect {ref(d, c['ends'][0])} to {ref(d, c['ends'][1])};"
             for c in d.get("connections", [])
         ],
-        [
-            f"{i2}perform action {p['name']} : {p['type']};"
-            for p in d.get("performs", [])
-        ]
+        [line for p in d.get("performs", []) for line in perform(p, i2)]
         + [f"{i2}allocate {a['from']} to {a['to']};" for a in d.get("allocations", [])],
+        [
+            f"{i2}flow from {ref(d, f['from'])} to {ref(d, f['to'])};"
+            for f in d.get("flows", [])
+        ],
         [line for p in d.get("ports", []) for line in usage("port", p, i2)],
     ]
     for g in groups:
         if g:
             body += ([""] if body else []) + g
     return [head + ";"] if not body else [head + " {"] + body + [f"{indent}}}"]
+
+
+def perform(p: dict, indent: str) -> list[str]:
+    """`perform action name : Type;`, with its doc if it has one."""
+    head = f"{indent}perform action {p['name']} : {p['type']}"
+    if "doc" not in p:
+        return [head + ";"]
+    return [head + " {"] + doc(p["doc"], indent + IND) + [f"{indent}}}"]
 
 
 def action_def(d: dict, indent: str) -> list[str]:

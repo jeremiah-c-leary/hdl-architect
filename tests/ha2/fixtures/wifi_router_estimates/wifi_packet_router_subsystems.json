@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "0.4",
+  "schemaVersion": "0.8",
   "package": {
     "name": "WifiPacketRouterSubsystems",
     "doc": "The Wi-Fi packet router FPGA's subsystems: the first level of its architecture (the user's split, 2026-11-22). Each device's controller (SPI, I2C) lives in the subsystem for that device. A port bound to an FPGA pin has the pin's name and port def; the other ports come from the flows between subsystems (WifiPacketRouterInterfaces).",
@@ -15,6 +15,9 @@
       },
       {
         "name": "WifiPacketRouterInterfaces::*"
+      },
+      {
+        "name": "WifiPacketRouterBehavior::*"
       }
     ],
     "partDefs": [
@@ -24,11 +27,51 @@
         "specializes": [
           "Subsystem"
         ],
+        "performs": [
+          {
+            "name": "receiveFrame",
+            "type": "ReceiveFrame"
+          },
+          {
+            "name": "sendFrame",
+            "type": "SendFrame"
+          }
+        ],
+        "flows": [
+          {
+            "from": "eth_rgmii.rxFrame",
+            "to": "receiveFrame.ethFrame"
+          },
+          {
+            "from": "receiveFrame.cmd",
+            "to": "cmd.cmd"
+          },
+          {
+            "from": "cmd.response",
+            "to": "sendFrame.response"
+          },
+          {
+            "from": "sendFrame.ethFrame",
+            "to": "eth_rgmii.txFrame"
+          }
+        ],
         "ports": [
           {
             "name": "eth_rgmii",
             "type": "RgmiiMac",
-            "doc": "FPGA pin."
+            "doc": "FPGA pin.",
+            "items": [
+              {
+                "name": "rxFrame",
+                "direction": "in",
+                "type": "EthFrame"
+              },
+              {
+                "name": "txFrame",
+                "direction": "out",
+                "type": "EthFrame"
+              }
+            ]
           },
           {
             "name": "eth_mdio",
@@ -48,7 +91,19 @@
           {
             "name": "cmd",
             "type": "Axi4LiteSubordinate",
-            "doc": "Commands to processing."
+            "doc": "Commands to processing.",
+            "items": [
+              {
+                "name": "cmd",
+                "direction": "out",
+                "type": "Command"
+              },
+              {
+                "name": "response",
+                "direction": "in",
+                "type": "Response"
+              }
+            ]
           },
           {
             "name": "clk",
@@ -190,6 +245,22 @@
             "doc": "Estimate for Zynq UltraScale+ devices (illustrative numbers for this example)."
           }
         ],
+        "performs": [
+          {
+            "name": "readSensor",
+            "type": "ReadSensor"
+          }
+        ],
+        "flows": [
+          {
+            "from": "temp_read.request",
+            "to": "readSensor.request"
+          },
+          {
+            "from": "readSensor.temperature",
+            "to": "temp_read.temperature"
+          }
+        ],
         "ports": [
           {
             "name": "temp_i2c",
@@ -204,7 +275,19 @@
           {
             "name": "temp_read",
             "type": "Axi4LiteSubordinate",
-            "doc": "Requests from processing."
+            "doc": "Requests from processing.",
+            "items": [
+              {
+                "name": "request",
+                "direction": "in",
+                "type": "TemperatureRequest"
+              },
+              {
+                "name": "temperature",
+                "direction": "out",
+                "type": "Temperature"
+              }
+            ]
           },
           {
             "name": "clk",
@@ -259,6 +342,34 @@
         "specializes": [
           "Subsystem"
         ],
+        "performs": [
+          {
+            "name": "decodeCommand",
+            "type": "DecodeCommand"
+          },
+          {
+            "name": "buildResponse",
+            "type": "BuildResponse"
+          }
+        ],
+        "flows": [
+          {
+            "from": "Control.cmd",
+            "to": "decodeCommand.cmd"
+          },
+          {
+            "from": "decodeCommand.request",
+            "to": "Control.request"
+          },
+          {
+            "from": "Control.temperature",
+            "to": "buildResponse.temperature"
+          },
+          {
+            "from": "buildResponse.response",
+            "to": "Control.response"
+          }
+        ],
         "ports": [
           {
             "name": "dac_if",
@@ -270,7 +381,29 @@
           },
           {
             "name": "Control",
-            "type": "Axi4LiteSubordinate"
+            "type": "Axi4LiteSubordinate",
+            "items": [
+              {
+                "name": "cmd",
+                "direction": "in",
+                "type": "Command"
+              },
+              {
+                "name": "request",
+                "direction": "out",
+                "type": "TemperatureRequest"
+              },
+              {
+                "name": "temperature",
+                "direction": "in",
+                "type": "Temperature"
+              },
+              {
+                "name": "response",
+                "direction": "out",
+                "type": "Response"
+              }
+            ]
           },
           {
             "name": "clk",
