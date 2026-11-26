@@ -110,7 +110,7 @@ export async function runOp(op, args) {
  * Record every file's model and layout, as text, as what is on disk now.
  * saveAll compares against this to send only what has changed since.
  */
-export function markAllSaved() {
+export function markAllPackagesSaved() {
   for (const pkg of editor.pkgs)
     editor.saved[pkg.file] = {
       modelText: JSON.stringify(pkg.model),
