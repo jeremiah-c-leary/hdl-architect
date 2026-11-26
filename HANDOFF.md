@@ -5,7 +5,7 @@ Current state, decisions, open questions and the task list. Read
 spike, 2026-10 to 2026-11-24, and the Claude.ai strategy session of
 2026-11-15 to 24, referred to below as **[S]** with its section number).
 
-## Where we are (2026-11-25)
+## Where we are (2026-11-26)
 
 - **Moved here from `~/projects/sysmlpy_spike`** (now frozen) on branch
   `ha2`. HA 1 is the tag `ha1`. Checked after the move: FpgaOne generates
@@ -19,9 +19,23 @@ spike, 2026-10 to 2026-11-24, and the Claude.ai strategy session of
   export, stale-save protection); generators for container VHDL and leaf
   skeletons, Questa compile script, SysML text; the scaffolder (Copier +
   generated container cores); the `ha` command with generator plugins.
+- **Resource estimates** (2026-11-25/26, PRs #29-#32): a device library
+  (every Zynq UltraScale+ MPSoC, from AMD DS891 v1.11.1, with GTH/GTY);
+  the FPGA's target device and per-resource margins in the model; leaf
+  estimates rolled up by the core (`core/resources.py`); `ha report
+  resources` and `ha report devices`; in HA 2 the resource banner (a bar
+  per resource), the hierarchy view (Vivado style), the device view (every
+  device of the family, "Use" to retarget) and "Estimate…" on leaves.
+- **Code quality** (PRs #21-#28): the Clean Code rules in `CLAUDE.md`,
+  enforced by ESLint on every HA 2 file not in `NOT_YET_CLEAN`; `main.js`,
+  `model.js` and the new modules are clean. Since then: tidy first (below).
+- Checks: `scripts/check` passes: 97 pytest, 64 HA 2 behaviour tests.
 - **The Wi-Fi example is incomplete on purpose** (the user's design in
   progress): `hard_macro : HardMacro2` has no core yet, so `ha scaffold`
-  reports it missing and FuseSoC will not resolve the top.
+  reports it missing and FuseSoC will not resolve the top. Five subsystems
+  have no parts yet, so they are "to break down" in the resource views; its
+  estimates are illustrative. The user's working copy has two uncommitted
+  example edits (Uart's estimate, target XCZU4CG): theirs to keep or drop.
 
 ## Decisions
 
@@ -50,6 +64,28 @@ From the spike (2026-11-22) and [S] section A, confirmed by the user:
    separate packages, generators as plugins; Copier templates in their own
    repos; a generator moves to its own repo when it has heavy dependencies,
    its own users, or a stable schema to target. (2026-11-25)
+10. **Resource estimates** (2026-11-25/26): an estimate is an attribute per
+    device family (`attribute zynqUltraScalePlusEstimate :
+    ZynqUltraScalePlusResources { :>> lut = 250; }`); a block specializes
+    per family only when its implementation differs (SysML variability,
+    later). Only leaves (Rtl, VendorIp, HardMacro, RegisterFile) are
+    estimated: a roll-up block (with parts, or Subsystem/FPGA kind) is the
+    sum of its parts and is broken down, never estimated. A device is an
+    attribute def (its capacity in its family's resources); the FPGA names
+    its target (`attribute device : XCZU9EG;`). Margins are per resource
+    (`FpgaResourceMargins`, family defaults, the FPGA's own values). No
+    per-instance overrides yet; estimate sources and effort later.
+    Shape and SysON check: `docs/history/schema-notes.md`, version 0.7.
+11. **Tidy first** (2026-11-25): no more clean-up sweeps. Before a feature,
+    tidy only the code it touches, in its own PR, with a plain-English
+    walkthrough of what that code does (the sweep "turned into a slog": the
+    user often could not tell what the code did).
+12. **Working style** (2026-11-26 retrospective): for a feature, Claude
+    proposes the whole design (model in SysML terms, core, an ASCII mockup
+    of any UI, extras) and decides details itself; the user decides only
+    real choices. UI is agreed as a mockup before it is built. A value is
+    cited to a source only if it was read from it; otherwise it is marked
+    unverified (the XCZU9EG was cited to DS891 from memory, 2026-11-25).
 
 ## Waiting on the user
 
@@ -143,7 +179,7 @@ as friction shows.
 [S] task numbers in brackets.
 
 **Phase 0: consolidate**
-- [ ] Commit the move on `ha2`, push, merge to `main` (needs the user's OK).
+- [x] Commit the move, push, merge to `main`; every change since is a PR.
 - [x] CI on GitHub Actions: `scripts/check` on every PR and on main, Python
       3.11 and 3.14 (2026-11-25) [D2-3]. Also Black, Prettier, flake8, ESLint.
 - [ ] Move `@HdlSource` / `@IpConfig` / `@Provenance` into cores; the
@@ -163,8 +199,19 @@ as friction shows.
 - [ ] Headless diagram export command for document builds.
 
 **Phase 2: the user's process**
-- [ ] Feature arcs per level; Feature Mapping Visualization (sequence view);
-      feature footprint [D16].
+- [ ] **Next:** feature arcs per level; Feature Mapping Visualization
+      (sequence view); feature footprint [D16]. Start with a proposal and
+      mockups (decision 12); the Wi-Fi model's `ReadTemperature` action def
+      with allocations may be the SysML basis.
+
+**Estimates (E)**
+- [x] Resources: model, roll-up, margins, device library, reports, HA 2
+      banner, hierarchy view, device view, leaf entry (PRs #29-#32).
+- [ ] Effort, rolled up like resources [S B22].
+- [ ] Packages: bonded transceivers and I/O per package (DS891 Tables 2, 4).
+- [ ] What the comparison cannot see: CG/EG/EV processor-system differences.
+- [ ] Device view hierarchy (family, series) once there are more devices.
+- [ ] Estimate sources (where a number came from), as HA 1 had.
 
 **Phase 3: breadth**
 - [ ] Registers: leaf `.rdl` template with ID + scratchpad, generated top
