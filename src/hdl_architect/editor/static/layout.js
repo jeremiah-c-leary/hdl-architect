@@ -240,7 +240,8 @@ export function setAbsY(D, end, y) {
   if (off > q.h - G.PMB) q.h = off + G.PMB;
   l.offset = off;
 }
-export function settle(D) {
+/** Lay a sheet out: straight wires, nothing overlapping. */
+export function layOutSheet(D) {
   ensureLayout(D);
   // Every wire is drawn straight: between components, the left end sets the
   // height and the right end follows; a sheet port (cheap to move) always

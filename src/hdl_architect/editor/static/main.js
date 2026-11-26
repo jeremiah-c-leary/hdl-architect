@@ -28,7 +28,7 @@ import { editor } from "./state.js";
 import { $ } from "./svg.js";
 import { setStatus, showDefaultHint } from "./statusbar.js";
 import { isSheet, kindOf, partDef, indexSysmlDefinitions } from "./model.js";
-import { settle } from "./layout.js";
+import { layOutSheet } from "./layout.js";
 import { checkModel, markAllSysmlPackagesSaved, redo, undo } from "./store.js";
 import { render, renderSide } from "./render.js";
 import { goBack } from "./interaction.js";
@@ -84,18 +84,53 @@ async function loadModel() {
   indexSysmlDefinitions(); // name -> definition, for lookups
 }
 
-/**
- * The first sheet to show: the one named in the page's address (.../#Control),
- * else the FPGA's sheet, else the first sheet by name.
- */
+/** Open the first sheet and lay it out. */
 function openFirstSheet() {
-  const named = decodeURIComponent(location.hash.slice(1));
-  const sheets = Object.keys(editor.sysmlDefinitions)
-    .filter((n) => editor.sysmlDefinitions[n].coll === "partDefs" && isSheet(n))
-    .sort();
-  const isFpga = (n) => ["Fpga", "FpgaPart"].includes(kindOf(n));
-  const first = partDef(named) ? named : sheets.find(isFpga) || sheets[0];
-  if (!first) return;
-  editor.sheet = first;
-  settle(first); // lay the sheet out: straight wires, nothing overlapping
+  if (modelHasNoSheets()) return;
+  editor.sheet = chooseFirstSheet();
+  layOutSheet(editor.sheet);
+}
+
+function modelHasNoSheets() {
+  return allSheets().length === 0;
+}
+
+/**
+ * The first sheet to show: the one named in the page's address
+ * (.../#Control), else the FPGA's sheet, else the first sheet by name.
+ */
+function chooseFirstSheet() {
+  return sheetNamedInAddress() || fpgaSheet() || firstSheetByName();
+}
+
+/** The sheet named after # in the page's address, if there is one. */
+function sheetNamedInAddress() {
+  const name = decodeURIComponent(location.hash.slice(1));
+  if (partDef(name)) return name;
+  return null;
+}
+
+/** The FPGA's sheet, if the model has one. */
+function fpgaSheet() {
+  return allSheets().find(isFpga);
+}
+
+/** The first sheet in alphabetical order, if the model has any. */
+function firstSheetByName() {
+  return allSheets()[0];
+}
+
+/** Every part def that is drawn as a sheet, in alphabetical order. */
+function allSheets() {
+  const names = Object.keys(editor.sysmlDefinitions);
+  return names.filter(isSheetPartDef).sort();
+}
+
+function isSheetPartDef(name) {
+  const isPartDef = editor.sysmlDefinitions[name].coll === "partDefs";
+  return isPartDef && isSheet(name);
+}
+
+function isFpga(name) {
+  return ["Fpga", "FpgaPart"].includes(kindOf(name));
 }

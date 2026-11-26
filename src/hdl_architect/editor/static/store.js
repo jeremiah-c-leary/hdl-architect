@@ -7,7 +7,7 @@ import {
   indexSysmlDefinitions,
   short,
 } from "./model.js";
-import { settle } from "./layout.js";
+import { layOutSheet } from "./layout.js";
 import { render, renderProblems } from "./render.js";
 
 // ------------------------------------------------------------------ change, undo, save
@@ -47,7 +47,7 @@ export function mutate(fn) {
 export function changed() {
   indexSysmlDefinitions();
   repairImports();
-  if (editor.sheet && partDef(editor.sheet)) settle(editor.sheet);
+  if (editor.sheet && partDef(editor.sheet)) layOutSheet(editor.sheet);
   render();
   scheduleSave();
 }
