@@ -2,7 +2,12 @@
 import { COLLS, CONTAINER_KINDS, KIND_COLORS, editor } from "./state.js";
 
 // ------------------------------------------------------------------ model index and queries
-export function rebuildIndex() {
+/**
+ * Build editor.defs: every SysML definition in every package (part, port,
+ * attribute, item, metadata and action defs), by name, with its package.
+ * Rebuilt after every change, so lookups like partDef("Uart") stay current.
+ */
+export function indexSysmlDefinitions() {
   editor.defs = {};
   for (const pkg of editor.pkgs)
     for (const coll of COLLS)

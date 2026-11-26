@@ -1,7 +1,12 @@
 // HA 2: Changes, undo/redo, saving, the server check.
 import { COLLS, editor } from "./state.js";
 import { setStatus, showHint } from "./statusbar.js";
-import { ensureImport, partDef, rebuildIndex, short } from "./model.js";
+import {
+  ensureImport,
+  partDef,
+  indexSysmlDefinitions,
+  short,
+} from "./model.js";
 import { settle } from "./layout.js";
 import { render, renderProblems } from "./render.js";
 
@@ -22,13 +27,13 @@ export function mutate(fn) {
     ok = fn();
   } catch (err) {
     restore(snap);
-    rebuildIndex();
+    indexSysmlDefinitions();
     alert(err.message);
     return;
   }
   if (ok === false) {
     restore(snap);
-    rebuildIndex();
+    indexSysmlDefinitions();
     render();
     return;
   }
@@ -38,7 +43,7 @@ export function mutate(fn) {
   changed();
 }
 export function changed() {
-  rebuildIndex();
+  indexSysmlDefinitions();
   repairImports();
   if (editor.sheet && partDef(editor.sheet)) settle(editor.sheet);
   render();
@@ -127,7 +132,7 @@ export function takeChanged(changed) {
       modelText: JSON.stringify(c.model),
     });
   }
-  rebuildIndex();
+  indexSysmlDefinitions();
 }
 /**
  * Run a model operation as one undoable edit: save pending edits, run it on

@@ -27,7 +27,7 @@ import * as exportMod from "./export.js";
 import { editor } from "./state.js";
 import { $ } from "./svg.js";
 import { setStatus, showDefaultHint } from "./statusbar.js";
-import { isSheet, kindOf, partDef, rebuildIndex } from "./model.js";
+import { isSheet, kindOf, partDef, indexSysmlDefinitions } from "./model.js";
 import { settle } from "./layout.js";
 import { checkModel, markAllPackagesSaved, redo, undo } from "./store.js";
 import { render, renderSide } from "./render.js";
@@ -81,7 +81,7 @@ async function loadModel() {
   const response = await fetch("/api/model");
   editor.pkgs = (await response.json()).packages;
   markAllPackagesSaved(); // what was loaded is what is on disk
-  rebuildIndex();
+  indexSysmlDefinitions(); // name -> definition, for lookups
 }
 
 /**
