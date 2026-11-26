@@ -1,5 +1,5 @@
-// HA 2: Constants, and `editor`: everything the editor knows (the loaded
-// model files, the open sheet, the selection, undo/redo, what was saved).
+// HA 2: Constants, and `editor`: the editor's state (the open sheet, the
+// selection, undo/redo, what was saved). The model itself is model.js's.
 
 export const NAME_RE = /^[A-Za-z](_?[A-Za-z0-9])*$/;
 export const KIND_COLORS = {
@@ -37,18 +37,8 @@ export const G = {
   PORT_W: 8,
   PORT_H: 12,
 };
-export const COLLS = [
-  "partDefs",
-  "portDefs",
-  "attributeDefs",
-  "itemDefs",
-  "metadataDefs",
-  "actionDefs",
-];
 
 export const editor = {
-  sysmlPackages: [], // the model files: {file, model (one SysML package), layout, version}
-  sysmlDefinitions: {}, // every SysML definition by name: {pkg, coll, def}
   sheet: null,
   back: [],
   sel: null, // {kind:'part', name}

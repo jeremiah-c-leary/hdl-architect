@@ -113,7 +113,7 @@ then the Python).
   `if (!sheet) return; // an empty model`). Comments say why, not what.
 - **Names say what a thing is**, in full: no one- or two-letter names
   except `x`, `y`, `id`. Use SysML's terms; prefix with `sysml` where a
-  word is also a programming term (`editor.sysmlPackages`).
+  word is also a programming term (`model.allSysmlPackages()`).
 - **Every call says where it is defined.** Import a module by name, not
   names from it: `import * as store from "./store.js"`, then
   `store.undo()` (as Python's `import store`). A call without a prefix is

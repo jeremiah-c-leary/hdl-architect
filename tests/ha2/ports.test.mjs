@@ -63,7 +63,7 @@ test("deleting a port removes its wires and its place in the layout", async () =
   assert.equal(
     await E(
       page,
-      "!!(layoutOf(pkgOf('AdcInterface')).ports.AdcInterface || {}).jesd_clk",
+      "!!(layoutOf(packageOf('AdcInterface')).ports.AdcInterface || {}).jesd_clk",
     ),
     false,
   );

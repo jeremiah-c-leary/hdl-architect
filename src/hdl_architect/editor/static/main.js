@@ -71,20 +71,15 @@ async function start() {
 /** Every model file, with its layout, from the server. */
 async function loadModel() {
   const response = await fetch("/api/model");
-  state.editor.sysmlPackages = (await response.json()).packages;
+  model.load((await response.json()).packages);
   store.markAllSysmlPackagesSaved(); // what was loaded is what is on disk
-  model.indexSysmlDefinitions(); // name -> definition, for lookups
 }
 
 /** Open the first sheet and lay it out. */
 function openFirstSheet() {
-  if (modelHasNoSheets()) return;
+  if (model.hasNoSheets()) return;
   state.editor.sheet = chooseFirstSheet();
   layout.layOutSheet(state.editor.sheet);
-}
-
-function modelHasNoSheets() {
-  return allSheets().length === 0;
 }
 
 /**
@@ -92,37 +87,22 @@ function modelHasNoSheets() {
  * (.../#Control), else the FPGA's sheet, else the first sheet by name.
  */
 function chooseFirstSheet() {
-  return sheetNamedInAddress() || fpgaSheet() || firstSheetByName();
+  return sheetNamedInAddress() || model.fpgaSheet() || model.sheetNames()[0];
 }
 
-/** The sheet named after # in the page's address, if there is one. */
+/** The sheet named in the page's address, if there is one. */
 function sheetNamedInAddress() {
-  const name = decodeURIComponent(location.hash.slice(1));
+  const name = nameInAddress();
   if (model.partDef(name)) return name;
   return null;
 }
 
-/** The FPGA's sheet, if the model has one. */
-function fpgaSheet() {
-  return allSheets().find(isFpga);
-}
-
-/** The first sheet in alphabetical order, if the model has any. */
-function firstSheetByName() {
-  return allSheets()[0];
-}
-
-/** Every part def that is drawn as a sheet, in alphabetical order. */
-function allSheets() {
-  const names = Object.keys(state.editor.sysmlDefinitions);
-  return names.filter(isSheetPartDef).sort();
-}
-
-function isSheetPartDef(name) {
-  const isPartDef = state.editor.sysmlDefinitions[name].coll === "partDefs";
-  return isPartDef && model.isSheet(name);
-}
-
-function isFpga(name) {
-  return ["Fpga", "FpgaPart"].includes(model.kindOf(name));
+/**
+ * The name after # in the page's address: ".../#Control" gives "Control".
+ * location.hash is the "#Control" part; the address encodes some characters
+ * (a space is "%20"), and decodeURIComponent turns them back.
+ */
+function nameInAddress() {
+  const withoutHash = location.hash.slice(1);
+  return decodeURIComponent(withoutHash);
 }

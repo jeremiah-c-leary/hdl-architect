@@ -59,7 +59,9 @@ test("renaming a def: every use follows, also the sheet you are on", async () =>
   assert.equal(partsOnDisk().Control, "ControlHub");
   assert.ok(defOnDisk("ControlHub"));
   assert.equal(await E(page, "editor.sheet"), "ControlHub");
-  assert.ok(await E(page, "!!layoutOf(pkgOf('ControlHub')).sheets.ControlHub"));
+  assert.ok(
+    await E(page, "!!layoutOf(packageOf('ControlHub')).sheets.ControlHub"),
+  );
   await E(page, "goBack()");
 });
 

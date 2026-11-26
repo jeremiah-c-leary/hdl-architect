@@ -4,10 +4,10 @@ import { showHint } from "./statusbar.js";
 import { askName } from "./dialogs.js";
 import {
   endStr,
+  packageOf,
   partDef,
   partType,
   partsOf,
-  pkgOf,
   portsOfDef,
 } from "./model.js";
 import { drawnWires } from "./nets.js";
@@ -255,7 +255,7 @@ export function renamePart(D, old, nu) {
 // it. The browser only moves or removes the port's place in the layout.
 export function renamePort(P, old, nu) {
   return applyOp("rename_port", { def: P, old, new: nu }, () => {
-    const L = layoutOf(pkgOf(P));
+    const L = layoutOf(packageOf(P));
     if (L.ports[P] && L.ports[P][old]) {
       L.ports[P][nu] = L.ports[P][old];
       delete L.ports[P][old];
@@ -268,7 +268,7 @@ export function renamePort(P, old, nu) {
   });
 }
 export function renameDef(old, nu) {
-  const L = layoutOf(pkgOf(old));
+  const L = layoutOf(packageOf(old));
   return applyOp("rename_def", { old, new: nu }, () => {
     if (L.sheets[old]) {
       L.sheets[nu] = L.sheets[old];
@@ -296,7 +296,7 @@ export function setKind(P, kind) {
 }
 export function deletePort(P, name) {
   return applyOp("delete_port", { def: P, port: name }, () => {
-    const L = layoutOf(pkgOf(P));
+    const L = layoutOf(packageOf(P));
     if (L.ports[P]) delete L.ports[P][name];
     if (L.sheets[P]) delete L.sheets[P].edge[name];
   });
@@ -342,7 +342,7 @@ export function otherSide(s) {
 export function setPortSide(P, port, side) {
   // one side per port of a part def: on every instance of it, and on its own sheet's edge (as in HA 1)
   portLayout(P, port).side = side;
-  const sl = layoutOf(pkgOf(P)).sheets[P];
+  const sl = layoutOf(packageOf(P)).sheets[P];
   if (sl && sl.edge[port]) sl.edge[port].side = side;
 }
 export function sideOf(P, port, isEdge) {
