@@ -1,5 +1,6 @@
 """Resource estimates: the roll-up, the fit against the target device, and
-`ha report resources` (on the Wi-Fi example, and on changed copies of it)."""
+`ha report resources` (on a frozen copy of the Wi-Fi example, and on changed
+copies of it)."""
 
 import json
 import shutil
@@ -11,7 +12,9 @@ from hdl_architect.cli import main as ha
 from hdl_architect.core.model import ModelError, load_ir
 from hdl_architect.core.resources import resource_report
 
-WIFI = Path(__file__).resolve().parents[1] / "examples" / "wifi_router"
+# A frozen copy of the Wi-Fi example with its device, margins and estimates:
+# the tests must not depend on the example, which the user edits in HA 2.
+WIFI = Path(__file__).resolve().parent / "ha2" / "fixtures" / "wifi_router_estimates"
 TOP = "WifiPacketRouterFpga"
 SUBSYSTEMS = "wifi_packet_router_subsystems.json"
 FPGA = "wifi_packet_router_fpga.json"

@@ -190,10 +190,11 @@ test("Hierarchy… opens the view: every block, its counts, tinted by kind", asy
     /WifiPacketRouterFpga on XCZU9EG/,
   );
   assert.equal((await rowTexts()).length, 11); // the FPGA, its 9 parts, RST_SYNC
-  assert.equal(await rowOf("uart : Uart"), "uart : Uart 400 200 0 0 3");
+  assert.equal(await rowOf("uart "), "uart Uart 400 200 0 0 3");
+  assert.equal(await rowOf("ethernet "), "ethernet Ethernet to break down");
   assert.equal(
-    await rowOf("ethernet : Ethernet"),
-    "ethernet : Ethernet to break down",
+    await rowOf("▼ (top)"),
+    "▼ (top) WifiPacketRouterFpga 1110 812 0 0 3",
   );
   assert.equal(
     await E(
@@ -210,9 +211,13 @@ test("folding a block hides its parts; percent instead of counts", async () => {
     "document.querySelector('.rv-row[data-path$=\"CLK_RST_CTRL\"] .rv-fold').click()",
   );
   assert.equal(await rowOf("RST_SYNC"), undefined);
+  assert.equal(
+    await rowOf("▶ CLK_RST_CTRL"),
+    "▶ CLK_RST_CTRL CLKRSTCTRL 10 12 0 0 0",
+  );
   assert.equal((await rowTexts()).length, 10);
   await E(page, "document.getElementById('rvToggle').click()");
-  assert.match(await rowOf("uart : Uart"), /^uart : Uart 0% 0% 0% - 0%$/);
+  assert.match(await rowOf("uart "), /^uart Uart 0% 0% 0% - 0%$/);
   await E(page, "document.getElementById('rvToggle').click()");
 });
 

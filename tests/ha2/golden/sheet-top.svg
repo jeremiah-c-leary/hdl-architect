@@ -92,7 +92,7 @@ svg text { fill: #1d2430; font-size: 12px; user-select: none; }
 #resourceBanner:empty { display: none; }
 .rb-resource { display: inline-flex; align-items: center; gap: 6px; }
 .rb-name { color: #6b7686; min-width: 3.5em; text-align: right; }
-.rb-track { position: relative; width: 110px; height: 10px; border: 1px solid #d8dde5; border-radius: 3px; background: #f6f7f9; overflow: hidden; }
+.rb-track { position: relative; width: 110px; height: 16px; border: 1px solid #d8dde5; background: #f6f7f9; overflow: hidden; }
 .rb-fill { position: absolute; inset: 0px auto 0px 0px; }
 .rb-level-ok { background: rgb(47, 143, 87); }
 .rb-level-margin { background: rgb(211, 155, 28); }
@@ -109,7 +109,7 @@ svg text { fill: #1d2430; font-size: 12px; user-select: none; }
 #rvTable { border-collapse: collapse; margin: 12px; font-size: 12px; }
 #rvTable td { padding: 3px 10px; }
 .rv-head td, .rv-foot td { color: #6b7686; text-align: right; }
-.rv-head td:first-child, .rv-foot td:first-child { text-align: left; }
+.rv-head td:nth-child(-n+2), .rv-foot td:nth-child(-n+2) { text-align: left; }
 .rv-foot:first-of-type td, .rv-foot td { border-top: 1px solid #d8dde5; }
 .rv-row { cursor: pointer; }
 .rv-row:hover { filter: brightness(0.93); }

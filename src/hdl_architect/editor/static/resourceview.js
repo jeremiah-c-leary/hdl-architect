@@ -64,7 +64,7 @@ function toggleLabel() {
 
 function headerRow() {
   const names = shownReport.resourceNames;
-  return tableRow(["Block", ...names], "rv-head");
+  return tableRow(["Part", "Part def", ...names], "rv-head");
 }
 
 /** A block's row and, unless it is folded, its parts' rows. */
@@ -79,24 +79,25 @@ function blockRow(block, parent) {
   const row = tableRow([], "rv-row");
   row.dataset.path = block.path;
   tintRow(row, kindColor(block.definition));
-  row.append(nameCell(block), ...useCells(block));
+  row.append(partCell(block), tableCell(block.definition), ...useCells(block));
   row.onclick = () => openSheetOf(block, parent);
   return row;
 }
 
-/** The block's name, indented by its depth, with ▼/▶ when it has parts. */
-function nameCell(block) {
+/** The part's name, indented by its depth, with ▼/▶ when it has parts. */
+function partCell(block) {
   const cell = document.createElement("td");
   cell.className = "rv-name";
   cell.style.paddingLeft = `${8 + 16 * depthOf(block)}px`;
   if (block.children.length) cell.append(foldToggle(block));
-  cell.append(blockLabel(block));
+  cell.append(partName(block));
   return cell;
 }
 
-function blockLabel(block) {
-  if (block.path === shownReport.top) return block.definition;
-  return `${block.name} : ${block.definition}`;
+/** The part's name; the FPGA at the top is not a part of anything. */
+function partName(block) {
+  if (block.path === shownReport.top) return "(top)";
+  return block.name;
 }
 
 function depthOf(block) {
@@ -157,7 +158,7 @@ function footerRows() {
 /** A footer row: its label, then valueOf(resource name) per column. */
 function footerRow(label, valueOf) {
   const values = shownReport.resourceNames.map(valueOf);
-  return tableRow([label, ...values], "rv-foot");
+  return tableRow([label, "", ...values], "rv-foot");
 }
 
 function tableRow(texts, className) {

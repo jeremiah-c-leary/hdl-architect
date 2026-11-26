@@ -481,9 +481,8 @@ svg text {
 .rb-track {
   position: relative;
   width: 110px;
-  height: 10px;
+  height: 16px;
   border: 1px solid var(--line);
-  border-radius: 3px;
   background: var(--bg);
   overflow: hidden;
 }
@@ -554,8 +553,8 @@ svg text {
   color: var(--muted);
   text-align: right;
 }
-.rv-head td:first-child,
-.rv-foot td:first-child {
+.rv-head td:nth-child(-n + 2),
+.rv-foot td:nth-child(-n + 2) {
   text-align: left;
 }
 .rv-foot:first-of-type td,
