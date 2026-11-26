@@ -64,3 +64,17 @@ test("a subsystem's sheet (Control)", async () => {
   await E(page, "openSheet('Control')");
   matchesGolden("sheet-control.svg", await svgOf("canvas"));
 });
+
+test("a sheet port with no interface yet has nothing under its name", async () => {
+  await E(page, "openSheet('Control')");
+  await E(
+    page,
+    "mutate(() => { partDef('Control').ports.push({ name: 'spare' }); addPortLayout('Control', 'spare', 'left'); })",
+  );
+  const texts = await E(
+    page,
+    "[...document.querySelectorAll('#canvas text')].map((t) => t.textContent)",
+  );
+  assert.ok(texts.includes("spare"), "the port is drawn");
+  assert.ok(!texts.includes("undefined"), "no 'undefined' under it");
+});

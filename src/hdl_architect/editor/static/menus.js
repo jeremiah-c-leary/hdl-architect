@@ -351,6 +351,16 @@ export async function editLabel(P, name) {
   if ((port.label || "") === t) return;
   return applyOp("set_port_name", { def: P, port: name, name: t || null });
 }
+/** The menu of a port on the sheet's edge. */
+export function edgePortMenu(ev, sheetName, name) {
+  portMenu(ev, sheetName, name, true);
+}
+
+/** The menu of a port of a component. */
+export function partPortMenu(ev, defName, name) {
+  portMenu(ev, defName, name, false);
+}
+
 export function portMenu(ev, P, name, isEdge) {
   const port = portsOfDef(P).find((p) => p.name === name);
   if (editor.picked.length > 1 && isPicked(P, name)) {

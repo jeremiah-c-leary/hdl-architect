@@ -21,6 +21,9 @@ import * as store from "./store.js";
 import * as edits from "./edits.js";
 import * as menus from "./menus.js";
 import * as render from "./render.js";
+import * as sidePanel from "./sidepanel.js";
+import * as netPanel from "./netpanel.js";
+import * as problems from "./problems.js";
 import * as interaction from "./interaction.js";
 import * as clocktree from "./clocktree.js";
 import * as diagramExport from "./export.js";
@@ -45,6 +48,9 @@ window.ha2 = Object.assign(
   edits,
   menus,
   render,
+  sidePanel,
+  netPanel,
+  problems,
   interaction,
   clocktree,
   diagramExport,
@@ -65,7 +71,7 @@ function wireButtons() {
   svg.$("redo").onclick = store.redo;
   svg.$("back").onclick = interaction.goBack;
   svg.$("checkBtn").onclick = store.checkModel;
-  svg.$("libFilter").oninput = render.renderSide;
+  svg.$("libFilter").oninput = sidePanel.renderSide;
 }
 
 /** Load the model, open the first sheet and draw it. */
