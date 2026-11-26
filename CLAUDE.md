@@ -108,6 +108,9 @@ then the Python).
 - **Small functions, one level of abstraction each.** A function either
   does one step itself or calls named steps; it does not mix the two.
   Extract a function rather than write a comment explaining a block.
+- **A comment explaining a line is a missing name.** Name the condition or
+  step instead (`if (modelHasNoSheets()) return;`, not
+  `if (!sheet) return; // an empty model`). Comments say why, not what.
 - **Names say what a thing is**, in full: no one- or two-letter names
   except `x`, `y`, `id`. Use SysML's terms; prefix with `sysml` where a
   word is also a programming term (`editor.sysmlPackages`).
