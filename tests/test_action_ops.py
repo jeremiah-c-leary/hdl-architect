@@ -426,12 +426,12 @@ def test_ha_op_runs_an_action_operation(wifi, capsys):
         [
             "op",
             "add_step",
-            "--path",
-            str(wifi),
             f"sheet={TOP}",
             "perform=readTemperature",
             "name=logReading",
             "part=Control",
+            "--path",  # options last: Python 3.11's argparse needs it
+            str(wifi),
         ]
     )
     assert code == 0
