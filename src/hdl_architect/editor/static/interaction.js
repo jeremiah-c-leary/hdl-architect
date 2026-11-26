@@ -18,7 +18,7 @@ import {
   geometry,
   portLayout,
   setAbsY,
-  settle,
+  layOutSheet,
   sheetLayout,
 } from "./layout.js";
 import { changed, redo, snapshot, undo } from "./store.js";
@@ -51,7 +51,7 @@ export function openSheet(n) {
   editor.sel = null;
   editor.armed = null;
   history.replaceState(null, "", "#" + n);
-  settle(n);
+  layOutSheet(n);
   render();
   showDefaultHint();
 }
@@ -62,7 +62,7 @@ export function goBack() {
     editor.sel = null;
     editor.armed = null;
     history.replaceState(null, "", "#" + b);
-    settle(b);
+    layOutSheet(b);
     render();
   }
 }
@@ -155,7 +155,7 @@ window.addEventListener("mouseup", (ev) => {
   if (!d) return;
   editor.drag = null;
   if (d.moved) {
-    // a move: one undo step, then settle
+    // a move: one undo step, then lay the sheet out
     editor.undo.push(d.snap);
     editor.redo = [];
     // dragging a port, or a component's top past its ports, moves ports: their

@@ -28,7 +28,7 @@ import { editor } from "./state.js";
 import { $ } from "./svg.js";
 import { setStatus, showDefaultHint } from "./statusbar.js";
 import { isSheet, kindOf, partDef, indexSysmlDefinitions } from "./model.js";
-import { settle } from "./layout.js";
+import { layOutSheet } from "./layout.js";
 import { checkModel, markAllSysmlPackagesSaved, redo, undo } from "./store.js";
 import { render, renderSide } from "./render.js";
 import { goBack } from "./interaction.js";
@@ -86,10 +86,14 @@ async function loadModel() {
 
 /** Open the first sheet and lay it out. */
 function openFirstSheet() {
+  if (modelHasNoSheets()) return;
   const sheet = chooseFirstSheet();
-  if (!sheet) return; // an empty model: nothing to open
   editor.sheet = sheet;
-  settle(sheet); // lay the sheet out: straight wires, nothing overlapping
+  layOutSheet(sheet);
+}
+
+function modelHasNoSheets() {
+  return allSheets().length === 0;
 }
 
 /**
