@@ -89,7 +89,7 @@ frozen in `~/projects/sysmlpy_spike`).
 - Linters: flake8 7.5.0 for Python (`flake8`; settings in `.flake8`, Black
   compatible) and ESLint 10.15.0 for HA 2's browser code (`npm run lint`;
   `eslint.config.mjs`: the recommended rules, plus the Clean Code rules
-  below on the files in its `CLEAN_FILES`). HA 2's browser code is ES
+  below on every file not in its `NOT_YET_CLEAN`). HA 2's browser code is ES
   modules: each file imports what it uses. Fix findings; do not switch
   rules off without asking.
 - Never format files with their own writer: model JSON and layouts (HA 2's
@@ -130,8 +130,9 @@ then the Python).
 
 ESLint checks what a tool can (`eslint.config.mjs`, `CLEAN_CODE`): argument
 count, true/false arguments to our own functions, paths, nesting, nested
-`?:`, name length, and function length as a warning. A cleaned file is
-added to `CLEAN_FILES` in the same PR, so it cannot slip back. The rest
+`?:`, name length, and function length as a warning. They apply to every
+file, new ones included, except those in `NOT_YET_CLEAN`; a clean-up PR takes
+its file off that list, so it cannot slip back. The rest
 (one level of abstraction, names that say what they do) is checked in
 review.
 

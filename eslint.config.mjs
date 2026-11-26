@@ -1,15 +1,31 @@
 // ESLint for HA 2: the recommended rules (formatting is Prettier's job), and
-// the Clean Code rules (CLAUDE.md, "Code style") on the files already brought
-// up to them.
+// the Clean Code rules (CLAUDE.md, "Code style") on every file not listed in
+// NOT_YET_CLEAN.
 // HA 2's browser code is ES modules: each file imports what it uses, so ESLint
 // checks every name across files.
 import js from "@eslint/js";
 import globals from "globals";
 
-// Files brought up to the Clean Code rules, one PR per file. When every file
-// is here, the rules apply to all of HA 2's browser code.
+// The Clean Code rules apply to every file of HA 2's browser code, new files
+// included, except those not yet brought up to them. Each clean-up PR takes
+// its file off this list; when it is empty, delete it.
 const STATIC = "src/hdl_architect/editor/static/";
-const CLEAN_FILES = [];
+const NOT_YET_CLEAN = [
+  "clocktree.js",
+  "dialogs.js",
+  "edits.js",
+  "export.js",
+  "interaction.js",
+  "layout.js",
+  "menus.js",
+  "model.js",
+  "nets.js",
+  "render.js",
+  "state.js",
+  "statusbar.js",
+  "store.js",
+  "svg.js",
+];
 
 // The Clean Code rules that a tool can check. "error" fails CI; "warn" only
 // flags code for a person to look at.
@@ -64,10 +80,11 @@ const config = [
   },
 ];
 
-// Each file brought up to the Clean Code rules (CLEAN_FILES).
-if (CLEAN_FILES.length > 0) {
-  const files = CLEAN_FILES.map((name) => STATIC + name);
-  config.push({ files, rules: CLEAN_CODE });
-}
+// The Clean Code rules, on every file but those not yet clean.
+config.push({
+  files: [STATIC + "**/*.js"],
+  ignores: NOT_YET_CLEAN.map((name) => STATIC + name),
+  rules: CLEAN_CODE,
+});
 
 export default config;
