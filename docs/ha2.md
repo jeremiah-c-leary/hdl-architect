@@ -168,6 +168,15 @@ never estimated.
   (`attribute resourceMargins : ZynqUltraScalePlusMargins { :>> bram36 = 20; }`;
   the family's defaults apply otherwise). "⚠ 5 to break down" warns that
   the bars leave blocks out. Hover a bar for the numbers.
+- **Devices…** (left of the device name) shows the design on every device
+  of the family, smallest first, with the same bars and the FPGA's own
+  margins: **Use**, the fit, the device, then its bars; the smallest device
+  that fits is marked. **Use** makes a device the target (undo takes it
+  back). A resource a device does not have is a grey bar, here and in the
+  banner. `ha report devices` prints the same.
+  Devices come from the device library (`fpga_devices.json`: every Zynq
+  UltraScale+ MPSoC, from AMD DS891 v1.11.1); transceiver counts are each
+  device's maximum, and a package may bond out fewer.
 - **Hierarchy…** opens the utilization view: the whole hierarchy as a
   table, like Vivado's hierarchical utilization report, each row in its
   block's kind colour. ▼/▶ fold a level; "Show percent" switches to percent

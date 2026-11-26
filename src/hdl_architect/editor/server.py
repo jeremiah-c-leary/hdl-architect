@@ -11,7 +11,8 @@ this server is an editor for them, like SysON is for its model. It:
     byte-identical and diffs show only real changes;
   - checks the whole model with the core model loader (schema, names, imports);
   - runs model operations (core.ops, POST /api/op) on the files and writes them.
-  - reports the resource roll-up of an FPGA (core.resources, GET /api/resources).
+  - reports the resource roll-up of an FPGA, and its fit on every device of
+    its family (core.resources, GET /api/resources, GET /api/devices).
 It listens on 127.0.0.1 only and writes only the files it loaded (and their
 sidecars).
 """
@@ -234,6 +235,16 @@ class Store:
             return {"error": str(e)}
         return resources.report_as_dict(report)
 
+    def devices(self, top: str) -> dict:
+        """`top` on every device of its family (core.resources), or {"error"}."""
+        from hdl_architect.core import resources
+
+        try:
+            report, fits = resources.device_fits(self.paths, top)
+        except core_model.ModelError as e:
+            return {"error": str(e)}
+        return resources.device_fits_as_dict(report, fits)
+
     def check(self) -> list[str]:
         try:
             core_model.check_model(self.paths)
@@ -293,10 +304,14 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/check":
             with LOCK:
                 return self._json({"errors": self.store.check()})
-        if path == "/api/resources":
+        if path in ("/api/resources", "/api/devices"):
             top = parse_qs(urlsplit(self.path).query).get("top", [""])[0]
+            report = {
+                "/api/resources": self.store.resources,
+                "/api/devices": self.store.devices,
+            }[path]
             with LOCK:
-                return self._json(self.store.resources(top))
+                return self._json(report(top))
         name = (
             "index.html"
             if path in ("/", "/index.html")

@@ -53,6 +53,8 @@ def test_the_wifi_design_rolls_up_and_fits():
         "bram36": 0,
         "uram": 0,
         "dsp48": 0,
+        "gth": 0,
+        "gty": 0,
     }
     assert report.over_capacity() == []
     assert report.not_estimated() == []
@@ -260,7 +262,15 @@ def test_the_server_reports_each_definition_s_totals():
     report = store.resources(TOP)
     assert report["device"] == "XCZU9EG"
     assert report["definitions"]["Uart"] == {
-        "used": {"lut": 250, "ff": 200, "bram36": 0, "uram": 0, "dsp48": 0},
+        "used": {
+            "lut": 250,
+            "ff": 200,
+            "bram36": 0,
+            "uram": 0,
+            "dsp48": 0,
+            "gth": 0,
+            "gty": 0,
+        },
         "status": "estimated",
     }
     assert report["definitions"]["Ethernet"]["status"] == "to break down"
@@ -279,6 +289,8 @@ def test_margins_are_the_family_s_defaults_and_the_design_s_own():
         "bram36": 20,
         "uram": 30,
         "dsp48": 30,
+        "gth": 0,  # transceivers: no margin by default
+        "gty": 0,
     }
     assert target.budget("lut") == 274080 * 70 // 100
     assert target.budget("bram36") == 912 * 80 // 100
@@ -323,3 +335,140 @@ def test_the_server_sends_the_hierarchy_and_the_margins():
     clock_reset = next(c for c in tree["children"] if c["name"] == "CLK_RST_CTRL")
     assert clock_reset["children"][0]["name"] == "RST_SYNC"
     assert f"{TOP}.ethernet" in report["toBreakDown"]
+
+
+# ------------------------------------------------------------------ other devices
+
+DS891 = {  # AMD DS891 v1.11.1, Tables 1, 3, 5: a few devices, checked again here
+    "XCZU1CG": [37440, 74880, 108, 0, 216, 0, 0],
+    "XCZU9EG": [274080, 548160, 912, 0, 2520, 24, 0],
+    "XCZU11EG": [298560, 597120, 600, 80, 2928, 32, 16],
+    "XCZU17EG": [423403, 846806, 796, 102, 1590, 44, 28],
+    "XCZU7EV": [230400, 460800, 312, 96, 1728, 24, 0],
+}
+
+
+def test_the_library_has_the_whole_family_smallest_first():
+    from hdl_architect.core.resources import device_fits
+
+    _, fits = device_fits([WIFI], TOP)
+    names = [fit.device for fit in fits]
+    assert len(names) == 25
+    assert names[0] == "XCZU1CG" and names[-1] == "XCZU19EG"
+    capacity = {fit.device: list(fit.capacity.values()) for fit in fits}
+    for device, counts in DS891.items():
+        assert capacity[device] == counts, device
+
+
+@pytest.mark.parametrize(
+    "uart_lut, xczu1cg, smallest",
+    [
+        (250, "fits", "XCZU1CG"),
+        (30000, "uses margin", "XCZU2CG"),  # 30710 > 26208, the ZU1's LUT budget
+        # 60710 > 37440, the ZU1's LUTs; past the ZU2's and ZU3's budgets too:
+        # the ZU4 (budget 61488) is the first that fits
+        (60000, "does not fit", "XCZU4CG"),
+    ],
+)
+def test_each_device_s_verdict_and_the_smallest_that_fits(
+    wifi_copy, uart_lut, xczu1cg, smallest
+):
+    from hdl_architect.core.resources import device_fits, smallest_fit
+
+    change_def(
+        wifi_copy,
+        SUBSYSTEMS,
+        "Uart",
+        lambda d: estimate_of(d)["redefines"].update(lut=uart_lut),
+    )
+    _, fits = device_fits([wifi_copy], TOP)
+    verdicts = {fit.device: fit.verdict() for fit in fits}
+    assert verdicts["XCZU1CG"] == xczu1cg
+    assert smallest_fit(fits) == smallest
+
+
+def test_the_devices_report(capsys):
+    assert ha(["report", "devices", "--path", str(WIFI), "--top", TOP]) == 0
+    out = capsys.readouterr().out
+    assert "XCZU9EG (target)" in out
+    assert "smallest that fits: XCZU1CG" in out
+    assert "incomplete: 5 blocks to break down or estimate" in out
+
+
+def device_of(model) -> str:
+    fpga = model.part_def(TOP)[2]
+    return next(a["type"] for a in fpga["attributes"] if a["name"] == "device")
+
+
+def test_set_device_retargets_the_fpga(wifi_copy):
+    from hdl_architect.core import ops
+
+    docs, model = load_ops_model(wifi_copy)
+    result = ops.set_device(model, TOP, "XCZU3EG")
+    assert device_of(model) == "XCZU3EG"
+    assert result.notes == []
+    write_and_check(docs, wifi_copy)
+    assert resource_report([wifi_copy], TOP).target.capacity["lut"] == 70560
+
+
+@pytest.mark.parametrize(
+    "def_name, device, code",
+    [
+        (TOP, "NoSuchDevice", "not_found"),
+        (TOP, "ZynqUltraScalePlusDevice", "not_found"),  # abstract: a family
+        (TOP, "ZynqUltraScalePlusResources", "not_found"),  # not a device
+        ("Uart", "XCZU3EG", "not_an_fpga"),
+    ],
+)
+def test_set_device_refuses(wifi_copy, def_name, device, code):
+    from hdl_architect.core import ops
+
+    _, model = load_ops_model(wifi_copy)
+    with pytest.raises(ops.OpError) as refused:
+        ops.set_device(model, def_name, device)
+    assert refused.value.code == code
+
+
+def test_a_device_of_another_family_says_the_estimates_do_not_carry(wifi_copy):
+    from hdl_architect.core import ops
+
+    path = wifi_copy / "fpga_devices.json"
+    doc = json.loads(path.read_text())
+    doc["package"]["attributeDefs"] += [
+        {
+            "name": "OtherResources",
+            "specializes": ["FpgaResources"],
+            "attributes": [{"name": "alm", "type": "Integer"}],
+        },
+        {
+            "name": "OtherDevice",
+            "isAbstract": True,
+            "specializes": ["FpgaDevice"],
+            "attributes": [{"name": "capacity", "type": "OtherResources"}],
+        },
+        {
+            "name": "OtherOne",
+            "specializes": ["OtherDevice"],
+            "redefines": {"capacity": {"alm": 1000}},
+        },
+    ]
+    path.write_text(json.dumps(doc, indent=2))
+    _, model = load_ops_model(wifi_copy)
+    notes = ops.set_device(model, TOP, "OtherOne").notes
+    assert notes == [
+        "OtherOne is a OtherResources device; the estimates are in "
+        "ZynqUltraScalePlusResources. Leaves need estimates in OtherResources."
+    ]
+
+
+def test_the_server_compares_the_devices():
+    from hdl_architect.editor.server import Store
+
+    report = Store([WIFI]).devices(TOP)
+    assert report["target"] == "XCZU9EG"
+    assert report["smallestFit"] == "XCZU1CG"
+    assert len(report["devices"]) == 25
+    first = report["devices"][0]
+    assert first["device"] == "XCZU1CG"
+    assert first["verdict"] == "fits"
+    assert first["levels"]["lut"] == "ok"
