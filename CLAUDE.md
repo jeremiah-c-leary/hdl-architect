@@ -88,14 +88,49 @@ frozen in `~/projects/sysmlpy_spike`).
   (`npm install` once; `npm run format`), Prettier's defaults.
 - Linters: flake8 7.5.0 for Python (`flake8`; settings in `.flake8`, Black
   compatible) and ESLint 10.15.0 for HA 2's browser code (`npm run lint`;
-  `eslint.config.mjs`, the recommended rules only). HA 2's scripts share
-  functions through the page's global scope: a name one script uses from
-  another is listed in `eslint.config.mjs` for that file. Fix findings;
-  do not switch rules off without asking.
+  `eslint.config.mjs`: the recommended rules, plus the Clean Code rules
+  below on the files in its `CLEAN_FILES`). HA 2's browser code is ES
+  modules: each file imports what it uses. Fix findings; do not switch
+  rules off without asking.
 - Never format files with their own writer: model JSON and layouts (HA 2's
   canonical form), `tests/golden/`, templates, docs (`.prettierignore`).
 - A formatting-only commit goes in `.git-blame-ignore-revs`. Never mix
   formatting with other changes in one commit.
+
+## Code style (Clean Code)
+
+The maintainer reads this code as an electrical engineer, not a JavaScript
+developer: code must read as what it does. Compact idioms that need
+decoding are defects, however short. The spikes did not follow this; the
+code is being brought up to it one file per PR (HA 2's browser code first,
+then the Python).
+
+- **Small functions, one level of abstraction each.** A function either
+  does one step itself or calls named steps; it does not mix the two.
+  Extract a function rather than write a comment explaining a block.
+- **Names say what a thing is**, in full: no one- or two-letter names
+  except `x`, `y`, `id`. Use SysML's terms; prefix with `sysml` where a
+  word is also a programming term (`editor.sysmlPackages`).
+- **At most 3 arguments.** More means they belong together: pass one
+  object (a data class in Python).
+- **No true/false arguments.** A flag argument means two functions: split
+  it into two, each named for what it does.
+- **Plain control flow:** `if` statements, not `a ? b : c` chains or
+  `a || b` used as a decision (`x || default` for a missing value is fine);
+  at most 2 levels of nesting; at most 6 paths through a function.
+- **No hidden shared state:** state has one owner module; others go
+  through its functions. (`editor` in `state.js` is shared by most modules
+  today; move each field to its owner as files are cleaned.)
+- **Long functions (over 20 lines) are flagged, not refused:** after
+  extracting functions, list the ones still long for the maintainer to
+  review. Some are fine.
+
+ESLint checks what a tool can (`eslint.config.mjs`, `CLEAN_CODE`): argument
+count, true/false arguments to our own functions, paths, nesting, nested
+`?:`, name length, and function length as a warning. A cleaned file is
+added to `CLEAN_FILES` in the same PR, so it cannot slip back. The rest
+(one level of abstraction, names that say what they do) is checked in
+review.
 
 ## Verifying a change
 
