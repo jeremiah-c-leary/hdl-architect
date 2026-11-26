@@ -210,8 +210,8 @@ as friction shows.
 
 **Phase 1: HA 2 for architecture**
 - [ ] Move to parent / into a subsystem (one command instead of ~10 edits).
-- [x] Operations API in Python shared by HA 2 and the CLI [D4]: all 19
-      model changes in `core/ops.py` (`OPERATIONS`), HA 2 via `POST /api/op`,
+- [x] Operations API in Python shared by HA 2 and the CLI [D4]: every
+      model change in `core/ops.py` (`operations()`), HA 2 via `POST /api/op`,
       `ha op` (2026-11-25). Next: an MCP server on the same table.
 - [ ] Address map, windows, checks; CSR bus as a global net [D5].
 - [ ] Files view (scaffold status per block); protocol editor; new package.
@@ -219,7 +219,8 @@ as friction shows.
 
 **Phase 2: the user's process**
 - [x] Performed actions: model (schema 0.8), core walk, `ha report
-      actions` (PR #34, decision 13).
+      actions` (PR #34, decision 13); the 12 operations that edit them
+      (`core/action_ops.py`).
 - [ ] **Next:** HA 2 views for performed actions [D16]: a Performs
       section, a steps editor, the sequence view (HA 1's Feature Mapping
       Visualization) and the footprint. Mockups first (decision 12).

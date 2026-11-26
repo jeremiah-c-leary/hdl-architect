@@ -26,8 +26,10 @@ frozen in `~/projects/sysmlpy_spike`).
   a helper goes where its job is. `main.js` exposes every
   module's exports as `window.ha2` for the tests and the browser console.
   Model rules live in `core/ops.py`, never in the browser. Every model
-  change is a named operation in `core.ops.OPERATIONS` (19: wiring,
-  interfaces, ports, parts, definitions, nets, wires, descriptions, names),
+  change is a named operation in `core.ops.operations()` (wiring,
+  interfaces, ports, parts, definitions, nets, wires, descriptions, names,
+  estimates, the device; and in `core/action_ops.py` the performed actions:
+  performs, steps, their items, item via port),
   run by the same table from HA 2 (`POST /api/op`; `applyOp` in `store.js`:
   save pending edits, run, take the files, one undo step), from `ha op NAME
   key=value ...` (`ha op --list`; the most used also as `ha connect`,

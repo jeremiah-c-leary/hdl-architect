@@ -258,7 +258,7 @@ def _op_generic(argv) -> int:
     ap.add_argument("--list", action="store_true", help="list the operations")
     a = ap.parse_args(argv)
     if a.list or not a.name:
-        for n, (_, req, opt) in sorted(ops.OPERATIONS.items()):
+        for n, (_, req, opt) in sorted(ops.operations().items()):
             print(f"  {n:16} {' '.join(req + ['[' + o + ']' for o in opt])}")
         return 0
     args = {}
@@ -272,7 +272,7 @@ def _op_generic(argv) -> int:
             args[k] = v
 
     def call(m, _a, cfg):
-        required = ops.OPERATIONS.get(a.name, (None, [], []))[1]
+        required = ops.operations().get(a.name, (None, [], []))[1]
         if "sheet" in required and "sheet" not in args and cfg.get("top"):
             args["sheet"] = cfg["top"]
         return ops.run(m, a.name, args)
