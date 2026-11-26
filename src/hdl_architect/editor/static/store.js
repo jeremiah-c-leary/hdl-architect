@@ -9,7 +9,8 @@ import {
   repairImports,
 } from "./model.js";
 import { layOutSheet } from "./layout.js";
-import { render, renderProblems } from "./render.js";
+import { render } from "./render.js";
+import { renderProblems } from "./problems.js";
 
 // ------------------------------------------------------------------ change, undo, save
 export function snapshot() {
