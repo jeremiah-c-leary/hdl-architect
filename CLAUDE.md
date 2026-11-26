@@ -114,6 +114,11 @@ then the Python).
 - **Names say what a thing is**, in full: no one- or two-letter names
   except `x`, `y`, `id`. Use SysML's terms; prefix with `sysml` where a
   word is also a programming term (`editor.sysmlPackages`).
+- **Every call says where it is defined.** Import a module by name, not
+  names from it: `import * as store from "./store.js"`, then
+  `store.undo()` (as Python's `import store`). A call without a prefix is
+  defined in the same file. (`export.js` is imported as `diagramExport`:
+  `export` is a reserved word.)
 - **At most 3 arguments.** More means they belong together: pass one
   object (a data class in Python).
 - **No true/false arguments.** A flag argument means two functions: split
@@ -129,7 +134,8 @@ then the Python).
   review. Some are fine.
 
 ESLint checks what a tool can (`eslint.config.mjs`, `CLEAN_CODE`): argument
-count, true/false arguments to our own functions, paths, nesting, nested
+count, true/false arguments to our own functions, named imports, paths,
+nesting, nested
 `?:`, name length, and function length as a warning. They apply to every
 file, new ones included, except those in `NOT_YET_CLEAN`; a clean-up PR takes
 its file off that list, so it cannot slip back. The rest

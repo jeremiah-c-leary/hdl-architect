@@ -10,47 +10,39 @@
  *   sheets[D] = { columns, parts: {part: {col, y, h}}, edge: {port: {side, y}} }
  *   ports[P]  = { port: {side, offset} }      (per part def: shared by its instances)
  */
-import * as stateMod from "./state.js";
-import * as svgMod from "./svg.js";
-import * as dialogsMod from "./dialogs.js";
-import * as statusbarMod from "./statusbar.js";
-import * as modelMod from "./model.js";
-import * as netsMod from "./nets.js";
-import * as layoutMod from "./layout.js";
-import * as storeMod from "./store.js";
-import * as editsMod from "./edits.js";
-import * as menusMod from "./menus.js";
-import * as renderMod from "./render.js";
-import * as interactionMod from "./interaction.js";
-import * as clocktreeMod from "./clocktree.js";
-import * as exportMod from "./export.js";
-import { editor } from "./state.js";
-import { $ } from "./svg.js";
-import { setStatus, showDefaultHint } from "./statusbar.js";
-import { isSheet, kindOf, partDef, indexSysmlDefinitions } from "./model.js";
-import { layOutSheet } from "./layout.js";
-import { checkModel, markAllSysmlPackagesSaved, redo, undo } from "./store.js";
-import { render, renderSide } from "./render.js";
-import { goBack } from "./interaction.js";
+import * as state from "./state.js";
+import * as svg from "./svg.js";
+import * as dialogs from "./dialogs.js";
+import * as statusbar from "./statusbar.js";
+import * as model from "./model.js";
+import * as nets from "./nets.js";
+import * as layout from "./layout.js";
+import * as store from "./store.js";
+import * as edits from "./edits.js";
+import * as menus from "./menus.js";
+import * as render from "./render.js";
+import * as interaction from "./interaction.js";
+import * as clocktree from "./clocktree.js";
+import * as diagramExport from "./export.js";
 
 // Every module's functions and state, by name: for the tests and the browser
 // console (e.g. ha2.partDef('Control')). Not used by HA 2 itself.
 window.ha2 = Object.assign(
   {},
-  stateMod,
-  svgMod,
-  dialogsMod,
-  statusbarMod,
-  modelMod,
-  netsMod,
-  layoutMod,
-  storeMod,
-  editsMod,
-  menusMod,
-  renderMod,
-  interactionMod,
-  clocktreeMod,
-  exportMod,
+  state,
+  svg,
+  dialogs,
+  statusbar,
+  model,
+  nets,
+  layout,
+  store,
+  edits,
+  menus,
+  render,
+  interaction,
+  clocktree,
+  diagramExport,
 );
 
 // ------------------------------------------------------------------ start
@@ -59,36 +51,36 @@ start();
 
 /** The top bar's buttons and the library filter. */
 function wireButtons() {
-  $("undo").onclick = undo;
-  $("redo").onclick = redo;
-  $("back").onclick = goBack;
-  $("checkBtn").onclick = checkModel;
-  $("libFilter").oninput = renderSide;
+  svg.$("undo").onclick = store.undo;
+  svg.$("redo").onclick = store.redo;
+  svg.$("back").onclick = interaction.goBack;
+  svg.$("checkBtn").onclick = store.checkModel;
+  svg.$("libFilter").oninput = render.renderSide;
 }
 
 /** Load the model, open the first sheet and draw it. */
 async function start() {
   await loadModel();
   openFirstSheet();
-  render();
-  setStatus("ready");
-  showDefaultHint();
-  checkModel(); // the server checks the whole model; problems appear under the sheet
+  render.render();
+  statusbar.setStatus("ready");
+  statusbar.showDefaultHint();
+  store.checkModel(); // the server checks the whole model; problems appear under the sheet
 }
 
 /** Every model file, with its layout, from the server. */
 async function loadModel() {
   const response = await fetch("/api/model");
-  editor.sysmlPackages = (await response.json()).packages;
-  markAllSysmlPackagesSaved(); // what was loaded is what is on disk
-  indexSysmlDefinitions(); // name -> definition, for lookups
+  state.editor.sysmlPackages = (await response.json()).packages;
+  store.markAllSysmlPackagesSaved(); // what was loaded is what is on disk
+  model.indexSysmlDefinitions(); // name -> definition, for lookups
 }
 
 /** Open the first sheet and lay it out. */
 function openFirstSheet() {
   if (modelHasNoSheets()) return;
-  editor.sheet = chooseFirstSheet();
-  layOutSheet(editor.sheet);
+  state.editor.sheet = chooseFirstSheet();
+  layout.layOutSheet(state.editor.sheet);
 }
 
 function modelHasNoSheets() {
@@ -106,7 +98,7 @@ function chooseFirstSheet() {
 /** The sheet named after # in the page's address, if there is one. */
 function sheetNamedInAddress() {
   const name = decodeURIComponent(location.hash.slice(1));
-  if (partDef(name)) return name;
+  if (model.partDef(name)) return name;
   return null;
 }
 
@@ -122,15 +114,15 @@ function firstSheetByName() {
 
 /** Every part def that is drawn as a sheet, in alphabetical order. */
 function allSheets() {
-  const names = Object.keys(editor.sysmlDefinitions);
+  const names = Object.keys(state.editor.sysmlDefinitions);
   return names.filter(isSheetPartDef).sort();
 }
 
 function isSheetPartDef(name) {
-  const isPartDef = editor.sysmlDefinitions[name].coll === "partDefs";
-  return isPartDef && isSheet(name);
+  const isPartDef = state.editor.sysmlDefinitions[name].coll === "partDefs";
+  return isPartDef && model.isSheet(name);
 }
 
 function isFpga(name) {
-  return ["Fpga", "FpgaPart"].includes(kindOf(name));
+  return ["Fpga", "FpgaPart"].includes(model.kindOf(name));
 }

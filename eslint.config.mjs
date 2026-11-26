@@ -33,6 +33,7 @@ const CLEAN_CODE = {
   // More than 3 arguments: they belong together in one object.
   "max-params": ["error", 3],
   // A literal true/false argument: the function is two functions.
+  // A named import: a call should say which module it is in.
   "no-restricted-syntax": [
     "error",
     {
@@ -40,6 +41,11 @@ const CLEAN_CODE = {
         "CallExpression[callee.type='Identifier'] > Literal.arguments[raw=/^(true|false)$/]",
       message:
         "A true/false argument means two functions: split it into two, named for what each does.",
+    },
+    {
+      selector: "ImportDeclaration > ImportSpecifier",
+      message:
+        'Import the module, not names from it (import * as store from "./store.js"; store.undo()), so every call says where it is defined.',
     },
   ],
   // Few paths through a function, and shallow nesting: extract functions.
