@@ -16,7 +16,7 @@ Phases (from `HANDOFF.md`): **0** consolidate, **1** HA 2 for architecture, **2*
 | **CR** | Clocks/resets | global nets, frequencies, clock pairing | HA 2 | yes |
 | **D** | Descriptions | `doc` on blocks, interfaces, ports | HA 2 | partly |
 | **CO** | Cores | `.core` per block: files, library, version, licence | designer, scaffolder | partly (trial; files still in `@HdlSource`) |
-| **E** | Estimates | resources (and effort) per block | HA 2 | partly (FpgaOne library attributes) |
+| **E** | Estimates | resources (and effort) per block | HA 2 | partly (resources: model, device library and `ha report resources`; HA 2 editing to come; effort later) |
 | **F** | Features | feature arcs / scenarios (Gherkin) | HA 2, `.feature` files | partly (action defs in the Wi-Fi model) |
 | **A** | Address map | a window (base, size) per register-bearing block | HA 2 | no |
 | **R** | Registers | leaf `.rdl` files | designer | no |
@@ -38,7 +38,7 @@ Phases (from `HANDOFF.md`): **0** consolidate, **1** HA 2 for architecture, **2*
 | CDC and reset-use checks | done | - | ● | ○ | ● |  |  | ● |  |  |  |  |  |  |  |  |  |  |  |  |
 | Move blocks between levels | planned | 1 | ● |  | ● |  | ○ |  |  |  |  |  |  |  |  |  |  |  |  | one command instead of ~10 edits |
 | Address map view and checks | planned | 1 | ● |  | ● |  |  |  |  |  |  |  | ● | ○ |  |  |  |  |  | overlaps, span vs window, reachability |
-| Resource roll-up, plan vs actual | partly | 3 | ● |  |  |  |  |  |  |  | ● |  |  |  |  |  |  |  | ○ | roll-up exists in FpgaOne's library, not in HA 2 |
+| Resource roll-up, plan vs actual | partly | 3 | ● |  |  |  |  |  |  |  | ● |  |  |  |  |  |  |  | ○ | `ha report resources` rolls estimates up against the target device (Wi-Fi: XCZU9EG); HA 2 entry and display next; plan vs actual needs synthesis results |
 | Feature Mapping (sequence view) | planned | 2 | ● | ○ | ● |  |  |  |  |  |  | ● |  |  |  |  |  |  |  | HA 1 had it |
 | Feature footprint (highlighted path) | planned | 2 |  |  | ● |  |  |  |  |  |  | ● |  |  | ○ |  |  |  |  | computed from the scenarios |
 | **HDL and build** | | |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | |

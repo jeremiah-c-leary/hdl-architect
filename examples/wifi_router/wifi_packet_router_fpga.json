@@ -8,6 +8,9 @@
         "name": "PartKinds::*"
       },
       {
+        "name": "FpgaDevices::*"
+      },
+      {
         "name": "PortDefs::*"
       },
       {
@@ -30,6 +33,13 @@
         "comments": [
           "OPEN: where the clocks and resets, the HMC7044's SPI, and the JESD transceivers (shared by the ADC and DAC links) go.",
           "OPEN: FPGA pins with no subsystem yet: sys_reset_f, sys_clock, jesd_refclk, jesd_sysref, clock_gen_spi."
+        ],
+        "attributes": [
+          {
+            "name": "device",
+            "type": "XCZU9EG",
+            "doc": "The target device."
+          }
         ],
         "parts": [
           {
@@ -500,6 +510,18 @@
         "specializes": [
           "Subsystem"
         ],
+        "attributes": [
+          {
+            "name": "zynqUltraScalePlusEstimate",
+            "type": "ZynqUltraScalePlusResources",
+            "redefines": {
+              "lut": 4000,
+              "ff": 5000,
+              "bram36": 4
+            },
+            "doc": "Estimate for Zynq UltraScale+ devices (illustrative numbers for this example)."
+          }
+        ],
         "ports": [
           {
             "name": "UART CSR",
@@ -624,6 +646,17 @@
         "specializes": [
           "Rtl"
         ],
+        "attributes": [
+          {
+            "name": "zynqUltraScalePlusEstimate",
+            "type": "ZynqUltraScalePlusResources",
+            "redefines": {
+              "lut": 10,
+              "ff": 12
+            },
+            "doc": "Estimate for Zynq UltraScale+ devices (illustrative numbers for this example)."
+          }
+        ],
         "ports": [
           {
             "name": "rst_out",
@@ -647,6 +680,17 @@
         "name": "CLKGENCTRL",
         "specializes": [
           "Rtl"
+        ],
+        "attributes": [
+          {
+            "name": "zynqUltraScalePlusEstimate",
+            "type": "ZynqUltraScalePlusResources",
+            "redefines": {
+              "lut": 400,
+              "ff": 350
+            },
+            "doc": "Estimate for Zynq UltraScale+ devices (illustrative numbers for this example)."
+          }
         ],
         "ports": [
           {
