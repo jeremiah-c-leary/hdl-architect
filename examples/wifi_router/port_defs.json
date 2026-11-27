@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "0.4",
+  "schemaVersion": "0.10",
   "package": {
     "name": "PortDefs",
     "doc": "Signal types and port definitions. Every interface is a pair of port defs, one per role, named for the role (convention 6): ...Out/...In, ...Tx/...Rx, ...Controller/...Target. The two ports of a connect are the two roles of the same interface. Directed attributes are the signals; undirected ones are parameters. `differential`: the port's signals are differential pairs on the board.",
@@ -26,6 +26,34 @@
       {
         "name": "Analog",
         "doc": "An analog voltage or current (not an HDL signal)."
+      },
+      {
+        "name": "AddressWindow",
+        "doc": "The address window a crossbar's manager port gives what it reaches (decision 14): base, as an offset from the crossbar's own base, and size, in bytes. On the connection: `connect crossbar.m0 to csr.csr { attribute window : AddressWindow { ... } }`.",
+        "attributes": [
+          {
+            "name": "base",
+            "type": "Natural"
+          },
+          {
+            "name": "size",
+            "type": "Natural"
+          }
+        ]
+      },
+      {
+        "name": "MemoryMapRoot",
+        "doc": "Where a memory map starts (decision 14): on the manager port of what addresses the design (a processor, a PCIe bridge), its map's name and the address it sees the map at, in bytes. A design may have several roots.",
+        "attributes": [
+          {
+            "name": "map_name",
+            "type": "String"
+          },
+          {
+            "name": "base",
+            "type": "Natural"
+          }
+        ]
       }
     ],
     "portDefs": [
@@ -432,8 +460,16 @@
         "conjugateOf": "Axi4StreamTransmitter"
       },
       {
+        "name": "MemoryMappedManager",
+        "doc": "The manager role of a memory-mapped bus (AXI4, AXI4-Lite, Avalon-MM, ...): a port def that specializes it carries addresses. Its manager ports can be a memory map's root, or a crossbar's windows; its subordinate ports (conjugated) are what a window reaches.",
+        "isAbstract": true
+      },
+      {
         "name": "Axi4LiteManager",
         "doc": "AMBA AXI4-Lite, the manager side (issues reads and writes; AXI's old name: master). Synchronous to the block's ACLK. A register bus: one transfer per address, no bursts.",
+        "specializes": [
+          "MemoryMappedManager"
+        ],
         "attributes": [
           {
             "name": "addr_width",

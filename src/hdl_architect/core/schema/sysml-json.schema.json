@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sysmlpy-spike.local/schema/sysml-json/0.9",
-  "title": "SysML-shaped JSON, version 0.9",
-  "description": "A compact JSON form of a SysML v2 subset for FPGA models. One JSON object is one SysML element; relationship objects (memberships, typings, specializations) are folded into fields. Rule: no concept that SysML does not have. Generated to SysML text by layered/gen_sysml.py. Version 0.5 covers packages, attribute defs, item defs, port defs (with attributes and items), metadata defs, part defs (attributes and values, constraints, ports incl. conjugated, parts incl. subsetting and multiplicity ranges, bind, connect, perform, allocate, metadata, comments) and action defs (parameters, steps, bind, flows). A port may be untyped (`port cmd;`): valid SysML, used while exploring; generating HDL needs a port def. Version 0.7 adds attribute defs that specialize others and give values (`attribute def XCZU9EG :> ZynqUltraScalePlusDevice { :>> capacity { :>> lut = 274080; } }`): nested values, for a feature's own features. Version 0.8 adds items on ports (what a port carries) and flows on part defs (`flow from csr.request to readSensor.request;`): where a performed action's items enter and leave the part, through its ports. Version 0.9 allows an item with no item def yet (`in item temp_read;`): valid SysML, used while sketching a sequence for a bid; its item def is chosen later.",
+  "$id": "https://sysmlpy-spike.local/schema/sysml-json/0.10",
+  "title": "SysML-shaped JSON, version 0.10",
+  "description": "A compact JSON form of a SysML v2 subset for FPGA models. One JSON object is one SysML element; relationship objects (memberships, typings, specializations) are folded into fields. Rule: no concept that SysML does not have. Generated to SysML text by layered/gen_sysml.py. Version 0.5 covers packages, attribute defs, item defs, port defs (with attributes and items), metadata defs, part defs (attributes and values, constraints, ports incl. conjugated, parts incl. subsetting and multiplicity ranges, bind, connect, perform, allocate, metadata, comments) and action defs (parameters, steps, bind, flows). A port may be untyped (`port cmd;`): valid SysML, used while exploring; generating HDL needs a port def. Version 0.7 adds attribute defs that specialize others and give values (`attribute def XCZU9EG :> ZynqUltraScalePlusDevice { :>> capacity { :>> lut = 274080; } }`): nested values, for a feature's own features. Version 0.8 adds items on ports (what a port carries) and flows on part defs (`flow from csr.request to readSensor.request;`): where a performed action's items enter and leave the part, through its ports. Version 0.9 allows an item with no item def yet (`in item temp_read;`): valid SysML, used while sketching a sequence for a bid; its item def is chosen later. Version 0.10 lets a port def specialize others (`port def Axi4LiteManager :> MemoryMappedManager`, an abstract port def: a memory-mapped bus's manager role), and gives attribute usages to port usages and connections, for the address map (decision 14): `connect crossbar.m0 to csr.csr { attribute window : AddressWindow { :>> base = 0; :>> size = 4096; } }`, and a memory map's root on the manager port where addressing starts: `port csr : AxiLite { attribute root : MemoryMapRoot { :>> map_name = \"ps\"; :>> base = 1073741824; } }`.",
   "type": "object",
   "required": [
     "schemaVersion",
@@ -17,7 +17,8 @@
         "0.6",
         "0.7",
         "0.8",
-        "0.9"
+        "0.9",
+        "0.10"
       ]
     },
     "package": {
@@ -245,7 +246,7 @@
       }
     },
     "PortDef": {
-      "description": "SysML `port def`. Either lists its own attributes and items, or is the conjugate of another port def (`conjugateOf`).",
+      "description": "SysML `port def`. Either lists its own attributes and items (or specializes another port def, or is abstract), or is the conjugate of another port def (`conjugateOf`).",
       "type": "object",
       "required": [
         "name"
@@ -257,6 +258,17 @@
         },
         "doc": {
           "$ref": "#/$defs/Doc"
+        },
+        "isAbstract": {
+          "type": "boolean",
+          "default": false
+        },
+        "specializes": {
+          "description": "`:> A, B` (0.10): e.g. a bus role that is memory-mapped, `:> MemoryMappedManager`.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QualifiedName"
+          }
         },
         "attributes": {
           "type": "array",
@@ -287,6 +299,16 @@
               "required": [
                 "items"
               ]
+            },
+            {
+              "required": [
+                "specializes"
+              ]
+            },
+            {
+              "required": [
+                "isAbstract"
+              ]
             }
           ],
           "not": {
@@ -309,6 +331,11 @@
               {
                 "required": [
                   "items"
+                ]
+              },
+              {
+                "required": [
+                  "specializes"
                 ]
               }
             ]
@@ -423,6 +450,13 @@
         "doc": {
           "$ref": "#/$defs/Doc"
         },
+        "attributes": {
+          "description": "Attribute usages in its body (0.10): values that belong to this usage, e.g. a memory map's root (`attribute root : MemoryMapRoot { ... }`).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Attribute"
+          }
+        },
         "items": {
           "description": "`in item request : TemperatureRequest;` in the port's body: the items this port carries, into or out of its part (what an action the part performs gets or gives through it).",
           "type": "array",
@@ -510,7 +544,7 @@
       }
     },
     "Connection": {
-      "description": "SysML `connect a to b;`: two child ports joined (the two roles of one interface).",
+      "description": "SysML `connect a to b;`: two child ports joined (the two roles of one interface). With attributes (0.10), `connect a to b { attribute window : AddressWindow { ... } }`: e.g. the address window a crossbar's manager port gives what it reaches.",
       "type": "object",
       "required": [
         "ends"
@@ -524,6 +558,13 @@
           },
           "minItems": 2,
           "maxItems": 2
+        },
+        "attributes": {
+          "description": "Attribute usages in its body (0.10), e.g. its address window.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Attribute"
+          }
         }
       }
     },

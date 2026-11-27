@@ -152,9 +152,11 @@ def usage(keyword: str, u: dict, indent: str) -> list[str]:
     )
     if u.get("subsets"):
         head += " :> " + ", ".join(u["subsets"])
-    body = (doc(u["doc"], indent + IND) if "doc" in u else []) + [
-        line for i in u.get("items", []) for line in item(i, indent + IND)
+    body = doc(u["doc"], indent + IND) if "doc" in u else []
+    body += [
+        line for a in u.get("attributes", []) for line in attribute(a, indent + IND)
     ]
+    body += [line for i in u.get("items", []) for line in item(i, indent + IND)]
     body += redefinitions(u.get("redefines", {}), indent + IND)
     return [head + ";"] if not body else [head + " {"] + body + [f"{indent}}}"]
 
@@ -246,10 +248,7 @@ def part_def(d: dict, indent: str) -> list[str]:
             f"{i2}bind {ref(d, b['ends'][0])} = {ref(d, b['ends'][1])};"
             for b in d.get("bindings", [])
         ],
-        [
-            f"{i2}connect {ref(d, c['ends'][0])} to {ref(d, c['ends'][1])};"
-            for c in d.get("connections", [])
-        ],
+        [line for c in d.get("connections", []) for line in connection(d, c, i2)],
         [line for p in d.get("performs", []) for line in perform(p, i2)]
         + [f"{i2}allocate {a['from']} to {a['to']};" for a in d.get("allocations", [])],
         [
@@ -262,6 +261,17 @@ def part_def(d: dict, indent: str) -> list[str]:
         if g:
             body += ([""] if body else []) + g
     return [head + ";"] if not body else [head + " {"] + body + [f"{indent}}}"]
+
+
+def connection(d: dict, c: dict, indent: str) -> list[str]:
+    """`connect a to b;`, or with its attributes (a window) in a body."""
+    head = f"{indent}connect {ref(d, c['ends'][0])} to {ref(d, c['ends'][1])}"
+    body = [
+        line for a in c.get("attributes", []) for line in attribute(a, indent + IND)
+    ]
+    if not body:
+        return [head + ";"]
+    return [head + " {"] + body + [f"{indent}}}"]
 
 
 def perform(p: dict, indent: str) -> list[str]:

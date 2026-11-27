@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "0.4",
+  "schemaVersion": "0.10",
   "package": {
     "name": "FpgaOneTop",
     "doc": "FPGA One top level (from fpga-hierarchy (27).json, sheet \"FPGA One\").",
@@ -130,12 +130,32 @@
             "ends": [
               "crossbar.m0",
               "csr.csr"
+            ],
+            "attributes": [
+              {
+                "name": "window",
+                "type": "AddressWindow",
+                "redefines": {
+                  "base": 0,
+                  "size": 4096
+                }
+              }
             ]
           },
           {
             "ends": [
               "crossbar.m1",
               "serial.csr"
+            ],
+            "attributes": [
+              {
+                "name": "window",
+                "type": "AddressWindow",
+                "redefines": {
+                  "base": 4096,
+                  "size": 4096
+                }
+              }
             ]
           },
           {
