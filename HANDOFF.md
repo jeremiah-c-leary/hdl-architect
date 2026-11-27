@@ -101,6 +101,15 @@ From the spike (2026-11-22) and [S] section A, confirmed by the user:
     receiveFrame.frame;`); a bare port is not a valid flow end in SysML v2
     (SysON leaves it unresolved). No separate "arc" concept. Shape and
     SysON check: `docs/history/schema-notes.md`, version 0.8.
+    The editor is a table, like timing arcs (2026-11-26): one row per
+    action (part usage, action, action def), each with an ingress (a port
+    of the part, and the item it carries in) and an egress (a port, and the
+    item it carries out). Which action feeds which is not chosen: it is
+    worked out from the wires (the latest earlier egress on a port wired to
+    the ingress, with the same item def; the sheet's own port at the edges)
+    and written as successions and bindings (`core/action_links.py`).
+    The user found a missing interrupt by mapping ReadTemperature this way,
+    before any RTL. "Step" is "action" in the UI (SysML's word).
 
 ## Waiting on the user
 
@@ -124,10 +133,11 @@ From the spike (2026-11-22) and [S] section A, confirmed by the user:
    templates; which DIDs a CDRL would list; requirements tool; software
    coding standard; operating modes in the model or a hand-written diagram;
    the scenario tag for a feature's representative scenario.
-9. **Wi-Fi `ReadTemperature`**: `decodeCommand` and `buildResponse` are
-   allocated to `processing`, which has no wires to `ethernet` or
-   `temp_if` (those go through `Control`). Move the steps to `Control`, or
-   wire `processing`.
+9. **Wi-Fi `ReadTemperature`**: decided (2026-11-26): `Control`, as the
+   user's seven rows (receiveFrame, readFrame, rxFrameReq, requestTemp,
+   returnTemp, forwardTemp, transmitFrame; an interrupt from `ethernet` to
+   `Control`). The user enters them in the HA 2 actions table once it is
+   built (`tests/test_action_links.py` has the same rows, on a scratch copy).
 
 ## Corrections to the Claude.ai session (it could not see the repo)
 
@@ -223,8 +233,12 @@ as friction shows.
       (`core/action_ops.py`).
 - [x] HA 2, read-only: the Performs section, the sequence view (expandable
       lifelines) and the footprint (`docs/ha2.md`).
-- [ ] **Next:** the steps editor in HA 2 (on the operations of
-      `core/action_ops.py`); mockup agreed 2026-11-26.
+- [x] The actions table in the core: `set_action_end` (a row's ingress or
+      egress) and `link_actions` (`core/action_links.py`, decision 13).
+- [ ] **Next:** the Actions tab in HA 2 (the table), [+ Perform action…]
+      and Delete in the Performs section, "step" renamed "action" in the
+      sequence view. The user then enters their seven ReadTemperature rows
+      in it (Control, with an interrupt) to remodel the Wi-Fi example.
 
 **Estimates (E)**
 - [x] Resources: model, roll-up, margins, device library, reports, HA 2
