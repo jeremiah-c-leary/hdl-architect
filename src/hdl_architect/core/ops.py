@@ -1315,13 +1315,20 @@ OPERATIONS = {
 
 def operations() -> dict:
     """Every operation: this module's, and the performed actions' (action_ops,
-    action_links and action_hops, which build on this module, so they are imported here,
-    when first needed)."""
+    action_links, action_hops and action_walk, which build on this module, so
+    they are imported here, when first needed)."""
     from hdl_architect.core.action_hops import HOP_OPERATIONS
     from hdl_architect.core.action_links import LINK_OPERATIONS
     from hdl_architect.core.action_ops import ACTION_OPERATIONS
+    from hdl_architect.core.action_walk import WALK_OPERATIONS
 
-    return {**OPERATIONS, **ACTION_OPERATIONS, **LINK_OPERATIONS, **HOP_OPERATIONS}
+    return {
+        **OPERATIONS,
+        **ACTION_OPERATIONS,
+        **LINK_OPERATIONS,
+        **HOP_OPERATIONS,
+        **WALK_OPERATIONS,
+    }
 
 
 def run(model: Model, name: str, args: dict) -> Result:

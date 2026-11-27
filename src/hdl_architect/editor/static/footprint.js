@@ -9,8 +9,15 @@ import * as svg from "./svg.js";
 
 /** The footprint shown: {sheet, actionName}; null when none is. */
 let shown = null;
+/** Where the walk is (actionwalk.js): (action) => {part, wire} or null. */
+let walkHere = () => null;
 
 svg.$("footprintClose").onclick = hideFootprint;
+
+/** The walk tells the footprint where it is: that part and wire light up too, with ▶. */
+export function onWalkHere(provider) {
+  walkHere = provider;
+}
 
 export function showFootprint(actionName) {
   shown = { sheet: state.editor.sheet, actionName };
@@ -36,19 +43,31 @@ function currentAction() {
  * What the footprint shows on the open sheet, or null:
  * - parts: {part name: [its step numbers]};
  * - wires: the keys (see wireKey) of the wires its items travel on;
- * - missing: the items with no wire, {sourceEnd, targetEnd, text}.
+ * - missing: the items with no wire, {sourceEnd, targetEnd, text};
+ * - here: the part the walk is at (▶), or null.
  */
 export function currentFootprint() {
   const action = currentAction();
   showBar(action);
   if (!action) return null;
-  return {
+  const shownNow = {
     parts: stepNumbersByPart(action.steps),
     wires: new Set(action.flows.filter(isCarried).map(flowKey)),
     missing: action.flows
       .filter((flow) => flow.wired === false)
       .map(missingLine),
+    here: null,
   };
+  addWalkHere(shownNow, walkHere(action));
+  return shownNow;
+}
+
+/** The part the walk is at lights up (with ▶), and the wire that leads there. */
+function addWalkHere(shownNow, here) {
+  if (!here) return;
+  shownNow.here = here.part;
+  shownNow.parts[here.part] = shownNow.parts[here.part] || [];
+  shownNow.wires.add(here.wire);
 }
 
 function stepNumbersByPart(steps) {

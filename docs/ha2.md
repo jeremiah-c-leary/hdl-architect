@@ -200,8 +200,8 @@ call the actions of a composed action def "steps": `add_step`, ...)
   one, or a new name (made in the sheet's package).
 - **The Actions tab** (in the sequence view, or "Edit actions") is the
   table that edits it, like timing arcs. It docks under the sheet, which
-  stays in sight (Footprint lights it while you edit). It has two kinds of
-  row:
+  stays in sight (the Footprint, on by default, lights it; its button turns
+  it off and on). It has two kinds of row:
   - **an action**: **#** with ↑ ↓ to move it and ✕ to delete it; **Part
     usage** that performs it (a part whose def does not perform the action
     def yet is made to; IP only offers what it performs); **Action**;
@@ -220,14 +220,18 @@ call the actions of a composed action def "steps": `add_step`, ...)
     both ends, after asking. A hop from or to the sheet's own port binds
     the action's own item. "nobody yet" and ⚠ mark an egress nothing takes
     and an ingress nothing feeds; ⚠ also marks a hop with no wire.
-  - **Building it: click source ports on the sheet.** While the Actions
-    tab is open, a click on a port (the one an item leaves by) adds a hop
-    over each wire from it: from the latest action of that port's part (or
-    from the sheet, for the sheet's own port) to a new action on the part
-    at the far end. Choose the hop's item and the new action's action def;
-    the hop is then saved, with its new action, as one undo step. You can
-    click ahead: a later hop waits for the one that makes its action.
-    (With the Actions tab closed, a click on a port wires as before.)
+  - **Building it: walk the sheet.** With the dock open (it opens by
+    itself after **+ Perform action…**, and its Footprint is on), click the
+    sheet's own port the request comes in by: its wire and the part it
+    reaches light up, marked **▶ next**. Click that part: a menu of the
+    action defs it performs that come in by that port, one entry per exit
+    (`ReceiveFrame → Interrupt`; IP the same, with its own action defs).
+    Picking one adds the action, fed by what came before (one undo step);
+    its exit's wire leads to the next part, ▶ moves there, and the sequence
+    diagram grows. The walk is done when an exit leads back to a sheet port.
+    Where the walk is comes from the model (the last action's exit nothing
+    takes yet), so it survives undo and a reload. A part the walk is not at,
+    and any port of a part, click as before.
   - **+ Action** adds an action by hand: choose its part usage, then its
     action def (what that part performs first), which makes the action,
     named after it (`ReadFrame`: `readFrame`). Right-click an action to

@@ -119,13 +119,18 @@ function performMenu(event, action) {
 }
 
 /** The sheet performs an action def: an existing one, or a new one made in its package. */
-function addPerform() {
+/** The sheet performs an action def; the dock opens on it, to walk it. */
+async function addPerform() {
   const actionDef = dialogs.askName(
     "Action def this sheet performs (an existing one, or a new name):",
     "",
   );
   if (!actionDef) return;
-  store.applyOp("add_perform", { def: state.editor.sheet, action: actionDef });
+  const args = { def: state.editor.sheet, action: actionDef };
+  const result = await store.applyOp("add_perform", args);
+  if (!result) return;
+  await actions.refreshActions();
+  sequenceView.openSequence(result.data.name);
 }
 
 function deletePerform(action) {

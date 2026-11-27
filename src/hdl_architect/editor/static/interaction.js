@@ -194,6 +194,7 @@ window.addEventListener("mouseup", (ev) => {
       connectArmed({ part: d.part });
       return;
     }
+    if (!d.ctrl && takesPartClick(d.part, ev)) return;
     if (
       d.ctrl &&
       editor.sel &&
@@ -273,7 +274,7 @@ window.addEventListener("mouseup", (ev) => {
     !editor.armed &&
     takesPortClick(d)
   ) {
-    // the actions table took it: a hop from this port
+    // the walk took it: the sheet port it starts at
   } else if ((d.kind === "port" || d.kind === "edge") && d.shift) {
     togglePick(
       d.kind === "edge" ? editor.sheet : d.P,
@@ -295,12 +296,23 @@ window.addEventListener("mouseup", (ev) => {
     );
   }
 });
-/** Who else wants a click on a port (the actions table, while it is open). */
+/** Who else wants a click on a port or a part (the walk, while the dock is open). */
 let portClickTaker = null;
+let partClickTaker = null;
 
 /** `taker(end)` sees each plain click on a port first; true: it took it. */
 export function onPortClick(taker) {
   portClickTaker = taker;
+}
+
+/** `taker(partName, event)` sees each plain click on a part first; true: it took it. */
+export function onPartClick(taker) {
+  partClickTaker = taker;
+}
+
+function takesPartClick(partName, event) {
+  if (!partClickTaker) return false;
+  return partClickTaker(partName, event);
 }
 
 function takesPortClick(drag) {

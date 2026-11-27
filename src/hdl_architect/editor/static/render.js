@@ -875,12 +875,20 @@ function footprintPartAttributes(sheet, component) {
 function drawFootprint(sheet) {
   if (!sheet.footprint) return;
   for (const [partName, numbers] of Object.entries(sheet.footprint.parts))
-    drawStepBadge(sheet, partName, numbers);
+    drawStepBadge(sheet, partName, badgeText(sheet, partName, numbers));
   for (const line of sheet.footprint.missing) drawMissingWire(sheet, line);
 }
 
-/** "actions 1, 5" just above the part's box. */
-function drawStepBadge(sheet, partName, numbers) {
+/** "actions 1, 5", and "▶ next" on the part the walk is at. */
+function badgeText(sheet, partName, numbers) {
+  const steps = numbers.length ? stepsText(numbers) : "";
+  if (sheet.footprint.here !== partName) return steps;
+  if (!steps) return "▶ next";
+  return `${steps} · ▶ next`;
+}
+
+/** The badge just above the part's box. */
+function drawStepBadge(sheet, partName, text) {
   const place = sheet.places.parts[partName];
   const column = place && sheet.geometry.cols[place.col];
   if (!column) return;
@@ -890,7 +898,8 @@ function drawStepBadge(sheet, partName, numbers) {
     "text-anchor": "middle",
     class: "fp-badge",
   };
-  svg.el("text", attributes, sheet.canvas, stepsText(numbers));
+  if (sheet.footprint.here === partName) attributes.class += " fp-here";
+  svg.el("text", attributes, sheet.canvas, text);
 }
 
 function stepsText(numbers) {

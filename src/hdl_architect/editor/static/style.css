@@ -720,6 +720,9 @@ svg text {
   font-weight: 600;
   fill: var(--ink);
 }
+.fp-badge.fp-here {
+  fill: var(--accent);
+}
 /* the sequence view (sequenceview.js) */
 #sequenceView {
   height: 50%;
@@ -892,12 +895,4 @@ svg text {
 }
 .at-own-item {
   margin-right: 12px;
-}
-/* the Sequence tab's strip of hops not saved yet (actionstable.js) */
-#seqPending {
-  padding: 8px 12px 0;
-  font-size: 12px;
-}
-#seqPending[hidden] {
-  display: none;
 }

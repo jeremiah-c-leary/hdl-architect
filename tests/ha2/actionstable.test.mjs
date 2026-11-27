@@ -1,9 +1,10 @@
-// The Actions tab (actionstable.js, actionhops.js): the table that edits a
-// performed action. A row per action (its part usage, action def, and the
-// ports it uses); between the rows the hops, each the item that goes from one
-// action to the next over a wire, chosen once. The table is built by clicking
-// source ports on the sheet. The data is the frozen Wi-Fi fixture, then the
-// user's first three rows of their ReadTemperature (2026-11-26), clicked in.
+// Building a performed action (actionwalk.js) and the table that edits it
+// (actionstable.js, actionhops.js). The walk: click the sheet port the
+// request comes in by, then each part it reaches, picking what it does. The
+// table: a row per action; between the rows the hops, each the item that goes
+// from one action to the next over a wire, chosen once. The data is the
+// frozen Wi-Fi fixture, then the user's first three rows of their
+// ReadTemperature (2026-11-26), walked in.
 import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -115,71 +116,137 @@ test("the Actions tab lists today's actions, and the hops between them", async (
   assert.equal(missing.length, 4, "four hops with no wire");
 });
 
-test("clicking source ports builds the user's first rows, one hop each", async () => {
-  // What the user does on the sheet first: the interrupt ports and wire, and
-  // a ReadTemperature with no actions yet.
+/** The user's first three action defs, made with hops (so they know their ports), then no actions. */
+async function threeActionDefs() {
+  const hop = (source, target, item) => [
+    "set_hop",
+    { sheet: TOP, perform: "readTemperature", source, target, item },
+  ];
   const setup = [
     ["add_port", { def: "Ethernet", name: "Interrupt", type: "BitOut" }],
     ["add_port", { def: "Control", name: "eth_int", type: "BitIn" }],
     ["connect", { sheet: TOP, a: "ethernet.Interrupt", b: "Control.eth_int" }],
   ];
-  for (const step of [
-    "receiveFrame",
-    "decodeCommand",
-    "readSensor",
-    "buildResponse",
-    "sendFrame",
-  ])
+  for (const step of TODAY)
     setup.push([
       "delete_step",
       { sheet: TOP, perform: "readTemperature", step },
     ]);
   for (const item of ["ethFrame", "cmd"])
     setup.push(["delete_action_item", { action: "ReceiveFrame", item }]);
+  setup.push(
+    hop(
+      { step: null, port: "eth_rgmii" },
+      {
+        step: null,
+        port: "eth_rgmii",
+        new: { part: "ethernet", action: "ReceiveFrame" },
+      },
+      { name: "ethPacket", type: "EthPacket" },
+    ),
+    hop(
+      { step: "receiveFrame", port: "Interrupt" },
+      {
+        step: null,
+        port: "eth_int",
+        new: { part: "Control", action: "ReadFrame" },
+      },
+      { name: "int", type: "Int" },
+    ),
+    hop(
+      { step: "readFrame", port: "ethernet" },
+      {
+        step: null,
+        port: "cmd",
+        new: { part: "ethernet", action: "RxFrameReq" },
+      },
+      { name: "axi4liteRead", type: "Axi4LiteRead" },
+    ),
+  );
+  for (const step of ["receiveFrame", "readFrame", "rxFrameReq"])
+    setup.push([
+      "delete_step",
+      { sheet: TOP, perform: "readTemperature", step },
+    ]);
   for (const [name, args] of setup)
     await E(page, `applyOp(${JSON.stringify(name)}, ${JSON.stringify(args)})`);
   await settled();
+}
 
-  // Row 1: the frame comes in by the sheet's eth_rgmii.
+const TODAY = [
+  "receiveFrame",
+  "decodeCommand",
+  "readSensor",
+  "buildResponse",
+  "sendFrame",
+];
+
+/** Click a part's box on the sheet. */
+async function clickPart(part) {
+  await page.click(`rect.comp[data-part="${part}"]`);
+}
+
+/** Pick an entry of the open menu. */
+async function pick(label) {
+  const entries = await texts("#menu .mi");
+  assert.ok(entries.includes(label), entries.join(" | "));
+  await E(
+    page,
+    `[...document.querySelectorAll("#menu .mi")].find((entry) => entry.textContent === ${JSON.stringify(label)}).click()`,
+  );
+}
+
+const hint = () => E(page, "document.getElementById('hint').textContent");
+const badges = () => texts("#canvas .fp-badge");
+
+test("the walk: the sheet port, then each part it reaches", async () => {
+  await threeActionDefs();
+  await E(page, "openSequence('readTemperature')");
+  assert.ok((await texts("#canvas g.fp-dim")).length > 0, "footprint on");
+  assert.match(await hint(), /^Click the sheet port the request comes in by/);
+
+  // The request comes in by the sheet's eth_rgmii: ethernet is next.
   await clickPort(null, "eth_rgmii");
-  assert.deepEqual(await texts("#actionsTable .at-hop-ends"), [
-    "eth_rgmii (sheet) ──▶ 1 ethernet.eth_rgmii",
-  ]);
-  assert.equal(
-    (await texts("#actionsTable .at-draft td"))[1],
-    "ethernet : Ethernet",
-  );
-  await choose("hop0|item", "(new item)");
-  await newItem("ethPacket", "EthPacket");
-  await choose("draft0|actionDef", "ReceiveFrame");
-  await settled();
-  assert.deepEqual(await texts("#actionsTable .at-name"), ["receiveFrame"]);
+  assert.deepEqual(await badges(), ["▶ next"]);
+  assert.match(await hint(), /^▶ ethernet: click it/);
 
-  // Row 2: the interrupt, from ethernet to Control. Row 3 is clicked before
-  // row 2 is saved: its hop waits for row 2's.
-  await clickPort("ethernet", "Interrupt");
-  await choose("hop0|item", "(new item)");
-  await newItem("int", "Int");
-  await clickPort("Control", "ethernet"); // ETH CSR, wired to ethernet.cmd
-  await choose("hop1|item", "(new item)");
-  await newItem("axi4liteRead", "Axi4LiteRead");
-  await E(page, "window.prompt = () => 'RxFrameReq'");
-  await choose("draft1|actionDef", "(new action def)");
-  assert.match(
-    (await texts("#actionsTable .at-wait"))[1],
-    /Choose row 2's action def|Waits for the hop into row 2/,
-  );
-  await E(page, "window.prompt = () => 'ReadFrame'");
-  await choose("draft0|actionDef", "(new action def)");
+  // Only what comes in by eth_rgmii, one entry per exit.
+  await clickPart("ethernet");
   await waitFor(
-    async () => (await texts("#actionsTable .at-name")).length === 3,
-    "both hops saved",
+    async () => !(await E(page, "document.getElementById('menu').hidden")),
+    "the menu, still open after the click",
   );
+  await page.waitForTimeout(100);
+  assert.equal(
+    await E(page, "document.getElementById('menu').hidden"),
+    false,
+    "the menu stays open",
+  );
+  assert.equal((await texts("#menu .hd"))[0], "ethernet: in by eth_rgmii");
+  assert.deepEqual(await texts("#menu .mi"), ["ReceiveFrame → Interrupt"]);
+  await pick("ReceiveFrame → Interrupt");
   await settled();
-  assert.deepEqual(await texts("#actionsTable .at-name"), [
-    "receiveFrame",
-    "readFrame",
-    "rxFrameReq",
+  assert.deepEqual(await texts("#seqSvg .seq-step-name"), ["1 receiveFrame"]);
+  assert.match(await hint(), /^▶ Control: click it .* eth_int/);
+
+  await clickPart("Control");
+  await waitFor(
+    async () => !(await E(page, "document.getElementById('menu').hidden")),
+    "the menu",
+  );
+  await pick("ReadFrame → ETH CSR");
+  await settled();
+  await clickPart("ethernet");
+  await waitFor(
+    async () => !(await E(page, "document.getElementById('menu').hidden")),
+    "the menu",
+  );
+  await pick("RxFrameReq (leaves by no port)"); // its exit is not said yet
+  await settled();
+  assert.deepEqual(await texts("#seqSvg .seq-step-name"), [
+    "1 receiveFrame",
+    "2 readFrame",
+    "3 rxFrameReq",
   ]);
   const readTemperature = actionDef("ReadTemperature");
   assert.deepEqual(readTemperature.flows, [
@@ -195,13 +262,21 @@ test("clicking source ports builds the user's first rows, one hop each", async (
   ]);
 });
 
-test("undo takes back a whole hop", async () => {
+test("a click on a part the walk is not at selects it, as before", async () => {
+  await clickPart("temp_if");
+  assert.match(await hint(), /^Selected temp_if/);
+  await E(page, "editor.sel = null");
+});
+
+test("undo takes back the last pick; the walk is back a part", async () => {
   await E(page, "undo()");
   await settled();
-  assert.deepEqual(await texts("#actionsTable .at-name"), [
-    "receiveFrame",
-    "readFrame",
+  assert.deepEqual(await texts("#seqSvg .seq-step-name"), [
+    "1 receiveFrame",
+    "2 readFrame",
   ]);
+  assert.ok((await badges()).some((text) => text.endsWith("▶ next")));
+  await E(page, "showTab('actions')");
 });
 
 test("another item def on a saved hop replaces it at both ends, after asking", async () => {
@@ -213,7 +288,8 @@ test("another item def on a saved hop replaces it at both ends, after asking", a
     actionDef(name).parameters.map((item) => `${item.name} : ${item.type}`);
   assert.ok(items("ReceiveFrame").includes("irq : Irq"));
   assert.ok(!items("ReceiveFrame").includes("int : Int"));
-  assert.deepEqual(items("ReadFrame"), ["irq : Irq"]);
+  assert.ok(items("ReadFrame").includes("irq : Irq"));
+  assert.ok(!items("ReadFrame").includes("int : Int"));
 });
 
 test("right-click a port offers to remove its items nothing uses", async () => {
@@ -299,30 +375,6 @@ test("the Sequence tab shows the same actions", async () => {
   await E(page, "showTab('actions')");
 });
 
-test("on the Sequence tab, a click on a port grows the diagram", async () => {
-  await E(page, "showTab('sequence')");
-  assert.match(
-    await E(page, "document.getElementById('seqPending').textContent"),
-    /^Click a port on the sheet/,
-  );
-  await clickPort("Control", "ethernet"); // ETH CSR, wired to ethernet.cmd
-  await choose("hop0|item", "(new item)");
-  await newItem("axi4liteRead", "Axi4LiteRead");
-  await E(page, "window.prompt = () => 'RxFrameReq'");
-  await choose("draft0|actionDef", "(new action def)");
-  await settled();
-  await waitFor(
-    async () => (await texts("#seqSvg .seq-step-name")).length === 3,
-    "the new action in the diagram",
-  );
-  assert.deepEqual(await texts("#seqSvg .seq-step-name"), [
-    "1 receiveFrame",
-    "2 readFrame",
-    "3 rxFrameReq",
-  ]);
-  await E(page, "showTab('actions')");
-});
-
 test("the view docks under the sheet, which stays in sight", async () => {
   await E(page, "openActions('readTemperature')");
   const boxes = await E(
@@ -340,14 +392,16 @@ test("the view docks under the sheet, which stays in sight", async () => {
     "the dock does not cover it",
   );
 
-  // Footprint lights the sheet and leaves the table open.
+  // The footprint is on with the dock; its button turns it off and on.
+  assert.ok((await texts("#canvas .fp-badge")).length > 0, "the footprint");
   await E(page, "document.getElementById('seqFootprint').click()");
+  assert.equal((await texts("#canvas .fp-badge")).length, 0, "off");
   assert.equal(
     await E(page, "document.getElementById('sequenceView').hidden"),
     false,
   );
-  assert.ok((await texts("#canvas .fp-badge")).length > 0, "the footprint");
-  await E(page, "hideFootprint()");
+  await E(page, "document.getElementById('seqFootprint').click()");
+  assert.ok((await texts("#canvas .fp-badge")).length > 0, "on again");
 
   // Another sheet does not perform this action: the dock closes.
   await E(page, "openSheet('Control')");
@@ -378,5 +432,20 @@ test("+ Perform action… makes the sheet perform a new action def", async () =>
         await E(page, "document.getElementById('performs').innerText"),
       ),
     "the new perform listed",
+  );
+  // The dock opens on it, footprint on, ready to walk.
+  await waitFor(
+    async () =>
+      !(await E(page, "document.getElementById('sequenceView').hidden")),
+    "the dock open",
+  );
+  assert.match(
+    await E(page, "document.getElementById('seqTitle').textContent"),
+    /^reportStatus : ReportStatus/,
+  );
+  assert.equal(
+    await E(page, "document.getElementById('footprintBar').hidden"),
+    false,
+    "footprint on",
   );
 });

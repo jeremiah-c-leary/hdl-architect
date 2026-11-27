@@ -3,8 +3,8 @@
 // its action def is a row: the part usage that performs it, its action def,
 // and the ports its items come in by (ingress) and go out by (egress).
 // Between the rows are the hops (actionhops.js): the item that goes from one
-// action to the next over a wire, chosen once for both ends. The table is
-// built by clicking source ports on the sheet; [+ Action] adds a row by hand.
+// action to the next over a wire, chosen once for both ends. The actions are
+// added by walking the sheet (actionwalk.js); [+ Action] adds one by hand.
 import * as actionHops from "./actionhops.js";
 import * as actions from "./actions.js";
 import * as dialogs from "./dialogs.js";
@@ -36,12 +36,15 @@ const COLUMNS = [
 
 /** The performed action shown: its perform's name on the open sheet. */
 let shownAction = null;
+/** Rows added with [+ Action], not saved until their action def is chosen: {part}. */
+const drafts = [];
 
 // ------------------------------------------------------------------ drawing
 
 /** Draw the table of a performed action of the open sheet. */
 export function renderActionsTable(actionName) {
   actionHops.showHopsOf(actionName, redraw);
+  if (actionName !== shownAction) drafts.length = 0;
   shownAction = actionName;
   const holder = svg.$("actionsTable");
   holder.innerHTML = "";
@@ -54,49 +57,13 @@ function redraw() {
   renderActionsTable(shownAction);
 }
 
-/**
- * On the Sequence tab: the hops and rows not saved yet, above the diagram,
- * to choose their items and action defs; each saved hop then appears in
- * the diagram. With none, a hint.
- */
-export function renderPendingStrip(actionName) {
-  actionHops.showHopsOf(actionName, redrawStrip);
-  shownAction = actionName;
-  const holder = svg.$("seqPending");
-  holder.innerHTML = "";
-  const action = actions.sheetAction(actionName);
-  if (!action) return;
-  if (!actionHops.pendingEntries().length) {
-    holder.append(dom.element("span", "at-muted", STRIP_HINT));
-    return;
-  }
-  holder.append(pendingTable(action));
-}
-
-const STRIP_HINT =
-  "Click a port on the sheet, the one an item leaves by, to add the next action.";
-
-function redrawStrip() {
-  renderPendingStrip(shownAction);
-}
-
-function pendingTable(action) {
-  const table = dom.element("table", "at-table");
-  const body = dom.element("tbody");
-  for (const entry of actionHops.pendingEntries())
-    body.append(pendingRow(entry, action));
-  table.append(headOf(), body);
-  return table;
-}
-
 function tableOf(action) {
   const table = dom.element("table", "at-table");
   const body = dom.element("tbody");
   action.steps.forEach((step, index) => {
     body.append(...rowsOf({ action, step, index }));
   });
-  for (const entry of actionHops.pendingEntries())
-    body.append(pendingRow(entry, action));
+  for (const draft of drafts) body.append(draftRow(draft));
   table.append(headOf(), body);
   return table;
 }
@@ -116,11 +83,6 @@ function rowsOf(place) {
     actionRow(place),
     ...actionHops.hopRowsAfter(place),
   ];
-}
-
-function pendingRow(entry, action) {
-  if (entry.hop) return actionHops.pendingHopRow(entry.hop, action);
-  return draftRow(entry.draft);
 }
 
 function actionRow(place) {
@@ -204,14 +166,11 @@ function composedName() {
   return actions.sheetAction(shownAction).actionDef;
 }
 
-/** The ports of the action's items one way; a pending hop's in italics. */
+/** The ports of the action's items one way. */
 function portsCell(place, direction) {
   const cell = dom.element("td", "at-ports");
   const lines = place.step.items.filter((line) => line.direction === direction);
   for (const line of lines) cell.append(linePort(place, line));
-  const row = { step: place.step.name };
-  for (const text of actionHops.pendingPortsOf(row, direction))
-    cell.append(pendingPort(text));
   return cell;
 }
 
@@ -227,12 +186,6 @@ function linePort(place, line) {
 function portText(step, line) {
   if (!line.port) return `${line.item} : ${line.itemType}, no port`;
   return actionHops.portLabel(step.partDef, line.port);
-}
-
-function pendingPort(text) {
-  const tag = dom.element("div", "at-pending", text);
-  tag.title = "Not saved yet: its hop waits for a choice.";
-  return tag;
 }
 
 function statusCell(place) {
@@ -275,51 +228,39 @@ function addActionLine() {
   );
   add.id = "atAddAction";
   const hint =
-    "Or click a port on the sheet above, the one an item leaves by: the " +
-    "table adds the hop over its wire, and an action at the far end.";
+    "Or walk the sheet above: click the sheet port the request comes in by, " +
+    "then each part it reaches.";
   holder.append(add, dom.element("span", "at-muted", hint));
   return holder;
 }
 
-/** A row not saved yet: a draft of [+ Action], or the far end of a hop. */
+/** A row of [+ Action], not saved yet: the part usage first; its action def then makes it. */
 function draftRow(draft) {
   const row = dom.element("tr", "at-line at-draft");
-  const number = dom.element(
-    "td",
-    "at-number",
-    `${actionHops.draftNumber(draft)}`,
-  );
-  number.append(
-    dom.button("✕", "Discard this row", () => actionHops.discardDraft(draft)),
-  );
+  const index = drafts.indexOf(draft);
+  const number = dom.element("td", "at-number", `${draftNumber(index)}`);
+  number.append(dom.button("✕", "Discard this row", () => discardDraft(draft)));
+  const hint = dom.element("td", "at-muted", draftHint(draft));
+  hint.colSpan = 3;
   row.append(number, draftPartCell(draft), dom.element("td", "", "—"));
-  row.append(
-    draftActionDefCell(draft),
-    draftPortsCell(draft, INGRESS),
-    draftPortsCell(draft, EGRESS),
-    dom.element("td", "at-muted", draftHint(draft)),
-  );
+  row.append(draftActionDefCell(draft), hint);
   return row;
+}
+
+function draftNumber(index) {
+  return actions.sheetAction(shownAction).steps.length + index + 1;
 }
 
 function draftHint(draft) {
   if (!draft.part) return "Choose the part usage that performs it.";
-  if (!actionHops.isHopDraft(draft))
-    return `Choose an action def: what ${draft.part} performs, or another.`;
-  if (!draft.actionDef) return "Choose its action def.";
-  return "Saved with its hop.";
+  return `Choose an action def: what ${draft.part} performs, or another.`;
 }
 
-/** The part usage: chosen for a draft of [+ Action]; a hop's far end says it. */
 function draftPartCell(draft) {
   const cell = dom.element("td");
-  if (actionHops.isHopDraft(draft)) {
-    cell.textContent = partText(draft.part);
-    return cell;
-  }
   const options = [["", "choose…"], ...partOptions()];
   const select = dom.picker(options, draft.part);
-  select.dataset.role = `${draftRole(draft)}|part`;
+  select.dataset.role = `draft${drafts.indexOf(draft)}|part`;
   select.onchange = () => {
     draft.part = select.value;
     redraw();
@@ -335,26 +276,11 @@ function draftActionDefCell(draft) {
     part: draft.part,
     partDef: model.partType(state.editor.sheet, draft.part),
   };
-  const groups = actionDefGroups(performer);
-  if (draft.actionDef && !model.actionDefNames().includes(draft.actionDef))
-    groups.push({ label: "New", names: [draft.actionDef] });
-  const select = dom.groupedPicker(groups, draft.actionDef);
-  select.dataset.role = `${draftRole(draft)}|actionDef`;
+  const select = dom.groupedPicker(actionDefGroups(performer), "");
+  select.dataset.role = `draft${drafts.indexOf(draft)}|actionDef`;
   select.onchange = () => chooseDraftActionDef(draft, select.value);
   cell.append(select);
   return cell;
-}
-
-function draftPortsCell(draft, direction) {
-  const cell = dom.element("td", "at-ports");
-  for (const text of actionHops.pendingPortsOf({ draft }, direction))
-    cell.append(pendingPort(text));
-  return cell;
-}
-
-/** "draft0", "draft1", ...: the drafts in order. */
-function draftRole(draft) {
-  return `draft${actionHops.pendingDrafts().indexOf(draft)}`;
 }
 
 function partOptions() {
@@ -535,26 +461,22 @@ function openPerformer(place) {
 }
 
 function addDraft() {
-  actionHops.addFreeDraft();
+  drafts.push({ part: "" });
   redraw();
 }
 
-/** A hop's draft waits for its hop; a draft of [+ Action] is made now. */
+function discardDraft(draft) {
+  drafts.splice(drafts.indexOf(draft), 1);
+  redraw();
+}
+
+/** The draft's action def makes the action, named after it (ReadFrame: readFrame). */
 function chooseDraftActionDef(draft, value) {
   const actionDef = askedActionDef(value);
   if (!actionDef) {
     redraw();
     return;
   }
-  if (actionHops.isHopDraft(draft)) {
-    actionHops.chooseHopDraftActionDef(draft, actionDef);
-    return;
-  }
-  createAction(draft, actionDef);
-}
-
-/** The draft's action def makes the action, named after it (ReadFrame: readFrame). */
-function createAction(draft, actionDef) {
   const args = {
     sheet: state.editor.sheet,
     perform: shownAction,
@@ -562,7 +484,9 @@ function createAction(draft, actionDef) {
     part: draft.part,
     action: actionDef,
   };
-  store.applyOp("add_step", args, () => actionHops.forgetDraft(draft));
+  store.applyOp("add_step", args, () =>
+    drafts.splice(drafts.indexOf(draft), 1),
+  );
 }
 
 function lowerFirst(name) {
