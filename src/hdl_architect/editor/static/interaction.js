@@ -1,5 +1,5 @@
 // HA 2: Mouse, drag and drop, and keyboard.
-import { G, editor } from "./state.js";
+import { GEOMETRY as G, editor } from "./state.js";
 import { $ } from "./svg.js";
 import { showDefaultHint, showHint } from "./statusbar.js";
 import { endStr, isSheet, partDef, partType, portsOfDef } from "./model.js";

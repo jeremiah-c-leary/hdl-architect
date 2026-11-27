@@ -12,16 +12,13 @@ import globals from "globals";
 const STATIC = "src/hdl_architect/editor/static/";
 const NOT_YET_CLEAN = [
   "clocktree.js",
-  "dialogs.js",
   "edits.js",
   "export.js",
   "interaction.js",
   "layout.js",
-  "menus.js",
   "netpanel.js",
   "nets.js",
   "problems.js",
-  "state.js",
   "statusbar.js",
   "store.js",
   "svg.js",

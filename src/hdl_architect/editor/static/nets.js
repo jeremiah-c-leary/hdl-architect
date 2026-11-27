@@ -1,5 +1,5 @@
 // HA 2: Clocks, resets, SYSREF: global nets, their pairing and checks.
-import { G, editor } from "./state.js";
+import { GEOMETRY as G, editor } from "./state.js";
 import { showHint } from "./statusbar.js";
 import { askName } from "./dialogs.js";
 import {
@@ -14,7 +14,8 @@ import {
 import { hasPortLayout, portLayout, sheetLayout } from "./layout.js";
 import { applyOp } from "./store.js";
 import { setPortSide, uniquePortName } from "./edits.js";
-import { menu, portMenu } from "./menus.js";
+import { menu } from "./menus.js";
+import { portMenu } from "./portmenu.js";
 import { render } from "./render.js";
 
 // ------------------------------------------------------------------ clocks, resets, SYSREF: global nets
@@ -313,7 +314,8 @@ export function netMenu(ev, D, end) {
     { sep: true },
     {
       label: "Port actions…",
-      act: () => portMenu(ev, P, end.port, end.kind === "edge"),
+      act: () =>
+        portMenu(ev, { def: P, name: end.port, isEdge: end.kind === "edge" }),
     },
   );
   menu(ev.clientX, ev.clientY, items);

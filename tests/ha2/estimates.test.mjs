@@ -53,7 +53,7 @@ const bar = (name) =>
 const menuText = (part) =>
   E(
     page,
-    `(compMenu({ clientX: 10, clientY: 10 }, '${TOP}', '${part}'), document.getElementById('menu').innerText)`,
+    `(partMenu({ clientX: 10, clientY: 10 }, '${TOP}', '${part}'), document.getElementById('menu').innerText)`,
   );
 const uartEstimate = () =>
   readModel(server.dir, SUBS)

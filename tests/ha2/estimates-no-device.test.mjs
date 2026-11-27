@@ -21,7 +21,7 @@ test("a model without a target device says so", async () => {
     assert.match(
       await E(
         plainPage,
-        `(compMenu({ clientX: 10, clientY: 10 }, '${TOP}', 'uart'), document.getElementById('menu').innerText)`,
+        `(partMenu({ clientX: 10, clientY: 10 }, '${TOP}', 'uart'), document.getElementById('menu').innerText)`,
       ),
       /Estimate: no target device/,
     );

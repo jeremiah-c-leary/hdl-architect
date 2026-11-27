@@ -12,6 +12,9 @@ import * as footprint from "./footprint.js";
 import * as interaction from "./interaction.js";
 import * as layout from "./layout.js";
 import * as menus from "./menus.js";
+import * as partMenu from "./partmenu.js";
+import * as portMenu from "./portmenu.js";
+import * as sheetMenus from "./sheetmenus.js";
 import * as model from "./model.js";
 import * as nets from "./nets.js";
 import * as problems from "./problems.js";
@@ -20,7 +23,7 @@ import * as state from "./state.js";
 import * as svg from "./svg.js";
 
 /** The sheet's sizes and spacings in pixels (state.js). */
-const SIZE = state.G;
+const SIZE = state.GEOMETRY;
 /** The canvas is at least this tall, and this much taller than its contents. */
 const MIN_HEIGHT = 420;
 const SPACE_BELOW = 60;
@@ -135,7 +138,7 @@ function bandRect(sheet, span, className) {
 
 function drawEdgeBand(sheet, side) {
   const band = bandRect(sheet, edgeSpan(sheet, side), "band-edge");
-  band.oncontextmenu = (event) => menus.edgeMenu(event, side);
+  band.oncontextmenu = (event) => sheetMenus.edgeMenu(event, side);
   band.onclick = (event) => interaction.edgeClick(event, side);
   band.onmousedown = (event) => startBandPick(event, side);
 }
@@ -168,7 +171,7 @@ function drawGutterBand(sheet, gutter, index) {
 function drawColumnBand(sheet, column, index) {
   const band = bandRect(sheet, column, "band-col");
   band.setAttribute("data-col", index);
-  band.oncontextmenu = (event) => menus.colMenu(event, index);
+  band.oncontextmenu = (event) => sheetMenus.columnMenu(event, index);
   band.onclick = clearSelection;
 }
 
@@ -310,7 +313,7 @@ function drawEdgePort(sheet, drawing) {
     });
   box.oncontextmenu = (event) => {
     keepRightClickToPort(event);
-    menus.edgePortMenu(event, sheet.name, portName);
+    portMenu.edgePortMenu(event, sheet.name, portName);
   };
 }
 
@@ -494,7 +497,7 @@ function whenComponentClicked(sheet, component, box) {
   box.ondblclick = () => interaction.openSheet(component.defName);
   box.oncontextmenu = (event) => {
     event.preventDefault();
-    menus.compMenu(event, sheet.name, part.name);
+    partMenu.partMenu(event, sheet.name, part.name);
   };
 }
 
@@ -614,7 +617,7 @@ function drawComponentPort(sheet, component, port) {
     });
   box.oncontextmenu = (event) => {
     keepRightClickToPort(event);
-    menus.partPortMenu(event, component.defName, port.name);
+    portMenu.partPortMenu(event, component.defName, port.name);
   };
 }
 
