@@ -246,8 +246,16 @@ as friction shows.
       port and its exit (`walk_step`, `core/action_walk.py`); New action…
       at a part makes an action def with untyped items (schema 0.9, SysON
       check in `docs/history/schema-notes.md`).
-- [ ] **Next (the user):** enter the seven ReadTemperature rows in the
-      Actions tab (Control, with an interrupt) to remodel the Wi-Fi example.
+- [ ] **The user:** play with the walk for a while before more changes
+      (decided 2026-11-27); the seven ReadTemperature rows were walked in
+      under a minute.
+- [ ] Updating actions: change a performed action once built (re-route a
+      step, change its action def or exit, insert or remove a step), found
+      by using the walk. Known so far: an action fed from two paths; the
+      hint over the sheet; the sequence view's step indicators; choosing
+      item defs for untyped items.
+- [ ] A user guide (`docs/user-guide/`), click by click, one chapter per
+      feature, starting with the walk.
 
 **Estimates (E)**
 - [x] Resources: model, roll-up, margins, device library, reports, HA 2

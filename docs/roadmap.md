@@ -17,7 +17,7 @@ Phases (from `HANDOFF.md`): **0** consolidate, **1** HA 2 for architecture, **2*
 | **D** | Descriptions | `doc` on blocks, interfaces, ports | HA 2 | partly |
 | **CO** | Cores | `.core` per block: files, library, version, licence | designer, scaffolder | partly (trial; files still in `@HdlSource`) |
 | **E** | Estimates | resources (and effort) per block | HA 2 | partly (resources: model, device library and `ha report resources`; HA 2 editing to come; effort later) |
-| **F** | Features | performed actions (HA 1's feature arcs) / scenarios (Gherkin) | HA 2, `.feature` files | partly (model, core and `ha report actions`; HA 2 views next) |
+| **F** | Features | performed actions (HA 1's feature arcs) / scenarios (Gherkin) | HA 2, `.feature` files | partly (model, core, `ha report actions`, HA 2 sequence view, footprint and the walk; scenarios not yet) |
 | **A** | Address map | a window (base, size) per register-bearing block | HA 2 | no |
 | **R** | Registers | leaf `.rdl` files | designer | no |
 | **SQ** | Sequences | register sequences by name (proposed input) | designer | no (needs your OK) |
@@ -39,8 +39,9 @@ Phases (from `HANDOFF.md`): **0** consolidate, **1** HA 2 for architecture, **2*
 | Move blocks between levels | planned | 1 | ● |  | ● |  | ○ |  |  |  |  |  |  |  |  |  |  |  |  | one command instead of ~10 edits |
 | Address map view and checks | planned | 1 | ● |  | ● |  |  |  |  |  |  |  | ● | ○ |  |  |  |  |  | overlaps, span vs window, reachability |
 | Resource roll-up, plan vs actual | partly | 3 | ● |  |  |  |  |  |  |  | ● |  |  |  |  |  |  |  | ○ | `ha report resources` rolls estimates up against the target device (Wi-Fi: XCZU9EG); HA 2 entry and display next; plan vs actual needs synthesis results |
-| Feature Mapping (sequence view) | planned | 2 | ● | ○ | ● |  |  |  |  |  |  | ● |  |  |  |  |  |  |  | HA 1 had it |
-| Feature footprint (highlighted path) | planned | 2 |  |  | ● |  |  |  |  |  |  | ● |  |  | ○ |  |  |  |  | computed from the scenarios |
+| Feature Mapping (sequence view) | done | 2 | ● | ○ | ● |  |  |  |  |  |  | ● |  |  |  |  |  |  |  | HA 1 had it |
+| Feature footprint (highlighted path) | done | 2 |  |  | ● |  |  |  |  |  |  | ● |  |  | ○ |  |  |  |  | computed from the scenarios |
+| Updating actions (edit a built sequence) | planned | 2 |  |  | ● |  |  |  |  |  |  | ● |  |  |  |  |  |  |  | after the user has used the walk for a while |
 | **HDL and build** | | |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | |
 | Container VHDL | done | - | ● | ● | ● | ● |  |  |  | ○ |  |  |  |  |  |  |  |  |  |  |
 | Leaf skeletons | done | - | ● | ● |  | ● |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -85,7 +86,7 @@ Counting only capabilities not yet done: how many need this data (●), and how 
 
 | Data | Needed by | Last missing piece for | Capabilities |
 |---|:-:|:-:|---|
-| **F** Features | 7 | 4 | Feature Mapping (sequence view); Feature footprint (highlighted path); Scenarios to tests (Gherkin); Coverage from scenarios; SDD concept of execution, per feature; Test description and report (STD/STR); Traceability matrix |
+| **F** Features | 6 | 3 | Updating actions (edit a built sequence); Scenarios to tests (Gherkin); Coverage from scenarios; SDD concept of execution, per feature; Test description and report (STD/STR); Traceability matrix |
 | **A** Address map | 6 | 2 | Address map view and checks; Top-level `.rdl` and crossbar config; C headers and register docs; Interrupt map and device tree; Sequences to C and Tcl; CSR hello-world test |
 | **R** Registers | 6 | 1 | Register file wrapper (PeakRDL); Top-level `.rdl` and crossbar config; Build ID register; C headers and register docs; Sequences to C and Tcl; CSR hello-world test |
 | **RES** Results | 4 | 2 | Build ID register; SVD (version description); Test description and report (STD/STR); Status on the hierarchy (evidence) |
@@ -100,7 +101,7 @@ Counting only capabilities not yet done: how many need this data (●), and how 
 ## Reading it as a roadmap
 
 - **Phase 0** needs no new data: it hardens what exists (cores instead of `@HdlSource`, the drift check, gate mutation tests, CI).
-- **Features (F)** are needed by the most capabilities (7): the Feature Mapping view, the feature footprint, the per-feature SDD sections, the traceability matrix and, with a verification framework (VC), tests from scenarios. That is phase 2, the part of the vision with no prototype yet.
+- **Features (F)** are needed by 6 capabilities still to come (the sequence view, footprint and walk are built): updating actions, the per-feature SDD sections, the traceability matrix and, with a verification framework (VC), tests from scenarios. That is phase 2, the part of the vision with no prototype yet.
 - **Address map (A) and registers (R)** are needed by 6 each and 8 together: the address map view, the top-level `.rdl` and crossbar configuration, the register file wrapper, the CSR hello-world test, C headers, the interrupt map and device tree, sequences and the build ID. They wait on one decision: who owns addresses (A6).
 - **Descriptions (D)** are cheap to add while drawing and improve every document; the SDD needs them.
 - **Results (RES)** come from CI, so CI comes before anything that reports status.
