@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "0.4",
+  "schemaVersion": "0.10",
   "package": {
     "name": "ZynqPsIp",
     "doc": "Zynq UltraScale+ processing system (hard macro).",
@@ -32,6 +32,16 @@
           {
             "name": "csr",
             "type": "AxiLite",
+            "attributes": [
+              {
+                "name": "root",
+                "type": "MemoryMapRoot",
+                "redefines": {
+                  "map_name": "ps",
+                  "base": 1073741824
+                }
+              }
+            ],
             "doc": "Master."
           },
           {

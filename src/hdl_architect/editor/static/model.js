@@ -143,8 +143,14 @@ export function partDefNames() {
 }
 
 /** Every port def's (interface's) name, in alphabetical order. */
+/** Every port def a port can be typed by (not abstract ones, such as MemoryMappedManager). */
 export function portDefNames() {
-  return definitionNames().filter((name) => portDef(name) !== null);
+  return definitionNames().filter(isConcretePortDef);
+}
+
+function isConcretePortDef(name) {
+  const definition = portDef(name);
+  return definition !== null && !definition.isAbstract;
 }
 
 /** Every action def's name, in alphabetical order. */

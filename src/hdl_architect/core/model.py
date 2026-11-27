@@ -271,6 +271,12 @@ class _JsonModel:
                     ):
                         if "type" in u:  # an untyped port is allowed
                             need(u["type"], f"{d['name']}.{u['name']}")
+                        for a in u.get("attributes", []):  # a port's own (0.10)
+                            need(a["type"], f"{d['name']}.{u['name']}.{a['name']}")
+                    for c in d.get("connections", []):  # a window (0.10)
+                        for a in c.get("attributes", []):
+                            ends = " to ".join(c["ends"])
+                            need(a["type"], f"{d['name']}: connect {ends}")
                     for m in d.get("metadata", []):
                         need(m["type"], f"{d['name']} @{m['type']}")
                     for a in d.get("actions", []):

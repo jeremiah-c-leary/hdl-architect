@@ -8,6 +8,7 @@
     ha report resources                        estimates vs the target device
     ha report devices                          the design on every device of the family
     ha report actions                          what the FPGA does, step by step
+    ha report addresses                        each memory map, from its root
     ha connect [--sheet NAME] A B              wire two existing ports (a.p or p)
     ha set-interface DEF.PORT... --type T      set ports' interface (--none clears)
     ha add-port DEF.PORT [--type T]            add a port
@@ -299,6 +300,7 @@ REPORTS = {
     "resources": "hdl_architect.reports.resources",
     "devices": "hdl_architect.reports.devices",
     "actions": "hdl_architect.reports.actions",
+    "addresses": "hdl_architect.reports.addresses",
 }
 
 

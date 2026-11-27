@@ -253,3 +253,31 @@ Inserting the files one at a time (`untyped-items-check`) left 4 of the 8
 ends and 2 actions unresolved: SysON resolves a text when it is inserted,
 and Behavior and FpgaSys import each other. Insert the files as one text.
 
+
+## Version 0.10: the address map (2026-11-27)
+
+Decision 14 (`HANDOFF.md`): the architect sets crossbar windows in HA 2; the
+crossbar and top-level `.rdl` files are generated from them; a memory map
+starts at one or more roots.
+
+| JSON | SysML |
+|---|---|
+| port def `isAbstract`, `specializes` | `abstract port def MemoryMappedManager;`, `port def AxiLite :> MemoryMappedManager { ... }`: a memory-mapped bus's manager role (AXI4, AXI4-Lite, Avalon-MM, ...) |
+| connection `attributes[]` | `connect crossbar.m0 to csr.csr { attribute window : AddressWindow { attribute :>> base = 0; attribute :>> size = 4096; } }`: a crossbar's window, base as an offset from the crossbar's own |
+| port usage `attributes[]` | `port csr : AxiLite { attribute root : MemoryMapRoot { attribute :>> map_name = "ps"; attribute :>> base = 1073741824; } }`: where a memory map starts |
+
+A crossbar is not a kind: a part's kind says who owns its HDL (a crossbar
+may be VendorIp or Rtl). It is recognised by its ports: a memory-mapped
+subordinate port, and manager ports whose connections carry windows
+(`core/addresses.py`, `ha report addresses`). FpgaOne's root is its PS at
+0x4000_0000 (illustrative: Zynq-7000's M_AXI_GP0 from memory, not checked
+against a datasheet).
+
+SysON check: the 8 files generated from FpgaOne, inserted as one text into a
+new SysON v2026.11 project (`address-map-check`): no messages. Read back
+with AQL: `AxiLite` specializes `MemoryMappedManager`; both `window`
+attributes are owned by connection usages whose ends resolve to
+`crossbar.m0` → `csr.csr` and `crossbar.m1` → `serial.csr`, are typed by
+`AddressWindow`, and their 4 redefinitions resolve to `AddressWindow`'s
+`base` and `size`; `root` is owned by `ZynqPs`'s port `csr`, typed by
+`MemoryMapRoot`, its 2 redefinitions resolving to `MemoryMapRoot`'s.

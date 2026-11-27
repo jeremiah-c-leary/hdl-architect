@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "0.4",
+  "schemaVersion": "0.10",
   "package": {
     "name": "FpgaLib",
     "doc": "FpgaLib - domain library for modeling FPGA architecture in SysML v2. Spike version: the minimum needed to replace the FPGA Architect JSON for one FPGA and drive HDL / script / SBOM / doc generators. Port defs: directed attributes become HDL signals, undirected ones are port parameters; declared from the driver/master side (~Port for the receiving side). HDL naming: a port with one signal maps to the port name (clk), otherwise <port>_<signal> (csr_awaddr).",
@@ -21,6 +21,34 @@
           {
             "name": "width",
             "type": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "AddressWindow",
+        "doc": "The address window a crossbar's manager port gives what it reaches (decision 14): base, as an offset from the crossbar's own base, and size, in bytes. On the connection: `connect crossbar.m0 to csr.csr { attribute window : AddressWindow { ... } }`.",
+        "attributes": [
+          {
+            "name": "base",
+            "type": "Natural"
+          },
+          {
+            "name": "size",
+            "type": "Natural"
+          }
+        ]
+      },
+      {
+        "name": "MemoryMapRoot",
+        "doc": "Where a memory map starts (decision 14): on the manager port of what addresses the design (a processor, a PCIe bridge), its map's name and the address it sees the map at, in bytes. A design may have several roots.",
+        "attributes": [
+          {
+            "name": "map_name",
+            "type": "String"
+          },
+          {
+            "name": "base",
+            "type": "Natural"
           }
         ]
       }
@@ -99,6 +127,11 @@
     ],
     "portDefs": [
       {
+        "name": "MemoryMappedManager",
+        "doc": "The manager role of a memory-mapped bus (AXI4, AXI4-Lite, Avalon-MM, ...): a port def that specializes it carries addresses. Its manager ports can be a memory map's root, or a crossbar's windows; its subordinate ports (conjugated) are what a window reaches.",
+        "isAbstract": true
+      },
+      {
         "name": "ClockIn",
         "attributes": [
           {
@@ -175,6 +208,9 @@
       {
         "name": "AxiLite",
         "doc": "AXI4-Lite, master perspective (use ~AxiLite for the slave side).",
+        "specializes": [
+          "MemoryMappedManager"
+        ],
         "attributes": [
           {
             "name": "addr_width",

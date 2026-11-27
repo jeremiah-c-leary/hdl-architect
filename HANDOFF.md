@@ -234,7 +234,15 @@ as friction shows.
 - [x] Operations API in Python shared by HA 2 and the CLI [D4]: every
       model change in `core/ops.py` (`operations()`), HA 2 via `POST /api/op`,
       `ha op` (2026-11-25). Next: an MCP server on the same table.
-- [ ] Address map, windows, checks; CSR bus as a global net [D5].
+- [ ] Address map (decision 14) [D5]:
+  - [x] Schema 0.10 (port defs specialize `MemoryMappedManager`; windows on
+        connections; roots on ports), `core/addresses.py` and `ha report
+        addresses` (memory maps from each root, overlap / outside / missing
+        window problems, alignment warnings); FpgaOne has a root and windows.
+  - [ ] HA 2: Memory map root… on a port, Windows… on a crossbar.
+  - [ ] HA 2: the memory map view (a tree per root).
+  - [ ] Generated crossbar and top-level `.rdl`, and the crossbar config.
+  - [ ] The scaffolder's test register file (ID and scratchpad) for empty blocks.
 - [ ] Files view (scaffold status per block); protocol editor; new package.
 - [ ] Headless diagram export command for document builds.
 
