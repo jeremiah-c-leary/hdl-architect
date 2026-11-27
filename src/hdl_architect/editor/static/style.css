@@ -871,3 +871,13 @@ svg text {
   margin-top: 4px;
   font-size: 11px;
 }
+.at-draft td {
+  background: var(--gutter);
+}
+.at-own {
+  margin-top: 10px;
+  font-size: 12px;
+}
+.at-own-item {
+  margin-right: 12px;
+}
