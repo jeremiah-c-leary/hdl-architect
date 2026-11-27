@@ -103,15 +103,15 @@ def connect(a, b, attributes=None):
 
 def design():
     """Two roots. The CPU reaches a crossbar; its windows reach a subsystem
-    (with its own crossbar and two register files) and a DMA engine (whose
-    own manager port has no window: it is a leaf). The PCIe bridge reaches a
-    register file straight, with no window."""
+    (with its own crossbar and two register files) and a DMA engine (not a
+    crossbar, so a leaf, though it has a manager port of its own). The PCIe
+    bridge reaches a register file straight, with no window."""
     defs = [
         {"name": "Cpu", "specializes": ["HardMacro"],
          "ports": [port("m", attributes=root("cpu", 0x8000_0000))]},
         {"name": "Pcie", "specializes": ["VendorIp"],
          "ports": [port("m", attributes=root("pcie", 0))]},
-        {"name": "Xbar", "specializes": ["VendorIp"],
+        {"name": "Xbar", "specializes": ["VendorIp", "Crossbar"],
          "ports": [port("s0", conjugated=True), port("m0"), port("m1")]},
         {"name": "Regs", "specializes": ["RegisterFile"],
          "ports": [port("csr", conjugated=True)]},
@@ -205,6 +205,29 @@ def test_a_crossbar_port_with_no_window(model_dir):
     del defs["Sub"]["connections"][1]["attributes"]
     (problem,) = report_of(model_dir, defs).problems
     assert problem.startswith("Top.sub.xbar.m1: no address window")
+
+
+def test_a_crossbar_whose_windows_are_not_set_yet(model_dir):
+    """A crossbar says it is one: with no windows it is still not a leaf."""
+    defs = design()
+    for connection in defs["Sub"]["connections"]:
+        del connection["attributes"]
+    report = report_of(model_dir, defs)
+    assert [p.split(":")[0] for p in report.problems] == [
+        "Top.sub.xbar.m0",
+        "Top.sub.xbar.m1",
+    ]
+    assert spans(report.maps[0].top)["Top.sub.xbar"][2] == CROSSBAR
+
+
+def test_a_window_from_a_part_that_is_not_a_crossbar(model_dir):
+    defs = design()
+    defs["Top"]["connections"][3]["attributes"] = window(0, 0x1000)  # dma.mem
+    (problem,) = report_of(model_dir, defs).problems
+    assert problem == (
+        "Top.dma.mem: has an address window, but Dma is not a crossbar "
+        "(a part def :> Crossbar)"
+    )
 
 
 def test_a_root_must_be_a_manager_port(model_dir):

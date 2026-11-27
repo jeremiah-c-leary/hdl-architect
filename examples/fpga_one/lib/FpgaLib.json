@@ -414,6 +414,11 @@
         ]
       },
       {
+        "name": "Crossbar",
+        "doc": "What a crossbar does, whatever its kind (a part def specializes it as well as its kind: `part def AxiCrossbar1to2 :> VendorIp, Crossbar`): it decodes addresses from its memory-mapped subordinate port into an address window on each of its manager ports (decision 14). HA 2 sets its windows; a SystemRDL addrmap is generated for it.",
+        "isAbstract": true
+      },
+      {
         "name": "Container",
         "isAbstract": true,
         "specializes": [

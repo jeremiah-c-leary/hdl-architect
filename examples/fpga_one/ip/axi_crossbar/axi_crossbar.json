@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "0.4",
+  "schemaVersion": "0.10",
   "package": {
     "name": "AxiCrossbarIp",
     "doc": "AMD AXI crossbar, 1 slave / 2 master ports (vendor IP).",
@@ -12,7 +12,8 @@
       {
         "name": "AxiCrossbar1to2",
         "specializes": [
-          "VendorIp"
+          "VendorIp",
+          "Crossbar"
         ],
         "metadata": [
           {

@@ -266,9 +266,13 @@ starts at one or more roots.
 | connection `attributes[]` | `connect crossbar.m0 to csr.csr { attribute window : AddressWindow { attribute :>> base = 0; attribute :>> size = 4096; } }`: a crossbar's window, base as an offset from the crossbar's own |
 | port usage `attributes[]` | `port csr : AxiLite { attribute root : MemoryMapRoot { attribute :>> map_name = "ps"; attribute :>> base = 1073741824; } }`: where a memory map starts |
 
-A crossbar is not a kind: a part's kind says who owns its HDL (a crossbar
-may be VendorIp or Rtl). It is recognised by its ports: a memory-mapped
-subordinate port, and manager ports whose connections carry windows
+A crossbar says it is one (the user, 2026-11-27: recognising it from its
+ports would be fragile, and the generator writes its `addrmap` from it): its
+part def specializes the abstract part def `Crossbar` as well as its kind,
+`part def AxiCrossbar1to2 :> VendorIp, Crossbar`. The kind still says who
+owns its HDL (set_kind keeps the other specializations, and the kind
+first); `Crossbar` says what it does. Every wired manager port of a crossbar
+needs a window, and a window from a part that is not a crossbar is an error
 (`core/addresses.py`, `ha report addresses`). FpgaOne's root is its PS at
 0x4000_0000 (illustrative: Zynq-7000's M_AXI_GP0 from memory, not checked
 against a datasheet).

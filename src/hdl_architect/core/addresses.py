@@ -12,15 +12,17 @@ The model (examples/fpga_one shows the shape):
   address it sees the map at:
   `port csr : AxiLite { attribute root : MemoryMapRoot { ... } }`.
   A design may have several roots.
-- A crossbar is a part with a memory-mapped subordinate port and manager
-  ports whose connections carry address windows:
+- A crossbar says so: its part def specializes the abstract part def
+  Crossbar as well as its kind (`part def AxiCrossbar1to2 :> VendorIp,
+  Crossbar`; the kind says who owns its HDL, Crossbar what it does). Each
+  wired manager port of a crossbar has an address window on its connection:
   `connect crossbar.m0 to csr.csr { attribute window : AddressWindow
   { :>> base = 0; :>> size = 4096; } }`. A window's base is an offset from
   the crossbar's own base, so a crossbar inside a subsystem is placed by
   the window above it (as SystemRDL's nested address maps are).
 - Anything else reached is a leaf: its registers (its .rdl, the designer's)
-  are in its window. A part with a manager port but no windows on it (a DMA
-  engine, say) is a leaf too: its manager is not a crossbar's.
+  are in its window. A leaf with a manager port of its own (a DMA engine,
+  say) has no windows on it: only a crossbar's manager ports do.
 
 A subsystem is passed through: a window that reaches its port reaches what
 that port is bound to inside it.
@@ -31,9 +33,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from hdl_architect.core.model import _JsonModel
-from hdl_architect.core.resources import part_def, unqualified
+from hdl_architect.core.resources import part_def, part_generals, unqualified
 
 MANAGER = "MemoryMappedManager"
+CROSSBAR_DEF = "Crossbar"
 WINDOW = "AddressWindow"
 ROOT = "MemoryMapRoot"
 
@@ -223,8 +226,9 @@ class MapWalk:
     def block(self, place: Place, way_in: str, where: tuple) -> Block:
         (base, size), seen = where
         definition = place.definition["name"]
-        hops = self.window_hops(place, way_in)
-        if not hops:
+        hops = self.manager_hops(place, way_in)
+        if CROSSBAR_DEF not in part_generals(self.model, definition):
+            self.refuse_windows(place, hops)
             return Block(place.path, definition, base, size, REGISTERS)
         crossbar = Block(place.path, definition, base, size, CROSSBAR)
         for manager, hop in hops:
@@ -234,9 +238,9 @@ class MapWalk:
         check_windows(crossbar, self.report)
         return crossbar
 
-    def window_hops(self, place: Place, way_in: str) -> list[tuple[str, Hop]]:
-        """The part's manager ports (not the way in, nor roots) and where each
-        leads; none if no wire from them has a window: then it is a leaf."""
+    def manager_hops(self, place: Place, way_in: str) -> list[tuple[str, Hop]]:
+        """The part's manager ports (not the way in, nor roots), and where
+        each leads."""
         hops = []
         for port in place.definition.get("ports", []):
             name = port_id(port)
@@ -247,16 +251,24 @@ class MapWalk:
             hop = self.hop(place.parent, f"{place.part}.{name}")
             if hop is not None:
                 hops.append((name, hop))
-        if not any(hop.window for _, hop in hops):
-            return []
         return hops
+
+    def refuse_windows(self, place: Place, hops: list[tuple[str, Hop]]) -> None:
+        """A window from a part that is not a crossbar: it says nothing."""
+        for manager, hop in hops:
+            if hop.window is not None:
+                self.report.problems.append(
+                    f"{place.path}.{manager}: has an address window, but "
+                    f"{place.definition['name']} is not a crossbar (a part def "
+                    f":> {CROSSBAR_DEF})"
+                )
 
     def windowed(self, crossbar: Block, wire: tuple, seen: set) -> Block | None:
         manager, hop = wire
         if hop.window is None:
             self.report.problems.append(
-                f"{crossbar.path}.{manager}: no address window (the crossbar's "
-                "other manager ports have one)"
+                f"{crossbar.path}.{manager}: no address window (every wired "
+                "manager port of a crossbar needs one)"
             )
             return None
         values = hop.window.get("redefines", {})
