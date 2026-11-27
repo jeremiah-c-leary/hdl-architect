@@ -145,8 +145,17 @@ aside input {
   font-size: 11px;
   margin-top: 6px;
 }
+/* the sheet, and under it the docked sequence view when one is open */
+#work {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
 #canvasWrap {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   position: relative;
 }
@@ -711,15 +720,14 @@ svg text {
   font-weight: 600;
   fill: var(--ink);
 }
+.fp-badge.fp-here {
+  fill: var(--accent);
+}
 /* the sequence view (sequenceview.js) */
 #sequenceView {
-  position: fixed;
-  inset: 40px 30px;
-  z-index: 5;
+  height: 50%;
   background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  border-top: 2px solid var(--line);
   display: flex;
   flex-direction: column;
 }
@@ -827,17 +835,31 @@ svg text {
   background: var(--gutter);
   font-weight: 600;
 }
-.at-groups th {
-  text-align: center;
-}
-.at-odd td {
-  background: var(--edge);
-}
-.at-name div {
+.at-name {
   font-weight: 600;
 }
-.at-link {
-  text-align: center;
+/* a hop: the item from one action to the next (actionhops.js) */
+.at-table .at-hop td {
+  border-left: none;
+  border-right: none;
+  background: var(--panel);
+  padding: 2px 6px;
+}
+.at-hop-mark {
+  color: var(--muted);
+  text-align: right;
+}
+.at-hop-body > * {
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.at-hop-ends {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+.at-pending {
+  font-style: italic;
+  color: var(--muted);
 }
 .at-muted {
   color: var(--muted);
@@ -849,13 +871,6 @@ svg text {
   font-size: 10px;
   padding: 0 4px;
   margin-left: 3px;
-}
-.at-name .at-button {
-  visibility: hidden;
-  margin: 2px 3px 0 0;
-}
-.at-line:hover .at-name .at-button {
-  visibility: visible;
 }
 .at-new-item input {
   width: 9em;

@@ -405,21 +405,35 @@ def move_step(model: Model, sheet: str, perform: str, step: str, index: int) -> 
 
 def add_action_item(model: Model, action: str, item: dict) -> Result:
     """Give an action def an item it gets (`in`) or gives (`out`): `item` is
-    {"name", "direction", "type"}; the item def is made in the action def's
-    package if there is none."""
+    {"name", "direction", "type"?}; the item def is made in the action def's
+    package if there is none. No type: an item whose item def is not chosen
+    yet (`in item name;`)."""
     file, package, definition = action_def(model, action)
-    name, direction, type_ = item["name"], item["direction"], item["type"]
+    name, direction, type_ = item["name"], item["direction"], item.get("type")
     check_name(name, "item")
     if direction not in DIRECTIONS:
         raise OpError("bad_request", 'direction must be "in" or "out"')
     if any(p["name"] == name for p in definition.get("parameters", [])):
         raise OpError("exists", f"{action} already has an item {name}")
-    notes = ensure_item_def(model, (file, package), type_)
-    definition.setdefault("parameters", []).append(
-        {"name": name, "direction": direction, "type": short(type_)}
-    )
-    model.ensure_def_import(package, model.item_defs, type_)
+    notes = []
+    if type_:
+        notes = ensure_item_def(model, (file, package), type_)
+        model.ensure_def_import(package, model.item_defs, type_)
+    parameter = with_type({"name": name, "direction": direction}, type_)
+    definition.setdefault("parameters", []).append(parameter)
     return Result([], notes)
+
+
+def with_type(item: dict, type_: str | None) -> dict:
+    """The item with its item def, if it has one (else none is written)."""
+    if type_:
+        item["type"] = short(type_)
+    return item
+
+
+def type_of(item: dict) -> str | None:
+    """An item's item def (unqualified); None while it has none."""
+    return short(item.get("type"))
 
 
 def ensure_item_def(model: Model, where: tuple[str, dict], type_: str) -> list[str]:
@@ -480,11 +494,11 @@ def connect_items(model: Model, action: str, source: str, target: str) -> Result
     source_item = end_item(model, definition, source)
     target_item = end_item(model, definition, target)
     check_flow_direction(source, source_item, target, target_item)
-    if short(source_item["type"]) != short(target_item["type"]):
+    if type_of(source_item) != type_of(target_item):
         raise OpError(
             "types",
-            f"{source} is {short(source_item['type'])} but {target} is "
-            f"{short(target_item['type'])}",
+            f"{source} is {type_of(source_item)} but {target} is "
+            f"{type_of(target_item)}",
         )
     add_item_link(definition, source, target)
     return Result([])
@@ -571,7 +585,8 @@ def set_item_port(model: Model, def_name: str, perform: str, via: dict) -> Resul
         notes = [f"{ref} no longer says which port it uses."] if removed else []
         return Result([], notes)
     port_item, notes = port_item_for(port, item, via.get("portItem"))
-    model.ensure_def_import(found.package, model.item_defs, item["type"])
+    if item.get("type"):
+        model.ensure_def_import(found.package, model.item_defs, item["type"])
     found.owner.setdefault("flows", []).append(item_flow(item, ref, port, port_item))
     return Result([], notes)
 
@@ -620,9 +635,10 @@ def new_port_item(port: dict, item: dict) -> tuple[str, list]:
     """The port carries the item from now on, under a name of its own."""
     items = port.setdefault("items", [])
     name = unique_item_name(items, item["name"])
-    type_ = short(item["type"])
-    items.append({"name": name, "direction": item["direction"], "type": type_})
-    note = f"Port {ident(port)} now carries {item['direction']} item {name} : {type_}."
+    type_ = type_of(item)
+    items.append(with_type({"name": name, "direction": item["direction"]}, type_))
+    typed = f" : {type_}" if type_ else " (no item def yet)"
+    note = f"Port {ident(port)} now carries {item['direction']} item {name}{typed}."
     return name, [note]
 
 

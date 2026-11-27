@@ -1,12 +1,14 @@
-// HA 2: the Actions tab of the sequence overlay: the table that edits a
-// performed action, one row per action of its action def (HANDOFF decision
-// 13, like timing arcs). A row says which part usage performs the action and
-// its action def; for each item the action gets (ingress) or gives (egress),
-// the port of that part it uses and the item that port carries. Which action
-// feeds which ("from", "to") is not chosen here: the core works it out from
-// the wires (core/action_links.py), and the table shows it.
+// HA 2: the Actions tab of the sequence view: the table that edits a
+// performed action (HANDOFF decision 13, like timing arcs). Each action of
+// its action def is a row: the part usage that performs it, its action def,
+// and the ports its items come in by (ingress) and go out by (egress).
+// Between the rows are the hops (actionhops.js): the item that goes from one
+// action to the next over a wire, chosen once for both ends. The actions are
+// added by walking the sheet (actionwalk.js); [+ Action] adds one by hand.
+import * as actionHops from "./actionhops.js";
 import * as actions from "./actions.js";
 import * as dialogs from "./dialogs.js";
+import * as dom from "./dom.js";
 import * as interaction from "./interaction.js";
 import * as menus from "./menus.js";
 import * as model from "./model.js";
@@ -17,7 +19,6 @@ import * as svg from "./svg.js";
 
 const INGRESS = "in";
 const EGRESS = "out";
-const NEW_ITEM = "(new item)";
 const NEW_ACTION_DEF = "(new action def)";
 const NOT_PERFORMED = "not performed";
 /** Part kinds that bring their own actions (core/action_ops.py, IP_KINDS). */
@@ -28,44 +29,28 @@ const COLUMNS = [
   "Part usage",
   "Action",
   "Action def",
-  "from",
-  "Port usage",
-  "Item",
-  "Port usage",
-  "Item",
-  "to",
+  "Ingress port",
+  "Egress port",
   "Status",
 ];
 
 /** The performed action shown: its perform's name on the open sheet. */
 let shownAction = null;
-/** A line's port chosen before its item, by line key (see lineKey). */
-const pendingPorts = new Map();
-/** The line whose "New item…" form is open, by line key; null if none. */
-let newItemLine = null;
-/** The empty lines asked for with "+ in" / "+ out", by "action|direction". */
-const extraLines = new Set();
-/** Rows added with + Action, not saved until their action def is chosen: {part}. */
+/** Rows added with [+ Action], not saved until their action def is chosen: {part}. */
 const drafts = [];
 
 // ------------------------------------------------------------------ drawing
 
 /** Draw the table of a performed action of the open sheet. */
 export function renderActionsTable(actionName) {
-  if (actionName !== shownAction) forgetEdits();
+  actionHops.showHopsOf(actionName, redraw);
+  if (actionName !== shownAction) drafts.length = 0;
   shownAction = actionName;
   const holder = svg.$("actionsTable");
   holder.innerHTML = "";
   const action = actions.sheetAction(actionName);
   if (!action) return;
-  holder.append(tableOf(action), addActionButton(), ownItemsLine(action));
-}
-
-function forgetEdits() {
-  pendingPorts.clear();
-  extraLines.clear();
-  newItemLine = null;
-  drafts.length = 0;
+  holder.append(tableOf(action), addActionLine(), ownItemsLine(action));
 }
 
 function redraw() {
@@ -73,153 +58,75 @@ function redraw() {
 }
 
 function tableOf(action) {
-  const table = element("table", "at-table");
-  const body = element("tbody");
+  const table = dom.element("table", "at-table");
+  const body = dom.element("tbody");
   action.steps.forEach((step, index) => {
     body.append(...rowsOf({ action, step, index }));
   });
-  drafts.forEach((draft, index) => {
-    body.append(draftRow(draft, action.steps.length + index));
-  });
+  for (const draft of drafts) body.append(draftRow(draft));
   table.append(headOf(), body);
   return table;
 }
 
 function headOf() {
-  const head = element("thead");
-  const groups = element("tr", "at-groups");
-  groups.append(
-    headCell("", 4),
-    headCell("Ingress", 3),
-    headCell("Egress", 3),
-    headCell("", 1),
-  );
-  const names = element("tr");
-  for (const name of COLUMNS) names.append(headCell(name, 1));
-  head.append(groups, names);
+  const head = dom.element("thead");
+  const names = dom.element("tr");
+  for (const name of COLUMNS) names.append(dom.element("th", "", name));
+  head.append(names);
   return head;
 }
 
-function headCell(text, span) {
-  const cell = element("th", "", text);
-  cell.colSpan = span;
-  return cell;
-}
-
-/**
- * One table row per line: line n holds the action's n-th ingress and n-th
- * egress. The action's own cells span all its lines.
- */
+/** An action's row, with the hops into it before and those out of it after. */
 function rowsOf(place) {
-  const ingress = linesOf(place.step, INGRESS);
-  const egress = linesOf(place.step, EGRESS);
-  const count = Math.max(ingress.length, egress.length);
-  const rows = [];
-  for (let line = 0; line < count; line++)
-    rows.push(lineRow(place, { ingress: ingress[line], egress: egress[line] }));
-  rows[0].prepend(...actionCells(place, count));
-  rows[0].append(spanned(statusCell(place), count));
-  return rows;
+  return [
+    ...actionHops.hopRowsBefore(place),
+    actionRow(place),
+    ...actionHops.hopRowsAfter(place),
+  ];
 }
 
-/** The action's items in one direction, and an empty line to add one. */
-function linesOf(step, direction) {
-  const lines = step.items.filter((item) => item.direction === direction);
-  if (!lines.length || extraLines.has(extraKey(step.name, direction)))
-    lines.push(emptyLine(direction));
-  return lines;
-}
-
-function emptyLine(direction) {
-  return { item: null, itemType: null, direction, port: null, portItem: null };
-}
-
-function extraKey(stepName, direction) {
-  return `${stepName}|${direction}`;
-}
-
-function lineRow(place, pair) {
-  const row = element("tr", "at-line");
-  if (place.index % 2) row.classList.add("at-odd");
-  row.append(...ingressCells(place, pair.ingress));
-  row.append(...egressCells(place, pair.egress));
+function actionRow(place) {
+  const row = dom.element("tr", "at-line");
+  row.append(
+    numberCell(place),
+    partCell(place),
+    dom.element("td", "at-name", place.step.name),
+    actionDefCell(place),
+    portsCell(place, INGRESS),
+    portsCell(place, EGRESS),
+    statusCell(place),
+  );
   row.oncontextmenu = (event) => rowMenu(event, place);
   return row;
 }
 
-function ingressCells(place, line) {
-  if (!line) return emptyCells();
-  return [fromCell(place, line), portCell(place, line), itemCell(place, line)];
-}
-
-function egressCells(place, line) {
-  if (!line) return emptyCells();
-  return [portCell(place, line), itemCell(place, line), toCell(place, line)];
-}
-
-function emptyCells() {
-  return [element("td"), element("td"), element("td")];
-}
-
-function spanned(cell, span) {
-  cell.rowSpan = span;
-  return cell;
-}
-
 // ------------------------------------------------------------------ the action's cells
-
-function actionCells(place, span) {
-  const cells = [
-    numberCell(place),
-    partCell(place),
-    nameCell(place),
-    actionDefCell(place),
-  ];
-  return cells.map((cell) => spanned(cell, span));
-}
 
 /** "1", with ↑ ↓ to move the action in the order, and ✕ to delete it. */
 function numberCell(place) {
-  const cell = element("td", "at-number", `${place.index + 1}`);
+  const cell = dom.element("td", "at-number", `${place.index + 1}`);
   cell.append(
-    button("↑", "Move up", () => moveAction(place, -1)),
-    button("↓", "Move down", () => moveAction(place, 1)),
-    button("✕", "Delete this action", () => deleteAction(place)),
+    dom.button("↑", "Move up", () => moveAction(place, -1)),
+    dom.button("↓", "Move down", () => moveAction(place, 1)),
+    dom.button("✕", "Delete this action", () => deleteAction(place)),
   );
   return cell;
 }
 
 function partCell(place) {
-  const cell = element("td");
-  const parts = model
-    .partsOf(state.editor.sheet)
-    .map((part) => [
-      part.name,
-      `${part.name} : ${model.unqualifiedName(part.type)}`,
-    ]);
-  const select = picker([["", "—"], ...parts], place.step.part || "");
+  const cell = dom.element("td");
+  const options = [["", "—"], ...partOptions()];
+  const select = dom.picker(options, place.step.part || "");
   select.dataset.role = `${place.step.name}|part`;
   select.onchange = () => setPart(place, select.value);
   cell.append(select);
   return cell;
 }
 
-/** The action's name, with "+ in" and "+ out" to add an ingress or egress. */
-function nameCell(place) {
-  const cell = element("td", "at-name");
-  cell.append(element("div", "", place.step.name));
-  if (canChangeItems(place.step))
-    cell.append(
-      button("+ in", "Add an ingress line", () => addLine(place, INGRESS)),
-      button("+ out", "Add an egress line", () => addLine(place, EGRESS)),
-    );
-  return cell;
-}
-
 /** The action defs the performer performs, then the others (not for IP). */
 function actionDefCell(place) {
-  const cell = element("td");
-  const select = groupedPicker(
+  const cell = dom.element("td");
+  const select = dom.groupedPicker(
     actionDefGroups(place.step),
     place.step.actionDef,
   );
@@ -259,10 +166,32 @@ function composedName() {
   return actions.sheetAction(shownAction).actionDef;
 }
 
+/** The ports of the action's items one way. */
+function portsCell(place, direction) {
+  const cell = dom.element("td", "at-ports");
+  const lines = place.step.items.filter((line) => line.direction === direction);
+  for (const line of lines) cell.append(linePort(place, line));
+  return cell;
+}
+
+/** A port the action uses (right-click: no port, remove the item, ...). */
+function linePort(place, line) {
+  const tag = dom.element("div", "at-port", portText(place.step, line));
+  tag.title = model.itemText(line.item, line.itemType);
+  if (!line.port) tag.classList.add("at-muted");
+  tag.oncontextmenu = (event) => lineMenu(event, place, line);
+  return tag;
+}
+
+function portText(step, line) {
+  if (!line.port) return `${model.itemText(line.item, line.itemType)}, no port`;
+  return actionHops.portLabel(step.partDef, line.port);
+}
+
 function statusCell(place) {
-  const cell = element("td", "at-status", place.step.status);
+  const cell = dom.element("td", "at-status", place.step.status);
   const missing = missingText(place);
-  if (missing) markMissing(cell, missing);
+  if (missing) dom.markMissing(cell, missing);
   return cell;
 }
 
@@ -275,217 +204,51 @@ function missingText(place) {
   );
   if (unwired.length) return "an item it gets or gives has no wire";
   const unfed = place.step.items.filter(
-    (line) =>
-      line.direction === INGRESS && line.port && !feedersOf(place, line).length,
+    (line) => line.direction === INGRESS && line.port && !isFed(place, line),
   );
   if (unfed.length) return "nothing feeds an item it gets";
   return "";
 }
 
-// ------------------------------------------------------------------ a line's cells
-
-function fromCell(place, line) {
-  const links = feedersOf(place, line).map((flow) => ({
-    step: flow.source,
-    wired: flow.wired,
-  }));
-  return linkCell(place, line, links);
-}
-
-function toCell(place, line) {
-  const links = takersOf(place, line).map((flow) => ({
-    step: flow.target,
-    wired: flow.wired,
-  }));
-  return linkCell(place, line, links);
-}
-
-function feedersOf(place, line) {
-  return place.action.flows.filter(
+function isFed(place, line) {
+  return place.action.flows.some(
     (flow) => flow.target === place.step.name && flow.targetItem === line.item,
   );
 }
 
-function takersOf(place, line) {
-  return place.action.flows.filter(
-    (flow) => flow.source === place.step.name && flow.sourceItem === line.item,
-  );
-}
+// ------------------------------------------------------------------ a row not saved yet
 
-/** The actions it links to, by number ("sheet" at the edge), or why none. */
-function linkCell(place, line, links) {
-  const cell = element("td", "at-link");
-  if (!line.item) return cell;
-  if (!links.length) return unlinkedCell(cell, line);
-  cell.textContent = links
-    .map((link) => linkLabel(place.action, link))
-    .join(", ");
-  if (links.some((link) => link.wired === false))
-    markMissing(cell, "no wire for it");
-  return cell;
-}
-
-function linkLabel(action, link) {
-  if (link.step === null) return "sheet";
-  return `${action.steps.findIndex((step) => step.name === link.step) + 1}`;
-}
-
-function unlinkedCell(cell, line) {
-  if (!line.port) {
-    cell.textContent = "—";
-    return cell;
-  }
-  if (line.direction === EGRESS) {
-    cell.textContent = "nobody yet";
-    cell.classList.add("at-muted");
-    return cell;
-  }
-  cell.textContent = "⚠";
-  markMissing(cell, unfedText(line));
-  return cell;
-}
-
-function unfedText(line) {
-  return (
-    `Nothing feeds ${line.item}: no earlier egress of ${line.itemType} on a ` +
-    `port wired to ${line.port}, and no wire from the sheet's own port.`
-  );
-}
-
-/** The performer's ports; none to choose while no part performs the action. */
-function portCell(place, line) {
-  const cell = element("td");
-  if (!canChoosePorts(place.step)) return cell;
-  const ports = model
-    .portsOfDef(place.step.partDef)
-    .map((port) => [model.portId(port), model.shown(port)]);
-  const select = picker([["", "—"], ...ports], chosenPort(place, line));
-  select.dataset.role = `${lineKey(place, line)}|port`;
-  select.onchange = () => choosePort(place, line, select.value);
-  cell.append(select);
-  return cell;
-}
-
-function canChoosePorts(step) {
-  return Boolean(step.part) && step.status !== NOT_PERFORMED;
-}
-
-/** The items the chosen port carries in the line's direction, or a new one. */
-function itemCell(place, line) {
-  const cell = element("td");
-  const port = chosenPortUsage(place, line);
-  if (!port) return cell;
-  if (newItemLine === lineKey(place, line)) {
-    cell.append(newItemForm(place, line));
-    return cell;
-  }
-  const items = carriedItems(port, line).map((item) => [
-    item.name,
-    `${item.name} : ${model.unqualifiedName(item.type)}`,
-  ]);
-  const options = [["", "choose…"], ...items, [NEW_ITEM, "New item…"]];
-  const select = picker(options, selectedPortItem(place, line));
-  select.dataset.role = `${lineKey(place, line)}|item`;
-  select.onchange = () => chooseItem(place, line, select.value);
-  cell.append(select);
-  cell.oncontextmenu = (event) => lineMenu(event, place, line);
-  return cell;
-}
-
-/** A line already on an item only offers items of that item def. */
-function carriedItems(port, line) {
-  return (port.items || []).filter(
-    (item) =>
-      item.direction === line.direction &&
-      (!line.item || model.unqualifiedName(item.type) === line.itemType),
-  );
-}
-
-function selectedPortItem(place, line) {
-  if (chosenPort(place, line) !== line.port) return "";
-  return line.portItem || "";
-}
-
-function lineKey(place, line) {
-  return `${place.step.name}|${line.direction}|${line.item || "+"}`;
-}
-
-function chosenPort(place, line) {
-  const key = lineKey(place, line);
-  if (pendingPorts.has(key)) return pendingPorts.get(key);
-  return line.port || "";
-}
-
-function chosenPortUsage(place, line) {
-  const portName = chosenPort(place, line);
-  if (!portName) return null;
-  const ports = model.portsOfDef(place.step.partDef);
-  return ports.find((port) => model.portId(port) === portName) || null;
-}
-
-/** Name and item def of a new item the port carries from now on. */
-function newItemForm(place, line) {
-  const form = element("span", "at-new-item");
-  const name = input("name", line.item || "");
-  const itemDef = input("item def", line.itemType || "");
-  itemDef.setAttribute("list", itemDefList().id);
-  const add = () =>
-    addNewItem(place, line, { name: name.value, type: itemDef.value });
-  for (const field of [name, itemDef])
-    field.onkeydown = (event) => formKey(event, add);
-  form.append(
-    name,
-    itemDef,
-    button("OK", "Add the item to the port", add),
-    button("Cancel", "", cancelNewItem),
-  );
-  return form;
-}
-
-function formKey(event, add) {
-  event.stopPropagation(); // Escape here cancels the form, not the overlay
-  if (event.key === "Enter") add();
-  if (event.key === "Escape") cancelNewItem();
-}
-
-/** The item defs to choose from while typing one (made once). */
-function itemDefList() {
-  let list = svg.$("atItemDefs");
-  if (!list) {
-    list = element("datalist");
-    list.id = "atItemDefs";
-    document.body.append(list);
-  }
-  list.innerHTML = "";
-  for (const name of model.itemDefNames()) list.append(new Option(name));
-  return list;
-}
-
-// ------------------------------------------------------------------ a new action
-
-/** [+ Action]: a draft row, to choose its part usage, then its action def. */
-function addActionButton() {
-  const holder = element("div", "at-add");
-  const add = button(
+/** [+ Action], and how to build the table from the sheet instead. */
+function addActionLine() {
+  const holder = dom.element("div", "at-add");
+  const add = dom.button(
     "+ Action",
     "Add a row: its part usage, then its action def",
     addDraft,
   );
   add.id = "atAddAction";
-  holder.append(add);
+  const hint =
+    "Or walk the sheet above: click the sheet port the request comes in by, " +
+    "then each part it reaches.";
+  holder.append(add, dom.element("span", "at-muted", hint));
   return holder;
 }
 
-/** A row not saved yet: the part usage first; its action def then makes it. */
-function draftRow(draft, index) {
-  const row = element("tr", "at-line at-draft");
-  const number = element("td", "at-number", `${index + 1}`);
-  number.append(button("✕", "Discard this row", () => discardDraft(draft)));
-  const hint = element("td", "at-muted", draftHint(draft));
-  hint.colSpan = 7;
-  row.append(number, draftPartCell(draft), element("td", "", "—"));
+/** A row of [+ Action], not saved yet: the part usage first; its action def then makes it. */
+function draftRow(draft) {
+  const row = dom.element("tr", "at-line at-draft");
+  const index = drafts.indexOf(draft);
+  const number = dom.element("td", "at-number", `${draftNumber(index)}`);
+  number.append(dom.button("✕", "Discard this row", () => discardDraft(draft)));
+  const hint = dom.element("td", "at-muted", draftHint(draft));
+  hint.colSpan = 3;
+  row.append(number, draftPartCell(draft), dom.element("td", "", "—"));
   row.append(draftActionDefCell(draft), hint);
   return row;
+}
+
+function draftNumber(index) {
+  return actions.sheetAction(shownAction).steps.length + index + 1;
 }
 
 function draftHint(draft) {
@@ -494,8 +257,9 @@ function draftHint(draft) {
 }
 
 function draftPartCell(draft) {
-  const cell = element("td");
-  const select = picker([["", "choose…"], ...partOptions()], draft.part);
+  const cell = dom.element("td");
+  const options = [["", "choose…"], ...partOptions()];
+  const select = dom.picker(options, draft.part);
   select.dataset.role = `draft${drafts.indexOf(draft)}|part`;
   select.onchange = () => {
     draft.part = select.value;
@@ -506,15 +270,15 @@ function draftPartCell(draft) {
 }
 
 function draftActionDefCell(draft) {
-  const cell = element("td");
+  const cell = dom.element("td");
   if (!draft.part) return cell;
   const performer = {
     part: draft.part,
     partDef: model.partType(state.editor.sheet, draft.part),
   };
-  const select = groupedPicker(actionDefGroups(performer), "");
+  const select = dom.groupedPicker(actionDefGroups(performer), "");
   select.dataset.role = `draft${drafts.indexOf(draft)}|actionDef`;
-  select.onchange = () => createAction(draft, select.value);
+  select.onchange = () => chooseDraftActionDef(draft, select.value);
   cell.append(select);
   return cell;
 }
@@ -522,30 +286,34 @@ function draftActionDefCell(draft) {
 function partOptions() {
   return model
     .partsOf(state.editor.sheet)
-    .map((part) => [
-      part.name,
-      `${part.name} : ${model.unqualifiedName(part.type)}`,
-    ]);
+    .map((part) => [part.name, partText(part.name)]);
+}
+
+function partText(partName) {
+  const type = model.partType(state.editor.sheet, partName);
+  return `${partName} : ${model.unqualifiedName(type || "")}`;
 }
 
 // ------------------------------------------------------------------ the action's own items
 
 /** "ReadTemperature's own items": what it gets and gives as a whole, with ✕ on those nothing uses. */
 function ownItemsLine(action) {
-  const line = element("div", "at-own");
+  const line = dom.element("div", "at-own");
   if (!action.items.length) return line;
-  line.append(element("span", "at-muted", `${action.actionDef}'s own items: `));
+  line.append(
+    dom.element("span", "at-muted", `${action.actionDef}'s own items: `),
+  );
   for (const item of action.items) line.append(ownItem(action, item));
   return line;
 }
 
 function ownItem(action, item) {
-  const tag = element("span", "at-own-item", ownItemText(item));
+  const tag = dom.element("span", "at-own-item", ownItemText(item));
   if (isOwnItemUsed(action, item)) return tag;
   tag.classList.add("at-muted");
   tag.title = "Nothing uses it";
   tag.append(
-    button("✕", "Remove it from the action def", () =>
+    dom.button("✕", "Remove it from the action def", () =>
       removeOwnItem(action, item),
     ),
   );
@@ -554,7 +322,7 @@ function ownItem(action, item) {
 
 function ownItemText(item) {
   const way = item.direction === INGRESS ? "gets" : "gives";
-  return `${way} ${item.item} : ${item.itemType}`;
+  return `${way} ${model.itemText(item.item, item.itemType)}`;
 }
 
 function isOwnItemUsed(action, item) {
@@ -591,29 +359,31 @@ function lineMenu(event, place, line) {
     ...itemEntries(place, line),
     ...unusedPortItemEntries(place, line),
   ];
-  if (items.length) menus.menu(event.clientX, event.clientY, items);
+  menus.menu(event.clientX, event.clientY, items);
 }
 
 function itemEntries(place, line) {
-  if (!line.item) return [];
-  return [
-    { head: `${line.item} : ${line.itemType}` },
-    { label: "No port", act: () => clearLine(place, line) },
-    {
-      label: `Remove ${line.item} from ${place.step.actionDef}`,
-      act: () => removeItem(place, line),
-    },
-  ];
+  const entries = [{ head: model.itemText(line.item, line.itemType) }];
+  if (line.port)
+    entries.push({ label: "No port", act: () => clearLine(place, line) });
+  entries.push({
+    label: `Remove ${line.item} from ${place.step.actionDef}`,
+    act: () => removeItem(place, line),
+  });
+  return entries;
 }
 
-/** The chosen port's items that no flow of the performer uses: to remove. */
+/** The line's port's items that no flow of the performer uses: to remove. */
 function unusedPortItemEntries(place, line) {
-  const port = chosenPortUsage(place, line);
+  const port = model
+    .portsOfDef(place.step.partDef)
+    .find((usage) => model.portId(usage) === line.port);
+  if (!port) return [];
   const unused = (port.items || []).filter(
     (item) => !isPortItemUsed(place.step.partDef, portItemRef(port, item)),
   );
   return unused.map((item) => ({
-    label: `Remove unused ${item.name} : ${model.unqualifiedName(item.type)} from port ${model.shown(port)}`,
+    label: `Remove unused ${model.itemText(item.name, item.type)} from port ${model.shown(port)}`,
     act: () => removePortItem(place, portItemRef(port, item)),
   }));
 }
@@ -649,9 +419,7 @@ function setPart(place, part) {
 }
 
 function setActionDef(place, value) {
-  let actionDef = value;
-  if (value === NEW_ACTION_DEF)
-    actionDef = dialogs.askName("New action def:", "");
+  const actionDef = askedActionDef(value);
   if (!actionDef) {
     redraw();
     return;
@@ -659,79 +427,13 @@ function setActionDef(place, value) {
   store.applyOp("set_step_action", { ...where(place), action: actionDef });
 }
 
-function addLine(place, direction) {
-  extraLines.add(extraKey(place.step.name, direction));
-  redraw();
+/** The action def chosen, or the name of a new one asked for. */
+function askedActionDef(value) {
+  if (value === NEW_ACTION_DEF) return dialogs.askName("New action def:", "");
+  return value;
 }
 
-function choosePort(place, line, port) {
-  const key = lineKey(place, line);
-  if (port) {
-    pendingPorts.set(key, port);
-    redraw();
-    return;
-  }
-  pendingPorts.delete(key);
-  if (line.item && line.port) clearLine(place, line);
-  else redraw();
-}
-
-function chooseItem(place, line, value) {
-  if (value === NEW_ITEM) {
-    newItemLine = lineKey(place, line);
-    redraw();
-    return;
-  }
-  if (value) setEnd(place, line, { portItem: value });
-}
-
-function addNewItem(place, line, newItem) {
-  const name = newItem.name.trim();
-  const type = newItem.type.trim();
-  if (!state.NAME_RE.test(name) || !state.NAME_RE.test(type)) {
-    alert("The item and its item def each need a legal name.");
-    return;
-  }
-  if (!line.item || type === line.itemType) {
-    setEnd(place, line, { newPortItem: { name, type } });
-    return;
-  }
-  if (!confirm(replaceQuestion(place, line, { name, type }))) return;
-  setEnd(place, line, { newPortItem: { name, type }, replaces: line.item });
-}
-
-function replaceQuestion(place, line, newItem) {
-  return (
-    `Replace ${line.item} : ${line.itemType} in ${place.step.actionDef} with ` +
-    `${newItem.name} : ${newItem.type}? Every use of ${place.step.actionDef} ` +
-    `changes, and ${line.item}'s links go.`
-  );
-}
-
-function cancelNewItem() {
-  newItemLine = null;
-  redraw();
-}
-
-/** set_action_end: the line's port and the item it carries; the core then links it. */
-function setEnd(place, line, choice) {
-  const args = {
-    ...where(place),
-    direction: line.direction,
-    port: chosenPort(place, line),
-    ...choice,
-  };
-  if (line.item && !choice.replaces) args.item = line.item;
-  const key = lineKey(place, line);
-  store.applyOp("set_action_end", args, () => forgetLine(key));
-}
-
-function forgetLine(key) {
-  pendingPorts.delete(key);
-  newItemLine = null;
-  extraLines.delete(key.split("|").slice(0, 2).join("|"));
-}
-
+/** No port: the line's item no longer says which port it uses, and loses its links. */
 function clearLine(place, line) {
   const args = { ...where(place), direction: line.direction, item: line.item };
   store.applyOp("set_action_end", args);
@@ -769,10 +471,8 @@ function discardDraft(draft) {
 }
 
 /** The draft's action def makes the action, named after it (ReadFrame: readFrame). */
-function createAction(draft, value) {
-  let actionDef = value;
-  if (value === NEW_ACTION_DEF)
-    actionDef = dialogs.askName("New action def:", "");
+function chooseDraftActionDef(draft, value) {
+  const actionDef = askedActionDef(value);
   if (!actionDef) {
     redraw();
     return;
@@ -819,65 +519,10 @@ function removeOwnItem(action, item) {
 // ------------------------------------------------------------------ helpers
 
 function canChangeItems(step) {
-  return canChoosePorts(step) && !isIp(step.partDef);
+  if (!step.part || step.status === NOT_PERFORMED) return false;
+  return !isIp(step.partDef);
 }
 
 function isIp(defName) {
   return IP_KINDS.has(model.kindOf(defName || ""));
-}
-
-function markMissing(cell, why) {
-  cell.classList.add("at-missing");
-  cell.title = why;
-  if (!cell.textContent.includes("⚠")) cell.append(" ⚠");
-}
-
-function element(tag, className, text) {
-  const made = document.createElement(tag);
-  if (className) made.className = className;
-  if (text !== undefined) made.textContent = text;
-  return made;
-}
-
-function button(text, title, act) {
-  const made = element("button", "at-button", text);
-  made.title = title;
-  made.onclick = (event) => {
-    event.stopPropagation();
-    act();
-  };
-  return made;
-}
-
-function input(placeholder, value) {
-  const made = element("input");
-  made.placeholder = placeholder;
-  made.value = value;
-  return made;
-}
-
-/** A <select> of [value, label] options, with `selected` chosen. */
-function picker(options, selected) {
-  const select = element("select");
-  for (const [value, label] of options) select.append(new Option(label, value));
-  select.value = selected;
-  return select;
-}
-
-/** A <select> of groups {label, names, extra?}, with `selected` chosen. */
-function groupedPicker(groups, selected) {
-  const select = element("select");
-  if (!selected) select.append(new Option("choose…", ""));
-  for (const group of groups) select.append(optionGroup(group));
-  select.value = selected;
-  return select;
-}
-
-function optionGroup(group) {
-  const holder = element("optgroup");
-  holder.label = group.label;
-  for (const name of group.names) holder.append(new Option(name, name));
-  for (const [value, label] of group.extra || [])
-    holder.append(new Option(label, value));
-  return holder;
 }

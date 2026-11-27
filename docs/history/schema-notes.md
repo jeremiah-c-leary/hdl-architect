@@ -224,3 +224,32 @@ the 12 part-def flows resolve to the right element (12 to a port of the
 flow's own part def, its item an item of that port; 12 to a perform of that
 part def, its item an item of the perform's action def); the 6 performs are
 typed by their action defs (project `performed-actions-check-2`).
+
+## Version 0.9: items with no item def yet (2026-11-27)
+
+| JSON | SysML |
+|---|---|
+| `{"name": "temp_read", "direction": "in"}` (no `type`) | `in item temp_read;` |
+
+Why: building a performed action by walking the sheet in HA 2 (decided with
+the user, 2026-11-27). During a bid the sequence matters, not the data
+types: New action… at a part gives the new action def an item for the way
+in and one for the exit, named after their ports, untyped. The Actions
+table types them later (a hop's item list, or New item…). SysML allows an
+untyped usage, as for ports since 0.5.
+
+SysON check: the 12 files generated from a scratch copy of the Wi-Fi fixture
+walked with five new action defs (`tests/test_action_walk.py`, SKETCH:
+ReceiveFrame, ReadFrame, ReturnTemp, ForwardTemp, TransmitFrame, all items
+untyped) were inserted into a new SysON v2026.11 project
+(`untyped-items-check-2`) as one text: accepted, no messages. Read back with
+AQL: ReturnTemp's `temp_read` and `temp_read_2` are item usages with no
+typing; the five actions of ReadTemperature are typed by their five action
+defs; all 8 ends of its 4 succession flows resolve, each to an item of the
+action def that types the action at that end (`readFrame` to ReadFrame's
+`eth_int` and `temp_if`, ...).
+
+Inserting the files one at a time (`untyped-items-check`) left 4 of the 8
+ends and 2 actions unresolved: SysON resolves a text when it is inserted,
+and Behavior and FpgaSys import each other. Insert the files as one text.
+

@@ -43,16 +43,34 @@ const SIZE = {
 // ------------------------------------------------------------------ open and close
 
 export function openSequence(actionName) {
-  shownAction = actionName;
-  svg.$("sequenceView").hidden = false;
-  showTab(SEQUENCE_TAB);
+  openDock(actionName, SEQUENCE_TAB);
 }
 
-/** The same overlay, on the Actions tab: the table to edit the action. */
+/** The same view, on the Actions tab: the table to edit the action. */
 export function openActions(actionName) {
+  openDock(actionName, ACTIONS_TAB);
+}
+
+/** Who wants to know when the dock opens (the walk, for its hint). */
+const dockListeners = [];
+
+export function onDockOpen(listener) {
+  dockListeners.push(listener);
+}
+
+/** Open the dock on a tab; the action's footprint lights the sheet above. */
+function openDock(actionName, tab) {
   shownAction = actionName;
   svg.$("sequenceView").hidden = false;
-  showTab(ACTIONS_TAB);
+  footprint.showFootprint(actionName);
+  showTab(tab);
+  for (const listener of dockListeners) listener();
+}
+
+/** The action the open dock shows; null while it is closed. */
+export function dockedAction() {
+  if (!isOpen()) return null;
+  return shownAction;
 }
 
 export function showTab(tab) {
@@ -69,12 +87,16 @@ export function showTab(tab) {
 
 function drawShownTab() {
   svg.$("seqTitle").textContent = titleText(actions.sheetAction(shownAction));
-  if (shownTab === ACTIONS_TAB) actionsTable.renderActionsTable(shownAction);
-  else drawSequence();
+  if (shownTab === ACTIONS_TAB) {
+    actionsTable.renderActionsTable(shownAction);
+    return;
+  }
+  drawSequence();
 }
 
 export function closeSequence() {
   svg.$("sequenceView").hidden = true;
+  if (footprint.isShowing(shownAction)) footprint.hideFootprint();
 }
 
 function isOpen() {
@@ -101,22 +123,25 @@ export function toggleLane(lane) {
   showTab(SEQUENCE_TAB);
 }
 
-function showFootprint() {
-  closeSequence();
-  footprint.showFootprint(shownAction);
+/** The footprint on the sheet above, on or off; the dock stays open. */
+function toggleFootprint() {
+  if (footprint.isShowing(shownAction)) footprint.hideFootprint();
+  else footprint.showFootprint(shownAction);
 }
 
 svg.$("seqClose").onclick = closeSequence;
 svg.$("seqExpandAll").onclick = expandAll;
 svg.$("seqCollapseAll").onclick = collapseAll;
-svg.$("seqFootprint").onclick = showFootprint;
+svg.$("seqFootprint").onclick = toggleFootprint;
 svg.$("seqTabSequence").onclick = () => showTab(SEQUENCE_TAB);
 svg.$("seqTabActions").onclick = () => showTab(ACTIONS_TAB);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && isOpen()) closeSequence();
 });
 actions.onActions(() => {
-  if (isOpen()) drawShownTab();
+  if (!isOpen()) return;
+  if (actions.sheetAction(shownAction)) drawShownTab();
+  else closeSequence(); // another sheet opened: it does not perform this action
 });
 
 // ------------------------------------------------------------------ the scene
@@ -617,7 +642,7 @@ function messageClass(wired) {
 }
 
 function messageLabel(message, wired) {
-  const label = `${message.flow.sourceItem} : ${message.flow.itemType}`;
+  const label = model.itemText(message.flow.sourceItem, message.flow.itemType);
   if (wired === false) return `${label}  ⚠`;
   return label;
 }
@@ -625,7 +650,8 @@ function messageLabel(message, wired) {
 /** Each wire the item travels on, or the one it lacks. */
 function messageText(message) {
   const lines = message.flows.map(flowLine);
-  return `${message.flow.sourceItem} : ${message.flow.itemType}\n${lines.join("\n")}`;
+  const item = model.itemText(message.flow.sourceItem, message.flow.itemType);
+  return `${item}\n${lines.join("\n")}`;
 }
 
 function flowLine(flow) {
@@ -642,6 +668,6 @@ function drawNoSteps(canvas) {
 
 function noStepsText() {
   if (model.partsOf(state.editor.sheet).length)
-    return "No actions yet: it is to break down into actions on the parts of this sheet (Actions tab).";
+    return "No actions yet: click the sheet port the request comes in by, then each part it reaches.";
   return "No actions: this part performs it itself.";
 }

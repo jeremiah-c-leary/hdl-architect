@@ -82,7 +82,9 @@ def conjugate(attrs: list[dict]) -> list[dict]:
 
 
 def item(i: dict, indent: str) -> list[str]:
-    line = f"{indent}{i['direction']} item {i['name']} : {i['type']}"
+    """`in item name : ItemDef;`, or `in item name;` with no item def yet."""
+    typed = f" : {i['type']}" if i.get("type") else ""
+    line = f"{indent}{i['direction']} item {i['name']}{typed}"
     return (
         [line + ";"]
         if "doc" not in i

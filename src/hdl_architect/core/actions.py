@@ -321,7 +321,7 @@ def item_port(owner: dict, perform_name: str, parameter: dict) -> ItemPort:
     direction = parameter["direction"]
     item_ref = f"{perform_name}.{parameter['name']}"
     port_end = port_end_for(owner, item_ref, direction)
-    made = ItemPort(parameter["name"], parameter["type"], direction, None)
+    made = ItemPort(parameter["name"], parameter.get("type"), direction, None)
     if port_end:
         made.port, _, made.port_item = port_end.partition(".")
     return made

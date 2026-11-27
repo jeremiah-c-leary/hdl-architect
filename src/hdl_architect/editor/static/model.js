@@ -80,6 +80,12 @@ export function unqualifiedName(name) {
   return (name || "").split("::").pop();
 }
 
+/** "temp : TempReading", or "temp" while the item has no item def yet. */
+export function itemText(name, type) {
+  if (!type) return name;
+  return `${name} : ${unqualifiedName(type)}`;
+}
+
 function entryFor(name) {
   return sysmlDefinitions[unqualifiedName(name)];
 }

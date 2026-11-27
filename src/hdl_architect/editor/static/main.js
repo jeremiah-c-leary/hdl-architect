@@ -36,6 +36,8 @@ import * as actions from "./actions.js";
 import * as performsPanel from "./performspanel.js";
 import * as sequenceView from "./sequenceview.js";
 import * as actionsTable from "./actionstable.js";
+import * as actionHops from "./actionhops.js";
+import * as actionWalk from "./actionwalk.js";
 import * as footprint from "./footprint.js";
 
 // Every module's functions and state, by name: for the tests and the browser
@@ -68,6 +70,8 @@ window.ha2 = Object.assign(
   performsPanel,
   sequenceView,
   actionsTable,
+  actionHops,
+  actionWalk,
   footprint,
 );
 

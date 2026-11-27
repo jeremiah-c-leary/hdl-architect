@@ -267,12 +267,8 @@ def new_action_item(model: Model, performer: Performer, named: tuple) -> dict:
             f"{name}, and IP brings its own actions",
         )
     action_ops.check_name(name, "item")
-    return {
-        "name": name,
-        "direction": port_item["direction"],
-        "type": port_item["type"],
-        "new": True,
-    }
+    made = {"name": name, "direction": port_item["direction"], "new": True}
+    return action_ops.with_type(made, port_item.get("type"))
 
 
 def check_same_item(action_item: dict, port_item: dict) -> None:
@@ -283,11 +279,11 @@ def check_same_item(action_item: dict, port_item: dict) -> None:
             f"{action_item['name']} is {action_item['direction']}, but the "
             f"port's {port_item['name']} is {port_item['direction']}",
         )
-    if short(action_item["type"]) != short(port_item["type"]):
+    if action_ops.type_of(action_item) != action_ops.type_of(port_item):
         raise OpError(
             "types",
-            f"{action_item['name']} is {short(action_item['type'])}, but the "
-            f"port's {port_item['name']} is {short(port_item['type'])}",
+            f"{action_item['name']} is {action_ops.type_of(action_item)}, but "
+            f"the port's {port_item['name']} is {action_ops.type_of(port_item)}",
         )
 
 
@@ -312,10 +308,8 @@ def add_line_item(model: Model, performer: Performer, item: dict) -> list[str]:
     if not item.pop("new", False):
         return []
     action_ops.add_action_item(model, performer.action_name, item)
-    return [
-        f"{performer.action_name} now {gets_or_gives(item)} "
-        f"{item['name']} : {item['type']}."
-    ]
+    typed = f" : {item['type']}" if item.get("type") else ""
+    return [f"{performer.action_name} now {gets_or_gives(item)} {item['name']}{typed}."]
 
 
 def gets_or_gives(item: dict) -> str:
@@ -433,7 +427,7 @@ def feeders_of(sheet: dict, earlier: list[Placed], line: Line) -> list[Line]:
 def can_feed(sheet: dict, egress: Line, ingress: Line) -> bool:
     if egress.end is None:
         return False
-    if short(egress.item["type"]) != short(ingress.item["type"]):
+    if action_ops.type_of(egress.item) != action_ops.type_of(ingress.item):
         return False
     return has_wire(sheet, egress.end, ingress.end)
 
@@ -500,7 +494,8 @@ def own_item_by(model: Model, where: tuple, line: Line) -> tuple[str, list[str]]
         if is_own_item_by(found, own, (item, sheet_port)):
             return own["name"], []
     name = unique_parameter_name(found.action, line.port_item or item["name"])
-    new = {"name": name, "direction": item["direction"], "type": item["type"]}
+    new = {"name": name, "direction": item["direction"]}
+    action_ops.with_type(new, item.get("type"))
     notes = action_ops.add_action_item(model, found.action["name"], new).notes
     via = {"item": name, "port": sheet_port}
     notes += action_ops.set_item_port(
@@ -514,7 +509,7 @@ def is_own_item_by(found, own: dict, wanted: tuple) -> bool:
     item, sheet_port = wanted
     if own["direction"] != item["direction"]:
         return False
-    if short(own["type"]) != short(item["type"]):
+    if action_ops.type_of(own) != action_ops.type_of(item):
         return False
     ref = f"{found.perform['name']}.{own['name']}"
     port_end = port_end_for(found.owner, ref, own["direction"])

@@ -237,6 +237,15 @@ as friction shows.
       egress) and `link_actions` (`core/action_links.py`, decision 13).
 - [x] The Actions tab in HA 2 (the table), [+ Perform action…] and Delete
       in the Performs section, "step" renamed "action" in what HA 2 shows.
+- [x] The Actions tab docks under the sheet; the table is built by
+      clicking source ports: each click a hop (`set_hop`,
+      `core/action_hops.py`) whose item is chosen once for both ends.
+- [x] The walk (decided 2026-11-27): + Perform action opens the dock with
+      the footprint on; click the sheet port the request comes in by, then
+      each part it reaches, picking the action def that comes in by that
+      port and its exit (`walk_step`, `core/action_walk.py`); New action…
+      at a part makes an action def with untyped items (schema 0.9, SysON
+      check in `docs/history/schema-notes.md`).
 - [ ] **Next (the user):** enter the seven ReadTemperature rows in the
       Actions tab (Control, with an interrupt) to remodel the Wi-Fi example.
 
