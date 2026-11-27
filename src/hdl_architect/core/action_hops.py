@@ -174,7 +174,8 @@ def carried_item(port: dict, wanted: tuple, line: ActionEnd) -> None:
     carried = [
         item
         for item in port.get("items", [])
-        if item["direction"] == direction and short(item["type"]) == short(hop.type)
+        if item["direction"] == direction
+        and action_ops.type_of(item) == short(hop.type)
     ]
     named = [item for item in carried if item["name"] == hop.name]
     if named or carried:
@@ -212,7 +213,7 @@ def lines_of_step(model: Model, found, wanted: tuple) -> list:
 def line_matches(line, port: str, type_: str) -> bool:
     if line.end is None or line.end[1] != port:
         return False
-    return short(line.item["type"]) == short(type_)
+    return action_ops.type_of(line.item) == short(type_)
 
 
 def same_item_or_replace(performer, current: str, wanted: tuple) -> None:
@@ -220,7 +221,7 @@ def same_item_or_replace(performer, current: str, wanted: tuple) -> None:
     def; else the hop's item replaces it (not on IP)."""
     type_, line = wanted
     item = action_ops.find_parameter(performer.action, current)
-    if short(item["type"]) == short(type_):
+    if action_ops.type_of(item) == short(type_):
         line.item = current
         return
     line.replaces = current
@@ -229,7 +230,7 @@ def same_item_or_replace(performer, current: str, wanted: tuple) -> None:
 def ip_item(performer, direction: str, type_: str) -> str:
     """An IP's action has its own items: the one of the hop's item def."""
     for item in performer.action.get("parameters", []):
-        if item["direction"] == direction and short(item["type"]) == short(type_):
+        if item["direction"] == direction and action_ops.type_of(item) == short(type_):
             return item["name"]
     raise OpError(
         "ip_actions",

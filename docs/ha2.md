@@ -229,6 +229,12 @@ call the actions of a composed action def "steps": `add_step`, ...)
     Picking one adds the action, fed by what came before (one undo step);
     its exit's wire leads to the next part, ▶ moves there, and the sequence
     diagram grows. The walk is done when an exit leads back to a sheet port.
+    **New action…** (last in the menu) is for a part that needs an action
+    def it does not have yet: name it, then pick the port it leaves by (or
+    none). The new action def gets an item for the way in and one for the
+    exit, named after their ports and with no item def yet
+    (`in item temp_if;`): a bid needs the sequence, not the data types.
+    Type them later in the Actions table (the hop's item list).
     Where the walk is comes from the model (the last action's exit nothing
     takes yet), so it survives undo and a reload. A part the walk is not at,
     and any port of a part, click as before.

@@ -162,7 +162,7 @@ function endItems(end, side) {
   const port = portUsage(defName, end.port);
   const direction = itemDirection(end, side);
   const items = ((port && port.items) || [])
-    .filter((item) => item.direction === direction)
+    .filter((item) => item.direction === direction && item.type) // typed ones
     .map((item) => ({
       name: item.name,
       type: model.unqualifiedName(item.type),
@@ -195,7 +195,7 @@ function itemValue(item) {
 }
 
 function itemLabel(item) {
-  return `${item.name} : ${item.type}`;
+  return model.itemText(item.name, item.type);
 }
 
 function parseItem(value) {
@@ -253,14 +253,19 @@ function chooseHopItem(hop, value) {
   setHopItem(hop, parseItem(value));
 }
 
-/** The hop carries another item: both ends change (after asking, if its item def changes). */
+/** The hop carries another item: both ends change (after asking, if it had an item def and it changes). */
 function setHopItem(hop, item) {
   formFor = null;
-  if (item.type !== hop.item.type && !confirm(replaceQuestion(hop, item))) {
+  if (needsAsking(hop, item) && !confirm(replaceQuestion(hop, item))) {
     table.redraw();
     return;
   }
   store.applyOp("set_hop", hopArgs({ ...hop, item }));
+}
+
+/** An item with no item def yet just gets one; another item def replaces it. */
+function needsAsking(hop, item) {
+  return Boolean(hop.item.type) && item.type !== hop.item.type;
 }
 
 function replaceQuestion(hop, item) {
@@ -329,7 +334,11 @@ function lineNoteRow(place, line) {
   const body = dom.element("td", "at-hop-body");
   body.colSpan = 6;
   const here = `${place.index + 1} ${place.step.part}.${portLabel(place.step.partDef, line.port)}`;
-  const item = dom.element("span", "", `${line.item} : ${line.itemType}`);
+  const item = dom.element(
+    "span",
+    "",
+    model.itemText(line.item, line.itemType),
+  );
   if (line.direction === EGRESS) {
     body.append(dom.element("span", "at-hop-ends", `${here} ──▶ nobody yet`));
     body.append(item);
@@ -343,7 +352,7 @@ function lineNoteRow(place, line) {
 
 function unfedText(line) {
   return (
-    `Nothing feeds ${line.item}: no earlier egress of ${line.itemType} on a ` +
+    `Nothing feeds ${line.item}: no earlier egress of ${line.itemType || "it"} on a ` +
     `port wired to ${line.port}, and no wire from the sheet's own port.`
   );
 }

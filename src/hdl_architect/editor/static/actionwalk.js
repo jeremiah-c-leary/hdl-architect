@@ -9,15 +9,22 @@
 // 3. The exit's wire leads to the next part: ▶ moves there. Repeat until an
 //    exit leads back to a sheet port: the path is done.
 //
+// A part that needs an action def it does not have: New action… names one
+// and asks which port it leaves by. The new action def gets an item for the
+// way in and one for the exit, named after their ports, with no item def yet
+// (a bid needs the sequence; the data types come later, in the table).
+//
 // Where the walk is comes from the model (the last action's exit that
 // nothing takes yet), so it survives undo and a reload; only the start,
 // before the first action, is kept here.
 import * as actions from "./actions.js";
 import * as actionHops from "./actionhops.js";
+import * as dialogs from "./dialogs.js";
 import * as footprint from "./footprint.js";
 import * as interaction from "./interaction.js";
 import * as menus from "./menus.js";
 import * as model from "./model.js";
+import * as nets from "./nets.js";
 import * as render from "./render.js";
 import * as sequenceView from "./sequenceview.js";
 import * as state from "./state.js";
@@ -137,11 +144,15 @@ function takePartClick(partName, event) {
   if (!action) return false;
   const here = walkHere(action);
   if (!here || here.at.part !== partName) return false;
+  menuPlace = { x: event.clientX, y: event.clientY };
   const entries = menuEntries(action, here);
   // After this click is done: the page hides menus on a click.
-  setTimeout(() => menus.menu(event.clientX, event.clientY, entries));
+  setTimeout(() => menus.menu(menuPlace.x, menuPlace.y, entries));
   return true;
 }
+
+/** Where the menu opens, for the one that follows it (New action…). */
+let menuPlace = { x: 0, y: 0 };
 
 function menuEntries(action, here) {
   const defName = model.partType(state.editor.sheet, here.at.part);
@@ -154,7 +165,47 @@ function menuEntries(action, here) {
     });
   if (entries.length === 1)
     entries.push({ head: "nothing it performs comes in by this port" });
+  entries.push({ sep: true });
+  entries.push({
+    label: "New action…",
+    act: () => askNewAction(action, here, menuPlace),
+  });
   return entries;
+}
+
+/** New action…: its action def's name, then the port it leaves by. */
+function askNewAction(action, here, place) {
+  const question = `New action def that ${here.at.part} performs (it comes in by ${here.at.port}):`;
+  const actionDef = dialogs.askName(question, "");
+  if (!actionDef) return;
+  const entries = exitEntries(action, here, actionDef);
+  // After this click is done: the page hides menus on a click.
+  setTimeout(() => menus.menu(place.x, place.y, entries));
+}
+
+/** "leaves by": the part's ports (not clocks and resets), or none. */
+function exitEntries(action, here, actionDef) {
+  const defName = model.partType(state.editor.sheet, here.at.part);
+  const entries = [{ head: `${actionDef}: leaves by` }];
+  for (const port of model.portsOfDef(defName)) {
+    if (isNet(here.at.part, port)) continue;
+    const exit = model.portId(port);
+    entries.push({
+      label: model.shown(port),
+      act: () => walkTo(action, here, { actionDef, exit, newItems: true }),
+    });
+  }
+  entries.push({
+    label: "no port (the path ends here)",
+    act: () => walkTo(action, here, { actionDef, exit: null, newItems: true }),
+  });
+  return entries;
+}
+
+/** A clock, reset or SYSREF port: joined as a net, not a way for data. */
+function isNet(partName, port) {
+  const end = { kind: "part", part: partName, port: model.portId(port) };
+  return Boolean(nets.globalInfo(state.editor.sheet, end));
 }
 
 /** "ReceiveFrame → Interrupt": the action def, and the port it leaves by. */
@@ -210,6 +261,7 @@ function walkTo(action, here, choice) {
     action: choice.actionDef,
   };
   if (choice.exit) args.exit = choice.exit;
+  if (choice.newItems) args.newItems = true;
   store.applyOp("walk_step", args, (result) => {
     start = null;
     lastExit = { step: result.data.step, port: choice.exit };

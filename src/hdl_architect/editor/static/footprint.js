@@ -3,6 +3,7 @@
 // rest is dimmed, and an item with no wire to travel on is a red dashed line
 // between its two ports. render.js asks this module what to show.
 import * as actions from "./actions.js";
+import * as model from "./model.js";
 import * as render from "./render.js";
 import * as state from "./state.js";
 import * as svg from "./svg.js";
@@ -96,7 +97,7 @@ export function endsKey(firstEnd, secondEnd) {
 
 function missingLine(flow) {
   const text =
-    `${flow.sourceItem} : ${flow.itemType}: no wire from ` +
+    `${model.itemText(flow.sourceItem, flow.itemType)}: no wire from ` +
     `${flow.sourceEnd} to ${flow.targetEnd}`;
   return { sourceEnd: flow.sourceEnd, targetEnd: flow.targetEnd, text };
 }

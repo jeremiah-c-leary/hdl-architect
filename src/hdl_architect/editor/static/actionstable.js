@@ -177,14 +177,14 @@ function portsCell(place, direction) {
 /** A port the action uses (right-click: no port, remove the item, ...). */
 function linePort(place, line) {
   const tag = dom.element("div", "at-port", portText(place.step, line));
-  tag.title = `${line.item} : ${line.itemType}`;
+  tag.title = model.itemText(line.item, line.itemType);
   if (!line.port) tag.classList.add("at-muted");
   tag.oncontextmenu = (event) => lineMenu(event, place, line);
   return tag;
 }
 
 function portText(step, line) {
-  if (!line.port) return `${line.item} : ${line.itemType}, no port`;
+  if (!line.port) return `${model.itemText(line.item, line.itemType)}, no port`;
   return actionHops.portLabel(step.partDef, line.port);
 }
 
@@ -322,7 +322,7 @@ function ownItem(action, item) {
 
 function ownItemText(item) {
   const way = item.direction === INGRESS ? "gets" : "gives";
-  return `${way} ${item.item} : ${item.itemType}`;
+  return `${way} ${model.itemText(item.item, item.itemType)}`;
 }
 
 function isOwnItemUsed(action, item) {
@@ -363,7 +363,7 @@ function lineMenu(event, place, line) {
 }
 
 function itemEntries(place, line) {
-  const entries = [{ head: `${line.item} : ${line.itemType}` }];
+  const entries = [{ head: model.itemText(line.item, line.itemType) }];
   if (line.port)
     entries.push({ label: "No port", act: () => clearLine(place, line) });
   entries.push({
@@ -383,7 +383,7 @@ function unusedPortItemEntries(place, line) {
     (item) => !isPortItemUsed(place.step.partDef, portItemRef(port, item)),
   );
   return unused.map((item) => ({
-    label: `Remove unused ${item.name} : ${model.unqualifiedName(item.type)} from port ${model.shown(port)}`,
+    label: `Remove unused ${model.itemText(item.name, item.type)} from port ${model.shown(port)}`,
     act: () => removePortItem(place, portItemRef(port, item)),
   }));
 }

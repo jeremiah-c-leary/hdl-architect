@@ -11,8 +11,14 @@ before (the sheet's own port, or the previous action's exit). The exit's
 wire leads to the next part, and so on until an exit leads back to a sheet
 port.
 
+A part may need an action def it does not have yet: New action… names one,
+and the walk gives it an item for the way in (named after the port it comes
+in by) and one for its exit, with no item def yet (`in item temp_if;`): the
+bid needs the sequence, not the data types; they are chosen later, in the
+Actions table.
+
 (The table's operations, set_action_end and set_hop, set one line or one hop
-at a time; this adds a whole action whose lines the part def already says.)
+at a time; this adds a whole action whose lines the part def says.)
 """
 
 from __future__ import annotations
@@ -24,9 +30,12 @@ from hdl_architect.core.action_hops import end_text, unique_step_name
 from hdl_architect.core.action_links import (
     EGRESS,
     INGRESS,
+    gets_or_gives,
     link_to_sheet,
+    performer_of,
     placed_actions,
     sheet_port_wired_to,
+    unique_parameter_name,
 )
 from hdl_architect.core.actions import allocated_part, has_wire
 from hdl_architect.core.ops import Model, OpError, Result
@@ -40,7 +49,9 @@ class Walk:
       (None, port): the sheet's own port the walk starts at;
     - at: (part, port): where it arrives, over the wire from `came_from`;
     - action: the action def the part performs there;
-    - exit: the port of the part it leaves by; None: it leaves by none.
+    - exit: the port of the part it leaves by; None: it leaves by none;
+    - new_items: give the action def the items it lacks for the way in and
+      the exit (untyped, named after their ports): a new action def.
     """
 
     sheet: str
@@ -49,6 +60,7 @@ class Walk:
     at: tuple
     action: str
     exit: str | None = None
+    new_items: bool = False
 
 
 def walk_step(model: Model, walk: Walk) -> Result:
@@ -59,6 +71,8 @@ def walk_step(model: Model, walk: Walk) -> Result:
     name = unique_step_name(found.action, walk.action)
     step = {"name": name, "part": walk.at[0], "action": walk.action}
     notes = action_ops.add_step(model, walk.sheet, walk.perform, step).notes
+    if walk.new_items:
+        notes += make_lines(model, found, (name, walk.at[1], walk.exit))
     ingress = line_via(model, found, (name, INGRESS, walk.at[1]))
     notes += feed(model, found, (walk.came_from, ingress))
     if walk.exit is not None:
@@ -100,6 +114,46 @@ def line_via(model: Model, found, wanted: tuple):
     raise OpError("no_line", f"{step} has no item that {way} by {port}")
 
 
+def make_lines(model: Model, found, wanted: tuple) -> list[str]:
+    """The action's way in, and its exit (if any), each an item of its
+    action def by that port, made if it has none."""
+    step, way_in, exit_port = wanted
+    notes = make_line(model, found, (step, INGRESS, way_in))
+    if exit_port is not None:
+        notes += make_line(model, found, (step, EGRESS, exit_port))
+    return notes
+
+
+def make_line(model: Model, found, wanted: tuple) -> list[str]:
+    """`in item temp_if;` in the action def, by port temp_if of the part (no
+    item def yet); nothing if the action already goes that way. Not on IP:
+    its actions are its own."""
+    step, direction, port = wanted
+    if has_line(model, found, wanted):
+        return []
+    performer = performer_of(model, found, step)
+    if action_ops.is_ip(model, performer.def_name):
+        raise OpError(
+            "ip_actions", f"{performer.def_name} is IP: its actions are its own"
+        )
+    name = unique_parameter_name(performer.action, port)
+    item = {"name": name, "direction": direction}
+    notes = action_ops.add_action_item(model, performer.action_name, item).notes
+    via = {"item": name, "port": port}
+    notes += action_ops.set_item_port(
+        model, performer.def_name, performer.perform, via
+    ).notes
+    return notes + [f"{performer.action_name} {gets_or_gives(item)} {name}."]
+
+
+def has_line(model: Model, found, wanted: tuple) -> bool:
+    try:
+        line_via(model, found, wanted)
+    except OpError:
+        return False
+    return True
+
+
 def feed(model: Model, found, where: tuple) -> list[str]:
     """`bind ingress = own;` from the sheet's own port, else `succession
     flow from previous exit to ingress;`."""
@@ -135,6 +189,7 @@ def walk_of(args: dict) -> Walk:
         (at.get("part"), at.get("port")),
         args["action"],
         args.get("exit"),
+        bool(args.get("newItems")),
     )
 
 
@@ -143,6 +198,6 @@ WALK_OPERATIONS = {
     "walk_step": (
         action_ops.tracked(lambda m, a: walk_step(m, walk_of(a))),
         ["sheet", "perform", "from", "at", "action"],
-        ["exit"],
+        ["exit", "newItems"],
     ),
 }

@@ -264,7 +264,8 @@ class _JsonModel:
                     for a in d.get("attributes", []):
                         need(a["type"], f"{d['name']}.{a['name']}")
                     for i in d.get("items", []) + d.get("parameters", []):
-                        need(i["type"], f"{d['name']}.{i['name']}")
+                        if "type" in i:  # an item with no item def yet is allowed
+                            need(i["type"], f"{d['name']}.{i['name']}")
                     for u in (
                         d.get("parts", []) + d.get("ports", []) + d.get("performs", [])
                     ):
@@ -276,7 +277,8 @@ class _JsonModel:
                         if "type" in a:
                             need(a["type"], f"{d['name']}.{a['name']}")
                         for i in a.get("parameters", []):
-                            need(i["type"], f"{d['name']}.{a['name']}.{i['name']}")
+                            if "type" in i:
+                                need(i["type"], f"{d['name']}.{a['name']}.{i['name']}")
         if errors:
             raise ModelError(
                 "unresolved references (missing import?):\n  " + "\n  ".join(errors)

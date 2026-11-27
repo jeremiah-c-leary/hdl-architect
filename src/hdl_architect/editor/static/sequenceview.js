@@ -642,7 +642,7 @@ function messageClass(wired) {
 }
 
 function messageLabel(message, wired) {
-  const label = `${message.flow.sourceItem} : ${message.flow.itemType}`;
+  const label = model.itemText(message.flow.sourceItem, message.flow.itemType);
   if (wired === false) return `${label}  ⚠`;
   return label;
 }
@@ -650,7 +650,8 @@ function messageLabel(message, wired) {
 /** Each wire the item travels on, or the one it lacks. */
 function messageText(message) {
   const lines = message.flows.map(flowLine);
-  return `${message.flow.sourceItem} : ${message.flow.itemType}\n${lines.join("\n")}`;
+  const item = model.itemText(message.flow.sourceItem, message.flow.itemType);
+  return `${item}\n${lines.join("\n")}`;
 }
 
 function flowLine(flow) {

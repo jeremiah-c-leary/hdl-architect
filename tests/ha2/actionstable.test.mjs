@@ -223,7 +223,10 @@ test("the walk: the sheet port, then each part it reaches", async () => {
     "the menu stays open",
   );
   assert.equal((await texts("#menu .hd"))[0], "ethernet: in by eth_rgmii");
-  assert.deepEqual(await texts("#menu .mi"), ["ReceiveFrame → Interrupt"]);
+  assert.deepEqual(await texts("#menu .mi"), [
+    "ReceiveFrame → Interrupt",
+    "New action…",
+  ]);
   await pick("ReceiveFrame → Interrupt");
   await settled();
   assert.deepEqual(await texts("#seqSvg .seq-step-name"), ["1 receiveFrame"]);
@@ -420,6 +423,42 @@ test("with the dock closed, a click on a port wires as before", async () => {
   );
   await E(page, "editor.armed = null");
 });
+
+test("New action… at a part: a new action def, its items with no item def yet", async () => {
+  await E(page, "openSequence('readTemperature')");
+  await waitFor(
+    async () => /^▶ ethernet: click it .* cmd/.test(await hint()),
+    "the walk's hint, once the sheet's actions are in",
+  );
+  await clickPart("ethernet");
+  await menuShowing("ethernet: in by cmd");
+  await E(page, "window.prompt = () => 'GetTemp'");
+  await pick("New action…");
+  await menuShowing("GetTemp: leaves by");
+  await pick("cmd");
+  await settled();
+  assert.deepEqual(await texts("#seqSvg .seq-step-name"), [
+    "1 receiveFrame",
+    "2 readFrame",
+    "3 getTemp",
+  ]);
+  assert.deepEqual(actionDef("GetTemp").parameters, [
+    { name: "cmd", direction: "in" },
+    { name: "cmd_2", direction: "out" },
+  ]);
+  assert.match(await hint(), /^▶ Control: click it/);
+  await E(page, "closeSequence()");
+});
+
+/** Wait for the menu to show, headed `head`. */
+async function menuShowing(head) {
+  await waitFor(
+    async () =>
+      !(await E(page, "document.getElementById('menu').hidden")) &&
+      (await texts("#menu .hd"))[0] === head,
+    `the menu "${head}"`,
+  );
+}
 
 test("+ Perform action… makes the sheet perform a new action def", async () => {
   await E(page, "openSheet('Control')");
