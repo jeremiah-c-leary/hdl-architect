@@ -832,17 +832,31 @@ svg text {
   background: var(--gutter);
   font-weight: 600;
 }
-.at-groups th {
-  text-align: center;
-}
-.at-odd td {
-  background: var(--edge);
-}
-.at-name div {
+.at-name {
   font-weight: 600;
 }
-.at-link {
-  text-align: center;
+/* a hop: the item from one action to the next (actionhops.js) */
+.at-table .at-hop td {
+  border-left: none;
+  border-right: none;
+  background: var(--panel);
+  padding: 2px 6px;
+}
+.at-hop-mark {
+  color: var(--muted);
+  text-align: right;
+}
+.at-hop-body > * {
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.at-hop-ends {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+.at-pending {
+  font-style: italic;
+  color: var(--muted);
 }
 .at-muted {
   color: var(--muted);
@@ -854,13 +868,6 @@ svg text {
   font-size: 10px;
   padding: 0 4px;
   margin-left: 3px;
-}
-.at-name .at-button {
-  visibility: hidden;
-  margin: 2px 3px 0 0;
-}
-.at-line:hover .at-name .at-button {
-  visibility: visible;
 }
 .at-new-item input {
   width: 9em;

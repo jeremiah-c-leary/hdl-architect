@@ -237,6 +237,9 @@ as friction shows.
       egress) and `link_actions` (`core/action_links.py`, decision 13).
 - [x] The Actions tab in HA 2 (the table), [+ Perform action…] and Delete
       in the Performs section, "step" renamed "action" in what HA 2 shows.
+- [x] The Actions tab docks under the sheet; the table is built by
+      clicking source ports: each click a hop (`set_hop`,
+      `core/action_hops.py`) whose item is chosen once for both ends.
 - [ ] **Next (the user):** enter the seven ReadTemperature rows in the
       Actions tab (Control, with an interrupt) to remodel the Wi-Fi example.
 

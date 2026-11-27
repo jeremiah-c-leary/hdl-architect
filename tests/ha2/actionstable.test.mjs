@@ -1,9 +1,11 @@
-// The Actions tab (actionstable.js): the table that edits a performed action,
-// one row per action, each with its ingress and egress (a port of its part,
-// and the item the port carries). "from" and "to" are worked out by the core
-// from the wires. The data is the frozen Wi-Fi fixture, then the user's first
-// two rows of their ReadTemperature (2026-11-26) entered through the table.
+// The Actions tab (actionstable.js, actionhops.js): the table that edits a
+// performed action. A row per action (its part usage, action def, and the
+// ports it uses); between the rows the hops, each the item that goes from one
+// action to the next over a wire, chosen once. The table is built by clicking
+// source ports on the sheet. The data is the frozen Wi-Fi fixture, then the
+// user's first three rows of their ReadTemperature (2026-11-26), clicked in.
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
 import {
@@ -36,7 +38,7 @@ const texts = (selector) =>
     `[...document.querySelectorAll(${JSON.stringify(selector)})].map((n) => n.textContent.trim())`,
   );
 
-/** Choose `value` in the table's picker `role` ("step|in|item|port", ...). */
+/** Choose `value` in the table's picker `role` ("hop0|item", "draft1|actionDef", ...). */
 async function choose(role, value) {
   await E(
     page,
@@ -61,17 +63,12 @@ async function newItem(name, itemDef) {
   );
 }
 
-/** The row cells of action `name`: {from, to, status} of its first line. */
-function rowOf(name) {
-  return E(
-    page,
-    `(() => {
-      const row = [...document.querySelectorAll("#actionsTable tr.at-line")]
-        .find((tr) => tr.querySelector(".at-name div")?.textContent === ${JSON.stringify(name)});
-      const links = [...row.querySelectorAll(".at-link")].map((td) => td.textContent.trim());
-      return { from: links[0], to: links[1], status: row.querySelector(".at-status").textContent.trim() };
-    })()`,
-  );
+/** Click a port on the sheet: a part's ("ethernet", "Interrupt"), or the sheet's own (null, "eth_rgmii"). */
+async function clickPort(part, port) {
+  const selector = part
+    ? `rect[data-part="${part}"][data-port="${port}"]`
+    : `rect[data-edge="${port}"]`;
+  await page.click(selector);
 }
 
 async function settled() {
@@ -79,7 +76,21 @@ async function settled() {
   await E(page, "refreshActions()");
 }
 
-test("the Actions tab lists today's actions with their links", async () => {
+/** An action def, wherever it is: a new one goes in its performer's package. */
+function actionDef(name) {
+  for (const file of readdirSync(server.dir).filter(isModelFile)) {
+    const defs = readModel(server.dir, file).package.actionDefs || [];
+    const found = defs.find((def) => def.name === name);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function isModelFile(file) {
+  return file.endsWith(".json") && !file.endsWith(".layout.json");
+}
+
+test("the Actions tab lists today's actions, and the hops between them", async () => {
   await E(page, "openActions('readTemperature')");
   assert.equal(
     await E(
@@ -89,20 +100,22 @@ test("the Actions tab lists today's actions with their links", async () => {
     "none",
     "the diagram is hidden on the Actions tab",
   );
-  assert.deepEqual(await texts("#actionsTable .at-name div"), [
+  assert.deepEqual(await texts("#actionsTable .at-name"), [
     "receiveFrame",
     "decodeCommand",
     "readSensor",
     "buildResponse",
     "sendFrame",
   ]);
-  const first = await rowOf("receiveFrame");
-  assert.equal(first.from, "sheet");
-  assert.match(first.to, /^2 ⚠$/, "cmd to decodeCommand has no wire");
-  assert.match((await rowOf("readSensor")).status, /^performed ⚠$/);
+  const hops = await texts("#actionsTable .at-hop-ends");
+  assert.equal(hops[0], "eth_rgmii (sheet) ──▶ 1 ethernet.eth_rgmii");
+  assert.equal(hops[1], "1 ethernet.cmd ──▶ 2 processing.Control");
+  assert.equal(hops.at(-1), "5 ethernet.eth_rgmii ──▶ eth_rgmii (sheet)");
+  const missing = await texts("#actionsTable .at-hop .at-missing");
+  assert.equal(missing.length, 4, "four hops with no wire");
 });
 
-test("the user's first two rows, entered in the table, link over the new wire", async () => {
+test("clicking source ports builds the user's first rows, one hop each", async () => {
   // What the user does on the sheet first: the interrupt ports and wire, and
   // a ReadTemperature with no actions yet.
   const setup = [
@@ -127,86 +140,89 @@ test("the user's first two rows, entered in the table, link over the new wire", 
     await E(page, `applyOp(${JSON.stringify(name)}, ${JSON.stringify(args)})`);
   await settled();
 
-  // + Action: the part usage first, then its action def. Ethernet performs
-  // ReceiveFrame already; ReadFrame is a new action def.
-  await E(page, "document.getElementById('atAddAction').click()");
-  assert.deepEqual(await texts("#actionsTable .at-draft .at-muted"), [
-    "Choose the part usage that performs it.",
+  // Row 1: the frame comes in by the sheet's eth_rgmii.
+  await clickPort(null, "eth_rgmii");
+  assert.deepEqual(await texts("#actionsTable .at-hop-ends"), [
+    "eth_rgmii (sheet) ──▶ 1 ethernet.eth_rgmii",
   ]);
-  await choose("draft0|part", "ethernet");
-  const groups = await E(
-    page,
-    `[...document.querySelectorAll('select[data-role="draft0|actionDef"] optgroup')]
-      .map((group) => group.label + ": " + [...group.children].map((o) => o.textContent).join(","))`,
+  assert.equal(
+    (await texts("#actionsTable .at-draft td"))[1],
+    "ethernet : Ethernet",
   );
-  assert.match(groups[0], /^Performed by ethernet: .*ReceiveFrame/);
+  await choose("hop0|item", "(new item)");
+  await newItem("ethPacket", "EthPacket");
   await choose("draft0|actionDef", "ReceiveFrame");
   await settled();
-  await E(page, "document.getElementById('atAddAction').click()");
-  await choose("draft0|part", "Control");
+  assert.deepEqual(await texts("#actionsTable .at-name"), ["receiveFrame"]);
+
+  // Row 2: the interrupt, from ethernet to Control. Row 3 is clicked before
+  // row 2 is saved: its hop waits for row 2's.
+  await clickPort("ethernet", "Interrupt");
+  await choose("hop0|item", "(new item)");
+  await newItem("int", "Int");
+  await clickPort("Control", "ethernet"); // ETH CSR, wired to ethernet.cmd
+  await choose("hop1|item", "(new item)");
+  await newItem("axi4liteRead", "Axi4LiteRead");
+  await E(page, "window.prompt = () => 'RxFrameReq'");
+  await choose("draft1|actionDef", "(new action def)");
+  assert.match(
+    (await texts("#actionsTable .at-wait"))[1],
+    /Choose row 2's action def|Waits for the hop into row 2/,
+  );
   await E(page, "window.prompt = () => 'ReadFrame'");
   await choose("draft0|actionDef", "(new action def)");
+  await waitFor(
+    async () => (await texts("#actionsTable .at-name")).length === 3,
+    "both hops saved",
+  );
   await settled();
-  assert.deepEqual(await texts("#actionsTable .at-name div"), [
+  assert.deepEqual(await texts("#actionsTable .at-name"), [
+    "receiveFrame",
+    "readFrame",
+    "rxFrameReq",
+  ]);
+  const readTemperature = actionDef("ReadTemperature");
+  assert.deepEqual(readTemperature.flows, [
+    { from: "receiveFrame.int", to: "readFrame.int", succession: true },
+    {
+      from: "readFrame.axi4liteRead",
+      to: "rxFrameReq.axi4liteRead",
+      succession: true,
+    },
+  ]);
+  assert.deepEqual(readTemperature.bindings, [
+    { ends: ["receiveFrame.ethPacket", "ethPacket"] },
+  ]);
+});
+
+test("undo takes back a whole hop", async () => {
+  await E(page, "undo()");
+  await settled();
+  assert.deepEqual(await texts("#actionsTable .at-name"), [
     "receiveFrame",
     "readFrame",
   ]);
-
-  // Row 1 egress: Interrupt, a new item int : Int.
-  await choose("receiveFrame|out|+|port", "Interrupt");
-  await choose("receiveFrame|out|+|item", "(new item)");
-  await newItem("int", "Int");
-  await settled();
-  assert.equal((await rowOf("receiveFrame")).to, "nobody yet");
-
-  // Row 2 ingress: eth_int, a new item int : Int. The core links it to row 1.
-  await choose("readFrame|in|+|port", "eth_int");
-  await choose("readFrame|in|+|item", "(new item)");
-  await newItem("int", "Int");
-  await settled();
-  await waitFor(
-    async () => (await rowOf("readFrame")).from === "1",
-    "row 2 fed by row 1",
-  );
-  assert.equal((await rowOf("receiveFrame")).to, "2");
-
-  const behaviour = readModel(server.dir, "wifi_packet_router_behavior.json");
-  const readTemperature = behaviour.package.actionDefs.find(
-    (def) => def.name === "ReadTemperature",
-  );
-  assert.deepEqual(readTemperature.flows, [
-    { from: "receiveFrame.int", to: "readFrame.int", succession: true },
-  ]);
 });
 
-test("undo takes back the last edit", async () => {
-  await E(page, "undo()");
-  await settled();
-  assert.equal((await rowOf("readFrame")).from, "");
-});
-
-test("an item def changed on a line replaces the item, after asking", async () => {
+test("another item def on a saved hop replaces it at both ends, after asking", async () => {
   await E(page, "window.confirm = () => true");
-  await E(page, "openActions('readTemperature')");
-  await choose("receiveFrame|out|int|item", "(new item)");
+  await choose("receiveFrame.int>readFrame.int|item", "(new item)");
   await newItem("irq", "Irq");
   await settled();
-  const behaviour = readModel(server.dir, "wifi_packet_router_behavior.json");
-  const receiveFrame = behaviour.package.actionDefs.find(
-    (def) => def.name === "ReceiveFrame",
-  );
-  assert.deepEqual(
-    receiveFrame.parameters.map((item) => `${item.name} : ${item.type}`),
-    ["irq : Irq"],
-  );
+  const items = (name) =>
+    actionDef(name).parameters.map((item) => `${item.name} : ${item.type}`);
+  assert.ok(items("ReceiveFrame").includes("irq : Irq"));
+  assert.ok(!items("ReceiveFrame").includes("int : Int"));
+  assert.deepEqual(items("ReadFrame"), ["irq : Irq"]);
 });
 
-test("right-click offers to remove a port's item nothing uses", async () => {
+test("right-click a port offers to remove its items nothing uses", async () => {
   // The old int : Int is still on the Interrupt port, unused since the replace.
   await E(
     page,
-    `document.querySelector('select[data-role="receiveFrame|out|irq|item"]')
-      .parentElement.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }))`,
+    `[...document.querySelectorAll("#actionsTable .at-port")]
+      .find((tag) => tag.textContent === "Interrupt")
+      .dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }))`,
   );
   const entries = await texts("#menu .mi");
   const remove = "Remove unused int : Int from port Interrupt";
@@ -230,6 +246,23 @@ test("right-click offers to remove a port's item nothing uses", async () => {
   );
 });
 
+test("+ Action adds a row by hand: the part usage, then the action def", async () => {
+  await E(page, "document.getElementById('atAddAction').click()");
+  assert.ok(
+    (await texts("#actionsTable .at-draft .at-muted")).includes(
+      "Choose the part usage that performs it.",
+    ),
+  );
+  await choose("draft0|part", "temp_if");
+  await choose("draft0|actionDef", "ReadSensor");
+  await settled();
+  assert.deepEqual(await texts("#actionsTable .at-name"), [
+    "receiveFrame",
+    "readFrame",
+    "readSensor",
+  ]);
+});
+
 test("ReadTemperature's own items nothing uses can be removed", async () => {
   const own = await texts("#actionsTable .at-own-item");
   assert.ok(own.some((text) => text.startsWith("gets cmdFrame : EthFrame")));
@@ -248,16 +281,22 @@ test("✕ deletes an action", async () => {
   await E(
     page,
     `[...document.querySelectorAll("#actionsTable .at-number button")]
-      .filter((b) => b.textContent === "✕")[1].click()`,
+      .filter((b) => b.textContent === "✕")[2].click()`,
   );
   await settled();
-  assert.deepEqual(await texts("#actionsTable .at-name div"), ["receiveFrame"]);
+  assert.deepEqual(await texts("#actionsTable .at-name"), [
+    "receiveFrame",
+    "readFrame",
+  ]);
 });
 
-test("the Sequence tab shows the same action", async () => {
+test("the Sequence tab shows the same actions", async () => {
   await E(page, "showTab('sequence')");
-  assert.deepEqual(await texts("#seqSvg .seq-step-name"), ["1 receiveFrame"]);
-  await E(page, "closeSequence()");
+  assert.deepEqual(await texts("#seqSvg .seq-step-name"), [
+    "1 receiveFrame",
+    "2 readFrame",
+  ]);
+  await E(page, "showTab('actions')");
 });
 
 test("the view docks under the sheet, which stays in sight", async () => {
@@ -272,7 +311,10 @@ test("the view docks under the sheet, which stays in sight", async () => {
     })()`,
   );
   assert.ok(boxes.sheetHeight > 100, "the sheet has room above the dock");
-  assert.ok(boxes.sheetBottom <= boxes.dockTop + 1, "the dock does not cover it");
+  assert.ok(
+    boxes.sheetBottom <= boxes.dockTop + 1,
+    "the dock does not cover it",
+  );
 
   // Footprint lights the sheet and leaves the table open.
   await E(page, "document.getElementById('seqFootprint').click()");
@@ -290,6 +332,15 @@ test("the view docks under the sheet, which stays in sight", async () => {
     "the dock closed",
   );
   await E(page, `openSheet(${JSON.stringify(TOP)})`);
+});
+
+test("with the dock closed, a click on a port wires as before", async () => {
+  await clickPort("ethernet", "Interrupt");
+  assert.match(
+    await E(page, "document.getElementById('hint').textContent"),
+    /^Wiring ethernet\.Interrupt/,
+  );
+  await E(page, "editor.armed = null");
 });
 
 test("+ Perform action… makes the sheet perform a new action def", async () => {

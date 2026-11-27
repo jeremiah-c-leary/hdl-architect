@@ -199,27 +199,39 @@ call the actions of a composed action def "steps": `add_step`, ...)
   **+ Perform action…** makes the sheet perform an action def: an existing
   one, or a new name (made in the sheet's package).
 - **The Actions tab** (in the sequence view, or "Edit actions") is the
-  table that edits it, one row per action, like timing arcs:
-  - **#** with ↑ ↓ to move it and ✕ to delete it; **Part usage** that performs it (a part
-    whose def does not perform the action def yet is made to; IP only
-    offers what it performs); **Action**; **Action def** (what the part
-    performs, then the others, or New action def…);
-  - **Ingress**: a port of that part, and an item the port carries in
-    (or **New item…**: a name and an item def; the port carries it from
-    now on, and the action def gets an item of the same name; on a line
-    that already is an item, another item def replaces that item, after
-    asking, as it changes every use of the action def). **Egress**:
-    the same, out. "+ in" / "+ out" (hover the action's name) add a line;
-    right-click an item for No port, to remove it from the action def, or
-    to remove a port's items nothing uses;
-  - **from** and **to** are not chosen: the core works them out from the
-    wires (the latest earlier egress on a port wired to the ingress, with
-    the same item def; "sheet" for the sheet's own port). ⚠ where nothing
-    feeds an ingress, or an old link has no wire;
-  - right-click a row to move or delete it, or open the performer's sheet
-    to break the action down; **+ Action** adds a row: choose its part
-    usage, then its action def (what that part performs first), which
-    makes the action, named after it (`ReadFrame`: `readFrame`);
+  table that edits it, like timing arcs. It docks under the sheet, which
+  stays in sight (Footprint lights it while you edit). It has two kinds of
+  row:
+  - **an action**: **#** with ↑ ↓ to move it and ✕ to delete it; **Part
+    usage** that performs it (a part whose def does not perform the action
+    def yet is made to; IP only offers what it performs); **Action**;
+    **Action def** (what the part performs, then the others, or New action
+    def…); the **Ingress** and **Egress ports** it uses (right-click one
+    for No port, to remove its item from the action def, or to remove the
+    port's items nothing uses); Status;
+  - **a hop** (↳, between the actions): one item going from one action to
+    the next over a wire, `1 ethernet.Interrupt ──▶ 2 Control.eth_int`, and
+    the item it carries, chosen once for both ends (in SysML a succession
+    flow over the connection between the two ports). The list offers the
+    items either port already carries that way, or **New item…** (a name
+    and an item def): both ports carry it from now on, and both action
+    defs get an item of that name. An IP end's items are fixed: the list
+    offers only those. Another item def on a saved hop replaces the item at
+    both ends, after asking. A hop from or to the sheet's own port binds
+    the action's own item. "nobody yet" and ⚠ mark an egress nothing takes
+    and an ingress nothing feeds; ⚠ also marks a hop with no wire.
+  - **Building it: click source ports on the sheet.** While the Actions
+    tab is open, a click on a port (the one an item leaves by) adds a hop
+    over each wire from it: from the latest action of that port's part (or
+    from the sheet, for the sheet's own port) to a new action on the part
+    at the far end. Choose the hop's item and the new action's action def;
+    the hop is then saved, with its new action, as one undo step. You can
+    click ahead: a later hop waits for the one that makes its action.
+    (With the Actions tab closed, a click on a port wires as before.)
+  - **+ Action** adds an action by hand: choose its part usage, then its
+    action def (what that part performs first), which makes the action,
+    named after it (`ReadFrame`: `readFrame`). Right-click an action to
+    move or delete it, or open the performer's sheet to break it down;
   - under the table, the action's own items (what it gets and gives as a
     whole, by the sheet's own ports), with ✕ on those nothing uses.
   Every edit is one undo step.

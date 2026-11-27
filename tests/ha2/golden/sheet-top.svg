@@ -172,15 +172,15 @@ svg text { fill: #1d2430; font-size: 12px; user-select: none; }
 .at-table { border-collapse: collapse; font-size: 12px; }
 .at-table th, .at-table td { border: 1px solid #d8dde5; padding: 3px 6px; text-align: left; vertical-align: top; white-space: nowrap; }
 .at-table th { background: #f1f3f6; font-weight: 600; }
-.at-groups th { text-align: center; }
-.at-odd td { background: #e9edf3; }
-.at-name div { font-weight: 600; }
-.at-link { text-align: center; }
+.at-name { font-weight: 600; }
+.at-table .at-hop td { border-left-width: medium; border-left-style: none; border-left-color: currentcolor; border-right-width: medium; border-right-style: none; border-right-color: currentcolor; background: #ffffff; padding: 2px 6px; }
+.at-hop-mark { color: #6b7686; text-align: right; }
+.at-hop-body &gt; * { margin-right: 8px; vertical-align: middle; }
+.at-hop-ends { font-family: ui-monospace, monospace; font-size: 11px; }
+.at-pending { font-style: italic; color: #6b7686; }
 .at-muted { color: #6b7686; }
 .at-missing { color: #c0392b; }
 .at-button { font-size: 10px; padding: 0px 4px; margin-left: 3px; }
-.at-name .at-button { visibility: hidden; margin: 2px 3px 0px 0px; }
-.at-line:hover .at-name .at-button { visibility: visible; }
 .at-new-item input { width: 9em; margin-right: 3px; }
 .at-add { margin-top: 10px; display: flex; gap: 6px; align-items: center; }
 #addPerform { margin-top: 4px; font-size: 11px; }

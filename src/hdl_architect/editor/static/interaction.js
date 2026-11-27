@@ -267,6 +267,13 @@ window.addEventListener("mouseup", (ev) => {
         `${endStr(end)} drives a net itself, so it cannot go on ${armedNet.name}.`,
       );
     else netMenu(ev, D, end);
+  } else if (
+    (d.kind === "port" || d.kind === "edge") &&
+    !d.shift &&
+    !editor.armed &&
+    takesPortClick(d)
+  ) {
+    // the actions table took it: a hop from this port
   } else if ((d.kind === "port" || d.kind === "edge") && d.shift) {
     togglePick(
       d.kind === "edge" ? editor.sheet : d.P,
@@ -288,6 +295,23 @@ window.addEventListener("mouseup", (ev) => {
     );
   }
 });
+/** Who else wants a click on a port (the actions table, while it is open). */
+let portClickTaker = null;
+
+/** `taker(end)` sees each plain click on a port first; true: it took it. */
+export function onPortClick(taker) {
+  portClickTaker = taker;
+}
+
+function takesPortClick(drag) {
+  if (!portClickTaker) return false;
+  const end =
+    drag.kind === "edge"
+      ? { kind: "edge", port: drag.port }
+      : { kind: "part", part: drag.part, port: drag.port };
+  return portClickTaker(end);
+}
+
 export function edgeClick(ev, side) {
   if (editor.armed && editor.armed.kind === "part")
     connectArmed({ edge: side, y: svgPoint(ev).y });
