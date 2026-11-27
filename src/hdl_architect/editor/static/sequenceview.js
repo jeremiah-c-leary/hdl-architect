@@ -7,7 +7,10 @@
 // on its own parts becomes those parts' lifelines, in a bracket, and each of
 // its steps becomes its sub-steps (1 becomes 1.1, 1.2). An item that entered
 // the part now goes on to the sub-step that takes it. ▼ folds it back.
+//
+// The Actions tab shows the same action as a table to edit (actionstable.js).
 import * as actions from "./actions.js";
+import * as actionsTable from "./actionstable.js";
 import * as footprint from "./footprint.js";
 import * as model from "./model.js";
 import * as state from "./state.js";
@@ -17,6 +20,10 @@ import * as svg from "./svg.js";
 let shownAction = null;
 /** Expanded lifelines, by lane key: "ethernet", "ethernet.mac". */
 const expandedLanes = new Set();
+/** The tab shown: the sequence diagram or the actions table. */
+const SEQUENCE_TAB = "sequence";
+const ACTIONS_TAB = "actions";
+let shownTab = SEQUENCE_TAB;
 
 /** The boundary: the sheet's own ports, the leftmost lifeline. */
 const BOUNDARY = "(boundary)";
@@ -38,7 +45,32 @@ const SIZE = {
 export function openSequence(actionName) {
   shownAction = actionName;
   svg.$("sequenceView").hidden = false;
-  drawSequence();
+  showTab(SEQUENCE_TAB);
+}
+
+/** The same overlay, on the Actions tab: the table to edit the action. */
+export function openActions(actionName) {
+  shownAction = actionName;
+  svg.$("sequenceView").hidden = false;
+  showTab(ACTIONS_TAB);
+}
+
+export function showTab(tab) {
+  shownTab = tab;
+  const onActions = tab === ACTIONS_TAB;
+  svg.$("seqSvg").classList.toggle("seq-hidden", onActions); // no `hidden` on SVG
+  svg.$("actionsTable").hidden = !onActions;
+  svg.$("seqTabSequence").classList.toggle("cur", !onActions);
+  svg.$("seqTabActions").classList.toggle("cur", onActions);
+  svg.$("seqExpandAll").hidden = onActions;
+  svg.$("seqCollapseAll").hidden = onActions;
+  drawShownTab();
+}
+
+function drawShownTab() {
+  svg.$("seqTitle").textContent = titleText(actions.sheetAction(shownAction));
+  if (shownTab === ACTIONS_TAB) actionsTable.renderActionsTable(shownAction);
+  else drawSequence();
 }
 
 export function closeSequence() {
@@ -55,18 +87,18 @@ export function expandAll() {
   if (!action) return;
   for (const lane of expandableLanes(action.steps, null))
     expandedLanes.add(lane);
-  drawSequence();
+  showTab(SEQUENCE_TAB);
 }
 
 export function collapseAll() {
   expandedLanes.clear();
-  drawSequence();
+  showTab(SEQUENCE_TAB);
 }
 
 export function toggleLane(lane) {
   if (expandedLanes.has(lane)) expandedLanes.delete(lane);
   else expandedLanes.add(lane);
-  drawSequence();
+  showTab(SEQUENCE_TAB);
 }
 
 function showFootprint() {
@@ -78,11 +110,13 @@ svg.$("seqClose").onclick = closeSequence;
 svg.$("seqExpandAll").onclick = expandAll;
 svg.$("seqCollapseAll").onclick = collapseAll;
 svg.$("seqFootprint").onclick = showFootprint;
+svg.$("seqTabSequence").onclick = () => showTab(SEQUENCE_TAB);
+svg.$("seqTabActions").onclick = () => showTab(ACTIONS_TAB);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && isOpen()) closeSequence();
 });
 actions.onActions(() => {
-  if (isOpen()) drawSequence();
+  if (isOpen()) drawShownTab();
 });
 
 // ------------------------------------------------------------------ the scene
@@ -336,7 +370,6 @@ function drawSequence() {
   const drawing = svg.$("seqSvg");
   drawing.innerHTML = "";
   const action = actions.sheetAction(shownAction);
-  svg.$("seqTitle").textContent = titleText(action);
   if (!action) return;
   const scene = sceneOf(action);
   const layout = layoutOf(scene);
@@ -416,7 +449,7 @@ function drawLaneHeading(canvas, lane, place) {
   svg.el("text", defAt, heading, facts.defName);
   if (!facts.expandable) return;
   heading.classList.add("expandable");
-  svg.tip(heading, "Expand: its parts' lifelines and the steps inside it");
+  svg.tip(heading, "Expand: its parts' lifelines and the actions inside it");
   heading.onclick = () => toggleLane(lane);
 }
 
@@ -609,6 +642,6 @@ function drawNoSteps(canvas) {
 
 function noStepsText() {
   if (model.partsOf(state.editor.sheet).length)
-    return "No steps yet: this action is to break down into steps on the parts of this sheet.";
-  return "No steps: this part performs it itself.";
+    return "No actions yet: it is to break down into actions on the parts of this sheet (Actions tab).";
+  return "No actions: this part performs it itself.";
 }

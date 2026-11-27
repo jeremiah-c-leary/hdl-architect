@@ -1,16 +1,20 @@
 // HA 2: the side panel's Performs section: the actions the open sheet's part
 // def performs, each with how far its steps are described and how many of
 // its items have no wire to travel on. Click one for its sequence view;
-// right-click to show its footprint on the sheet.
+// right-click to edit its actions, show its footprint, or delete it.
+// [+ Perform action…] makes the sheet perform an action def.
 import * as actions from "./actions.js";
+import * as dialogs from "./dialogs.js";
 import * as footprint from "./footprint.js";
 import * as menus from "./menus.js";
 import * as model from "./model.js";
 import * as sequenceView from "./sequenceview.js";
 import * as state from "./state.js";
+import * as store from "./store.js";
 import * as svg from "./svg.js";
 
 actions.onActions(renderPerforms);
+svg.$("addPerform").onclick = addPerform;
 
 /** Redraw the section from the latest report (fetched if it is not here yet). */
 export function renderPerforms() {
@@ -31,13 +35,14 @@ function performItem(action) {
   item.className = "item perform";
   if (footprint.isShowing(action.name)) item.classList.add("cur");
   item.append(performHeading(action), summaryLine(action));
-  item.title = "Click: its sequence. Right-click: its footprint on the sheet.";
+  item.title =
+    "Click: its sequence. Right-click: edit its actions, its footprint, delete.";
   item.onclick = () => sequenceView.openSequence(action.name);
   item.oncontextmenu = (event) => performMenu(event, action);
   return item;
 }
 
-/** "readTemperature : ReadTemperature" and "5 steps" on the right. */
+/** "readTemperature : ReadTemperature" and "5 actions" on the right. */
 function performHeading(action) {
   const heading = document.createElement("div");
   heading.className = "perform-head";
@@ -50,8 +55,8 @@ function performHeading(action) {
 }
 
 function stepCountText(count) {
-  if (count === 1) return "1 step";
-  return `${count} steps`;
+  if (count === 1) return "1 action";
+  return `${count} actions`;
 }
 
 /** "1 performed · 4 to break down · ⚠ 4 missing wires". */
@@ -104,8 +109,35 @@ function performMenu(event, action) {
       label: "Sequence view",
       act: () => sequenceView.openSequence(action.name),
     },
+    {
+      label: "Edit actions",
+      act: () => sequenceView.openActions(action.name),
+    },
     footprintItem(action),
+    { label: "Delete", act: () => deletePerform(action) },
   ]);
+}
+
+/** The sheet performs an action def: an existing one, or a new one made in its package. */
+function addPerform() {
+  const actionDef = dialogs.askName(
+    "Action def this sheet performs (an existing one, or a new name):",
+    "",
+  );
+  if (!actionDef) return;
+  store.applyOp("add_perform", { def: state.editor.sheet, action: actionDef });
+}
+
+function deletePerform(action) {
+  const question =
+    `Delete ${action.name}: ${state.editor.sheet} no longer performs it? Its ` +
+    `allocations and the ports its items use go; the action def ` +
+    `${action.actionDef} stays.`;
+  if (!confirm(question)) return;
+  store.applyOp("delete_perform", {
+    def: state.editor.sheet,
+    perform: action.name,
+  });
 }
 
 function footprintItem(action) {

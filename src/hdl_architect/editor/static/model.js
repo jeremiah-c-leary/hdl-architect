@@ -141,6 +141,25 @@ export function portDefNames() {
   return definitionNames().filter((name) => portDef(name) !== null);
 }
 
+/** Every action def's name, in alphabetical order. */
+export function actionDefNames() {
+  return definitionNames().filter((name) => isInCollection(name, "actionDefs"));
+}
+
+/** Every item def's name, in alphabetical order. */
+export function itemDefNames() {
+  return definitionNames().filter((name) => isInCollection(name, "itemDefs"));
+}
+
+function isInCollection(name, collection) {
+  return definitionInCollection(name, collection) !== null;
+}
+
+/** A port usage's identifier, as wires and flows name it: its short name, else its name. */
+export function portId(port) {
+  return port.shortName || port.name;
+}
+
 /** Part defs you can add an instance of: not abstract, and not a kind (Rtl, ...). */
 export function instantiablePartDefNames() {
   return partDefNames().filter(isInstantiable);
