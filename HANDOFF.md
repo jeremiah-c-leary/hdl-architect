@@ -235,10 +235,10 @@ as friction shows.
       lifelines) and the footprint (`docs/ha2.md`).
 - [x] The actions table in the core: `set_action_end` (a row's ingress or
       egress) and `link_actions` (`core/action_links.py`, decision 13).
-- [ ] **Next:** the Actions tab in HA 2 (the table), [+ Perform action…]
-      and Delete in the Performs section, "step" renamed "action" in the
-      sequence view. The user then enters their seven ReadTemperature rows
-      in it (Control, with an interrupt) to remodel the Wi-Fi example.
+- [x] The Actions tab in HA 2 (the table), [+ Perform action…] and Delete
+      in the Performs section, "step" renamed "action" in what HA 2 shows.
+- [ ] **Next (the user):** enter the seven ReadTemperature rows in the
+      Actions tab (Control, with an interrupt) to remodel the Wi-Fi example.
 
 **Estimates (E)**
 - [x] Resources: model, roll-up, margins, device library, reports, HA 2

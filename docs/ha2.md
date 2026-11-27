@@ -187,16 +187,36 @@ never estimated.
 
 ## Performed actions
 
-What a part def does is a SysML `perform action`; a composed action has
-steps, each performed by a part of the sheet; an item a step gets or gives
-travels "via a port" (HANDOFF decision 13). Read-only in HA 2 for now: the
-model is edited with the operations (`ha op add_step ...`, `ha op --list`).
+What a part def does is a SysML `perform action`; a composed action def has
+actions, each performed by a part of the sheet; an item an action gets or
+gives travels "via a port" (HANDOFF decision 13). (The core and `ha op`
+call the actions of a composed action def "steps": `add_step`, ...)
 
 - **Performs** (side panel) lists the actions the open sheet performs:
-  how many steps, how many are performed or still to break down, and how
+  how many actions, how many are performed or still to break down, and how
   many items have no wire to travel on. Click one for its sequence;
-  right-click to show its footprint.
-- **The sequence view**: a lifeline per part that performs a step (the
+  right-click to edit its actions, show its footprint, or delete it.
+  **+ Perform action…** makes the sheet perform an action def: an existing
+  one, or a new name (made in the sheet's package).
+- **The Actions tab** (in the sequence view, or "Edit actions") is the
+  table that edits it, one row per action, like timing arcs:
+  - **#** with ↑ ↓ to move it; **Part usage** that performs it (a part
+    whose def does not perform the action def yet is made to; IP only
+    offers what it performs); **Action**; **Action def** (what the part
+    performs, then the others, or New action def…);
+  - **Ingress**: a port of that part, and an item the port carries in
+    (or **New item…**: a name and an item def; the port carries it from
+    now on, and the action def gets an item of the same name). **Egress**:
+    the same, out. "+ in" / "+ out" (hover the action's name) add a line;
+    right-click an item for No port or to remove it from the action def;
+  - **from** and **to** are not chosen: the core works them out from the
+    wires (the latest earlier egress on a port wired to the ingress, with
+    the same item def; "sheet" for the sheet's own port). ⚠ where nothing
+    feeds an ingress, or an old link has no wire;
+  - right-click a row to move or delete it, or open the performer's sheet
+    to break the action down; **+ Action** adds one (a name and its part).
+  Every edit is one undo step.
+- **The sequence view**: a lifeline per part that performs an action (the
   sheet's own ports on the left), the steps down the page in each part's
   kind colour, and an arrow per item: solid where a wire carries it, red
   and dashed where none does, grey and dotted where a port is not said.
@@ -265,6 +285,5 @@ page to pick up the change; edits made since the last good save are lost.
 
 - a CSR bus as a global net;
 - importing HA 1 drawings (`fpga-hierarchy (*.json)`);
-- protocol (port def) and HW part editors; editing performed actions in HA 2
-  (the steps editor);
+- protocol (port def) and HW part editors;
 - effort estimates; a new package (file) from the tool; a device from the tool.

@@ -795,3 +795,79 @@ svg text {
   text-anchor: start;
   fill: var(--muted);
 }
+/* the Actions tab of the sequence overlay (actionstable.js) */
+.seq-tabs button.cur {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+#actionsTable {
+  padding: 10px 12px;
+}
+#actionsTable[hidden],
+#seqSvg.seq-hidden {
+  display: none;
+}
+.at-table select {
+  max-width: 11em;
+}
+.at-table {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.at-table th,
+.at-table td {
+  border: 1px solid var(--line);
+  padding: 3px 6px;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+.at-table th {
+  background: var(--gutter);
+  font-weight: 600;
+}
+.at-groups th {
+  text-align: center;
+}
+.at-odd td {
+  background: var(--edge);
+}
+.at-name div {
+  font-weight: 600;
+}
+.at-link {
+  text-align: center;
+}
+.at-muted {
+  color: var(--muted);
+}
+.at-missing {
+  color: var(--err);
+}
+.at-button {
+  font-size: 10px;
+  padding: 0 4px;
+  margin-left: 3px;
+}
+.at-name .at-button {
+  visibility: hidden;
+  margin: 2px 3px 0 0;
+}
+.at-line:hover .at-name .at-button {
+  visibility: visible;
+}
+.at-new-item input {
+  width: 9em;
+  margin-right: 3px;
+}
+.at-add {
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+#addPerform {
+  margin-top: 4px;
+  font-size: 11px;
+}

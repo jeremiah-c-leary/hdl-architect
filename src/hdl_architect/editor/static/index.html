@@ -39,6 +39,12 @@
         <section>
           <h2>Performs <small>this sheet</small></h2>
           <div id="performs"></div>
+          <button
+            id="addPerform"
+            title="This sheet performs an action def: an existing one, or a new one"
+          >
+            + Perform action…
+          </button>
         </section>
         <section>
           <h2>Clocks &amp; resets <small>this sheet</small></h2>
@@ -95,6 +101,12 @@
     <div id="sequenceView" hidden>
       <div class="ct-bar">
         <b id="seqTitle">Sequence</b>
+        <span class="seq-tabs">
+          <button id="seqTabSequence" class="cur">Sequence</button>
+          <button id="seqTabActions" title="The table to edit this action">
+            Actions
+          </button>
+        </span>
         <span class="rv-spacer"></span>
         <button id="seqExpandAll" title="Expand every lifeline that can be">
           Expand all
@@ -110,6 +122,7 @@
       </div>
       <div class="ct-body">
         <svg id="seqSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="actionsTable" hidden></div>
       </div>
     </div>
     <div id="resourceView" hidden>

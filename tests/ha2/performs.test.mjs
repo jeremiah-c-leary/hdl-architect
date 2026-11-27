@@ -29,7 +29,7 @@ const texts = (selector) =>
 test("the Performs section lists what the sheet performs, and how far it is", async () => {
   const text = await E(page, "document.getElementById('performs').innerText");
   assert.match(text, /readTemperature : ReadTemperature/);
-  assert.match(text, /5 steps/);
+  assert.match(text, /5 actions/);
   assert.match(text, /4 to break down · 1 performed · ⚠ 4 missing wires/);
 });
 
@@ -68,9 +68,9 @@ test("the footprint dims what the action does not use and draws the missing wire
   assert.ok(dimmed.includes("uart"), "uart performs no step");
   assert.ok(!dimmed.includes("ethernet") && !dimmed.includes("temp_if"));
   assert.deepEqual((await texts("#canvas .fp-badge")).sort(), [
-    "step 3",
-    "steps 1, 5",
-    "steps 2, 4",
+    "action 3",
+    "actions 1, 5",
+    "actions 2, 4",
   ]);
   assert.equal((await texts("#canvas .fp-missing")).length, 4);
   assert.equal(

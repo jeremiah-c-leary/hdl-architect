@@ -879,7 +879,7 @@ function drawFootprint(sheet) {
   for (const line of sheet.footprint.missing) drawMissingWire(sheet, line);
 }
 
-/** "steps 1, 5" just above the part's box. */
+/** "actions 1, 5" just above the part's box. */
 function drawStepBadge(sheet, partName, numbers) {
   const place = sheet.places.parts[partName];
   const column = place && sheet.geometry.cols[place.col];
@@ -894,8 +894,8 @@ function drawStepBadge(sheet, partName, numbers) {
 }
 
 function stepsText(numbers) {
-  if (numbers.length === 1) return `step ${numbers[0]}`;
-  return `steps ${numbers.join(", ")}`;
+  if (numbers.length === 1) return `action ${numbers[0]}`;
+  return `actions ${numbers.join(", ")}`;
 }
 
 function drawMissingWire(sheet, line) {
