@@ -124,7 +124,11 @@ From the spike (2026-11-22) and [S] section A, confirmed by the user:
     file that works. Later, maybe: a Regassist plugin for teams that must
     use it. A memory map has a root, and a design may have several (user,
     2026-11-27): e.g. the processor's bus and a PCIe bridge, each with its
-    own top `addrmap` and its own tree in HA 2's view.
+    own top `addrmap` and its own tree in HA 2's view. A block's `.rdl`
+    is found through its FuseSoC `.core` file, not a naming convention
+    (user, 2026-11-27: less fragile), so showing registers in the memory
+    map view, and checking a `.rdl` fits its window, wait on per-block
+    cores.
 
 ## Waiting on the user
 
