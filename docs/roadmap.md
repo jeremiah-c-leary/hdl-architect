@@ -101,7 +101,7 @@ Counting only capabilities not yet done: how many need this data (●), and how 
 ## Reading it as a roadmap
 
 - **Phase 0** needs no new data: it hardens what exists (cores instead of `@HdlSource`, the drift check, gate mutation tests, CI).
-- **Features (F)** are needed by 6 capabilities still to come (the sequence view, footprint and walk are built): updating actions, the per-feature SDD sections, the traceability matrix and, with a verification framework (VC), tests from scenarios. That is phase 2, the part of the vision with no prototype yet.
+- **Features (F)** are needed by 6 capabilities still to come (the sequence view, footprint and walk are built): updating actions, the per-feature SDD sections, the traceability matrix and, with a verification framework (VC), tests from scenarios. That is phase 2.
 - **Address map (A) and registers (R)** are needed by 6 each and 8 together: the address map view, the top-level `.rdl` and crossbar configuration, the register file wrapper, the CSR hello-world test, C headers, the interrupt map and device tree, sequences and the build ID. They wait on one decision: who owns addresses (A6).
 - **Descriptions (D)** are cheap to add while drawing and improve every document; the SDD needs them.
 - **Results (RES)** come from CI, so CI comes before anything that reports status.
