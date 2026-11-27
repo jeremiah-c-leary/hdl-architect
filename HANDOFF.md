@@ -110,14 +110,25 @@ From the spike (2026-11-22) and [S] section A, confirmed by the user:
     and written as successions and bindings (`core/action_links.py`).
     The user found a missing interrupt by mapping ReadTemperature this way,
     before any RTL. "Step" is "action" in the UI (SysML's word).
+14. **Address map** (2026-11-27, settles [S A6]): the architect owns the
+    crossbars' memory maps, the designers own the leaf `.rdl` files. A
+    crossbar is its own part usage with its own part def; right-click it
+    in HA 2 to set each window (base and size) on its manager ports. HA 2
+    generates one `addrmap` per crossbar placing what it reaches, the
+    top-level `.rdl` and the crossbar config, so systemrdl-compiler works
+    out every register's absolute address (checked with 1.33.0 on a
+    scratch copy: nested `addrmap`s at offsets give absolute addresses, as
+    Regassist's maps do). HA 2 shows the whole memory map. A scaffolded
+    block with no `.rdl` gets a test register file (ID and scratchpad,
+    [S B21]) so addressing can be simulated and the designer starts from a
+    file that works. Later, maybe: a Regassist plugin for teams that must
+    use it. A memory map has a root, and a design may have several (user,
+    2026-11-27): e.g. the processor's bus and a PCIe bridge, each with its
+    own top `addrmap` and its own tree in HA 2's view.
 
 ## Waiting on the user
 
-1. **Address map ownership** [S A6]: the architect owns the address map in
-   HA 2, and the top-level `.rdl` and crossbar config are generated. On
-   2026-11-22 the user said "all the addressing is in the rdl files". A6 is
-   newer; confirm it wins (it changes the rule that all `.rdl` files are
-   hand-written).
+1. **Address map ownership** [S A6]: decided 2026-11-27 (decision 14).
 2. **B21's ID register value**: setting it in each leaf `.rdl` from the
    database would make the leaf refer to the system. Proposed instead: set
    it where the generated top level places the leaf.
@@ -246,8 +257,16 @@ as friction shows.
       port and its exit (`walk_step`, `core/action_walk.py`); New action…
       at a part makes an action def with untyped items (schema 0.9, SysON
       check in `docs/history/schema-notes.md`).
-- [ ] **Next (the user):** enter the seven ReadTemperature rows in the
-      Actions tab (Control, with an interrupt) to remodel the Wi-Fi example.
+- [ ] **The user:** play with the walk for a while before more changes
+      (decided 2026-11-27); the seven ReadTemperature rows were walked in
+      under a minute.
+- [ ] Updating actions: change a performed action once built (re-route a
+      step, change its action def or exit, insert or remove a step), found
+      by using the walk. Known so far: an action fed from two paths; the
+      hint over the sheet; the sequence view's step indicators; choosing
+      item defs for untyped items.
+- [ ] A user guide (`docs/user-guide/`), click by click, one chapter per
+      feature, starting with the walk.
 
 **Estimates (E)**
 - [x] Resources: model, roll-up, margins, device library, reports, HA 2

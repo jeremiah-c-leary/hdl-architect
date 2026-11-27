@@ -39,6 +39,10 @@ import * as actionsTable from "./actionstable.js";
 import * as actionHops from "./actionhops.js";
 import * as actionWalk from "./actionwalk.js";
 import * as footprint from "./footprint.js";
+import * as descriptions from "./descriptions.js";
+import * as partMenu from "./partmenu.js";
+import * as portMenu from "./portmenu.js";
+import * as sheetMenus from "./sheetmenus.js";
 
 // Every module's functions and state, by name: for the tests and the browser
 // console (e.g. ha2.partDef('Control')). Not used by HA 2 itself.
@@ -73,6 +77,10 @@ window.ha2 = Object.assign(
   actionHops,
   actionWalk,
   footprint,
+  descriptions,
+  partMenu,
+  portMenu,
+  sheetMenus,
 );
 
 // ------------------------------------------------------------------ start

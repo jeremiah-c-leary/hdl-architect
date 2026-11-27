@@ -1,5 +1,5 @@
 // HA 2: Editing operations on the model and its layout.
-import { G, editor } from "./state.js";
+import { GEOMETRY as G, editor } from "./state.js";
 import { showHint } from "./statusbar.js";
 import { askName } from "./dialogs.js";
 import {

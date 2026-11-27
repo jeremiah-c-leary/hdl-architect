@@ -25,7 +25,8 @@ export const CONTAINER_KINDS = new Set([
   "Subsystem",
   "Container",
 ]);
-export const G = {
+/** Sizes of the drawing, in pixels. */
+export const GEOMETRY = {
   COMP_W: 170,
   EDGE_W: 120,
   MIN_GUTTER: 60,

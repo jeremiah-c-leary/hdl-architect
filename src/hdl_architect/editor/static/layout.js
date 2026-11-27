@@ -1,5 +1,5 @@
 // HA 2: Where things are: the layout sidecar, settling, geometry.
-import { G } from "./state.js";
+import { GEOMETRY as G } from "./state.js";
 import {
   endStr,
   packageOf,
