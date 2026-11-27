@@ -260,6 +260,38 @@ test("the Sequence tab shows the same action", async () => {
   await E(page, "closeSequence()");
 });
 
+test("the view docks under the sheet, which stays in sight", async () => {
+  await E(page, "openActions('readTemperature')");
+  const boxes = await E(
+    page,
+    `(() => {
+      const box = (id) => document.getElementById(id).getBoundingClientRect();
+      const sheet = box("canvasWrap");
+      const dock = box("sequenceView");
+      return { sheetHeight: sheet.height, sheetBottom: sheet.bottom, dockTop: dock.top };
+    })()`,
+  );
+  assert.ok(boxes.sheetHeight > 100, "the sheet has room above the dock");
+  assert.ok(boxes.sheetBottom <= boxes.dockTop + 1, "the dock does not cover it");
+
+  // Footprint lights the sheet and leaves the table open.
+  await E(page, "document.getElementById('seqFootprint').click()");
+  assert.equal(
+    await E(page, "document.getElementById('sequenceView').hidden"),
+    false,
+  );
+  assert.ok((await texts("#canvas .fp-badge")).length > 0, "the footprint");
+  await E(page, "hideFootprint()");
+
+  // Another sheet does not perform this action: the dock closes.
+  await E(page, "openSheet('Control')");
+  await waitFor(
+    () => E(page, "document.getElementById('sequenceView').hidden"),
+    "the dock closed",
+  );
+  await E(page, `openSheet(${JSON.stringify(TOP)})`);
+});
+
 test("+ Perform action… makes the sheet perform a new action def", async () => {
   await E(page, "openSheet('Control')");
   await E(page, "window.prompt = () => 'ReportStatus'");

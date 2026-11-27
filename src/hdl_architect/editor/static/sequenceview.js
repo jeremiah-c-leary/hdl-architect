@@ -101,8 +101,8 @@ export function toggleLane(lane) {
   showTab(SEQUENCE_TAB);
 }
 
+/** The footprint on the sheet above; the docked view stays open. */
 function showFootprint() {
-  closeSequence();
   footprint.showFootprint(shownAction);
 }
 
@@ -116,7 +116,9 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && isOpen()) closeSequence();
 });
 actions.onActions(() => {
-  if (isOpen()) drawShownTab();
+  if (!isOpen()) return;
+  if (actions.sheetAction(shownAction)) drawShownTab();
+  else closeSequence(); // another sheet opened: it does not perform this action
 });
 
 // ------------------------------------------------------------------ the scene
