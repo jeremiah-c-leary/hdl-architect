@@ -352,3 +352,76 @@ def test_ip_brings_its_own_items(wifi):
         "set_action_end", sheet=TOP, perform=PERFORM, step="macRx", direction="in",
         port="rx", newPortItem={"name": "bit", "type": "Int"},
     ) == "ip_actions"  # fmt: skip
+
+
+# ---------------------------------------------------------------- replace, remove
+
+
+def test_a_line_replaces_an_item_of_another_item_def(wifi):
+    # What the user did by hand: ReceiveFrame's old cmd : Command, replaced
+    # on the Interrupt port by int : Int (one operation, one undo step).
+    session = Session(wifi)
+    session.run(
+        "add_port", **{"def": "Ethernet", "name": "Interrupt", "type": "BitOut"}
+    )
+    session.end(
+        "receiveFrame",
+        "out",
+        port="Interrupt",
+        newPortItem={"name": "int", "type": "Int"},
+        replaces="cmd",
+    )
+    parameters = session.action_def("ReceiveFrame")["parameters"]
+    assert {"name": "int", "direction": "out", "type": "Int"} in parameters
+    assert not any(p["name"] == "cmd" for p in parameters)
+    ethernet_flows = session.part_def("Ethernet")["flows"]
+    assert {"from": "receiveFrame.int", "to": "Interrupt.int"} in ethernet_flows
+    assert not any("receiveFrame.cmd" in (f["from"], f["to"]) for f in ethernet_flows)
+    session.report()  # valid  # fmt: skip
+
+
+def test_replacing_is_refused_before_anything_changes(wifi):
+    session = Session(wifi)
+    before = copy.deepcopy(session.docs)
+    assert (
+        session.refused(
+            "set_action_end",
+            sheet=TOP,
+            perform=PERFORM,
+            step="receiveFrame",
+            direction="out",
+            port="cmd",
+            newPortItem={"name": "bad name", "type": "Int"},
+            replaces="cmd",
+        )
+        == "bad_name"
+    )
+    assert (
+        session.refused(
+            "set_action_end",
+            sheet=TOP,
+            perform=PERFORM,
+            step="receiveFrame",
+            direction="in",
+            port="cmd",
+            newPortItem={"name": "x", "type": "Int"},
+            replaces="cmd",
+        )
+        == "direction"
+    )  # cmd is out
+    assert session.docs == before  # fmt: skip
+
+
+def test_delete_port_item_and_its_flows(wifi):
+    session = Session(wifi)
+    result = session.run("delete_port_item", **{"def": "Ethernet", "item": "cmd.cmd"})
+    cmd = next(u for u in session.part_def("Ethernet")["ports"] if u["name"] == "cmd")
+    assert [i["name"] for i in cmd["items"]] == ["response"]
+    assert {"from": "receiveFrame.cmd", "to": "cmd.cmd"} not in session.part_def(
+        "Ethernet"
+    )["flows"]
+    assert result.notes == ["Removed 1 flow(s) to cmd.cmd."]
+    assert (
+        session.refused("delete_port_item", **{"def": "Ethernet", "item": "cmd.nope"})
+        == "not_found"
+    )

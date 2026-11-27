@@ -45,6 +45,8 @@ const pendingPorts = new Map();
 let newItemLine = null;
 /** The empty lines asked for with "+ in" / "+ out", by "action|direction". */
 const extraLines = new Set();
+/** Rows added with + Action, not saved until their action def is chosen: {part}. */
+const drafts = [];
 
 // ------------------------------------------------------------------ drawing
 
@@ -56,13 +58,14 @@ export function renderActionsTable(actionName) {
   holder.innerHTML = "";
   const action = actions.sheetAction(actionName);
   if (!action) return;
-  holder.append(tableOf(action), addActionForm());
+  holder.append(tableOf(action), addActionButton(), ownItemsLine(action));
 }
 
 function forgetEdits() {
   pendingPorts.clear();
   extraLines.clear();
   newItemLine = null;
+  drafts.length = 0;
 }
 
 function redraw() {
@@ -74,6 +77,9 @@ function tableOf(action) {
   const body = element("tbody");
   action.steps.forEach((step, index) => {
     body.append(...rowsOf({ action, step, index }));
+  });
+  drafts.forEach((draft, index) => {
+    body.append(draftRow(draft, action.steps.length + index));
   });
   table.append(headOf(), body);
   return table;
@@ -172,12 +178,13 @@ function actionCells(place, span) {
   return cells.map((cell) => spanned(cell, span));
 }
 
-/** "1", with ↑ ↓ to move the action in the order. */
+/** "1", with ↑ ↓ to move the action in the order, and ✕ to delete it. */
 function numberCell(place) {
   const cell = element("td", "at-number", `${place.index + 1}`);
   cell.append(
     button("↑", "Move up", () => moveAction(place, -1)),
     button("↓", "Move down", () => moveAction(place, 1)),
+    button("✕", "Delete this action", () => deleteAction(place)),
   );
   return cell;
 }
@@ -422,7 +429,6 @@ function newItemForm(place, line) {
   const name = input("name", line.item || "");
   const itemDef = input("item def", line.itemType || "");
   itemDef.setAttribute("list", itemDefList().id);
-  if (line.item) itemDef.readOnly = true;
   const add = () =>
     addNewItem(place, line, { name: name.value, type: itemDef.value });
   for (const field of [name, itemDef])
@@ -455,26 +461,108 @@ function itemDefList() {
   return list;
 }
 
-// ------------------------------------------------------------------ the add-action form
+// ------------------------------------------------------------------ a new action
 
-/** [+ Action]: a name and the part usage that performs it. */
-function addActionForm() {
-  const form = element("div", "at-add");
-  const name = input("action name", "");
-  name.id = "atNewName";
-  const parts = model
-    .partsOf(state.editor.sheet)
-    .map((part) => [part.name, part.name]);
-  const part = picker(parts, "");
-  part.id = "atNewPart";
-  const add = () => addAction(name.value.trim(), part.value);
-  name.onkeydown = (event) => formKey(event, add);
-  form.append(
-    button("+ Action", "Add an action performed by the part", add),
-    name,
-    part,
+/** [+ Action]: a draft row, to choose its part usage, then its action def. */
+function addActionButton() {
+  const holder = element("div", "at-add");
+  const add = button(
+    "+ Action",
+    "Add a row: its part usage, then its action def",
+    addDraft,
   );
-  return form;
+  add.id = "atAddAction";
+  holder.append(add);
+  return holder;
+}
+
+/** A row not saved yet: the part usage first; its action def then makes it. */
+function draftRow(draft, index) {
+  const row = element("tr", "at-line at-draft");
+  const number = element("td", "at-number", `${index + 1}`);
+  number.append(button("✕", "Discard this row", () => discardDraft(draft)));
+  const hint = element("td", "at-muted", draftHint(draft));
+  hint.colSpan = 7;
+  row.append(number, draftPartCell(draft), element("td", "", "—"));
+  row.append(draftActionDefCell(draft), hint);
+  return row;
+}
+
+function draftHint(draft) {
+  if (!draft.part) return "Choose the part usage that performs it.";
+  return `Choose an action def: what ${draft.part} performs, or another.`;
+}
+
+function draftPartCell(draft) {
+  const cell = element("td");
+  const select = picker([["", "choose…"], ...partOptions()], draft.part);
+  select.dataset.role = `draft${drafts.indexOf(draft)}|part`;
+  select.onchange = () => {
+    draft.part = select.value;
+    redraw();
+  };
+  cell.append(select);
+  return cell;
+}
+
+function draftActionDefCell(draft) {
+  const cell = element("td");
+  if (!draft.part) return cell;
+  const performer = {
+    part: draft.part,
+    partDef: model.partType(state.editor.sheet, draft.part),
+  };
+  const select = groupedPicker(actionDefGroups(performer), "");
+  select.dataset.role = `draft${drafts.indexOf(draft)}|actionDef`;
+  select.onchange = () => createAction(draft, select.value);
+  cell.append(select);
+  return cell;
+}
+
+function partOptions() {
+  return model
+    .partsOf(state.editor.sheet)
+    .map((part) => [
+      part.name,
+      `${part.name} : ${model.unqualifiedName(part.type)}`,
+    ]);
+}
+
+// ------------------------------------------------------------------ the action's own items
+
+/** "ReadTemperature's own items": what it gets and gives as a whole, with ✕ on those nothing uses. */
+function ownItemsLine(action) {
+  const line = element("div", "at-own");
+  if (!action.items.length) return line;
+  line.append(element("span", "at-muted", `${action.actionDef}'s own items: `));
+  for (const item of action.items) line.append(ownItem(action, item));
+  return line;
+}
+
+function ownItem(action, item) {
+  const tag = element("span", "at-own-item", ownItemText(item));
+  if (isOwnItemUsed(action, item)) return tag;
+  tag.classList.add("at-muted");
+  tag.title = "Nothing uses it";
+  tag.append(
+    button("✕", "Remove it from the action def", () =>
+      removeOwnItem(action, item),
+    ),
+  );
+  return tag;
+}
+
+function ownItemText(item) {
+  const way = item.direction === INGRESS ? "gets" : "gives";
+  return `${way} ${item.item} : ${item.itemType}`;
+}
+
+function isOwnItemUsed(action, item) {
+  return action.flows.some(
+    (flow) =>
+      (flow.source === null && flow.sourceItem === item.item) ||
+      (flow.target === null && flow.targetItem === item.item),
+  );
 }
 
 // ------------------------------------------------------------------ menus
@@ -498,15 +586,45 @@ function rowMenu(event, place) {
 function lineMenu(event, place, line) {
   event.preventDefault();
   event.stopPropagation();
-  if (!line.item || !canChangeItems(place.step)) return;
-  menus.menu(event.clientX, event.clientY, [
+  if (!canChangeItems(place.step)) return;
+  const items = [
+    ...itemEntries(place, line),
+    ...unusedPortItemEntries(place, line),
+  ];
+  if (items.length) menus.menu(event.clientX, event.clientY, items);
+}
+
+function itemEntries(place, line) {
+  if (!line.item) return [];
+  return [
     { head: `${line.item} : ${line.itemType}` },
     { label: "No port", act: () => clearLine(place, line) },
     {
       label: `Remove ${line.item} from ${place.step.actionDef}`,
       act: () => removeItem(place, line),
     },
-  ]);
+  ];
+}
+
+/** The chosen port's items that no flow of the performer uses: to remove. */
+function unusedPortItemEntries(place, line) {
+  const port = chosenPortUsage(place, line);
+  const unused = (port.items || []).filter(
+    (item) => !isPortItemUsed(place.step.partDef, portItemRef(port, item)),
+  );
+  return unused.map((item) => ({
+    label: `Remove unused ${item.name} : ${model.unqualifiedName(item.type)} from port ${model.shown(port)}`,
+    act: () => removePortItem(place, portItemRef(port, item)),
+  }));
+}
+
+function portItemRef(port, item) {
+  return `${model.portId(port)}.${item.name}`;
+}
+
+function isPortItemUsed(defName, ref) {
+  const flows = model.partDef(defName).flows || [];
+  return flows.some((flow) => flow.from === ref || flow.to === ref);
 }
 
 // ------------------------------------------------------------------ edits
@@ -574,7 +692,20 @@ function addNewItem(place, line, newItem) {
     alert("The item and its item def each need a legal name.");
     return;
   }
-  setEnd(place, line, { newPortItem: { name, type } });
+  if (!line.item || type === line.itemType) {
+    setEnd(place, line, { newPortItem: { name, type } });
+    return;
+  }
+  if (!confirm(replaceQuestion(place, line, { name, type }))) return;
+  setEnd(place, line, { newPortItem: { name, type }, replaces: line.item });
+}
+
+function replaceQuestion(place, line, newItem) {
+  return (
+    `Replace ${line.item} : ${line.itemType} in ${place.step.actionDef} with ` +
+    `${newItem.name} : ${newItem.type}? Every use of ${place.step.actionDef} ` +
+    `changes, and ${line.item}'s links go.`
+  );
 }
 
 function cancelNewItem() {
@@ -590,7 +721,7 @@ function setEnd(place, line, choice) {
     port: chosenPort(place, line),
     ...choice,
   };
-  if (line.item) args.item = line.item;
+  if (line.item && !choice.replaces) args.item = line.item;
   const key = lineKey(place, line);
   store.applyOp("set_action_end", args, () => forgetLine(key));
 }
@@ -627,13 +758,62 @@ function openPerformer(place) {
   interaction.openSheet(place.step.partDef);
 }
 
-function addAction(name, part) {
-  if (!state.NAME_RE.test(name)) {
-    alert(`"${name}" is not a legal name for an action.`);
+function addDraft() {
+  drafts.push({ part: "" });
+  redraw();
+}
+
+function discardDraft(draft) {
+  drafts.splice(drafts.indexOf(draft), 1);
+  redraw();
+}
+
+/** The draft's action def makes the action, named after it (ReadFrame: readFrame). */
+function createAction(draft, value) {
+  let actionDef = value;
+  if (value === NEW_ACTION_DEF)
+    actionDef = dialogs.askName("New action def:", "");
+  if (!actionDef) {
+    redraw();
     return;
   }
-  const args = { sheet: state.editor.sheet, perform: shownAction, name, part };
-  store.applyOp("add_step", args);
+  const args = {
+    sheet: state.editor.sheet,
+    perform: shownAction,
+    name: uniqueActionName(lowerFirst(actionDef)),
+    part: draft.part,
+    action: actionDef,
+  };
+  store.applyOp("add_step", args, () =>
+    drafts.splice(drafts.indexOf(draft), 1),
+  );
+}
+
+function lowerFirst(name) {
+  return name.charAt(0).toLowerCase() + name.slice(1);
+}
+
+/** `base`, or base_2, base_3, ... if an action of that name exists. */
+function uniqueActionName(base) {
+  const taken = new Set(
+    actions.sheetAction(shownAction).steps.map((step) => step.name),
+  );
+  let name = base;
+  for (let number = 2; taken.has(name); number++) name = `${base}_${number}`;
+  return name;
+}
+
+function removePortItem(place, ref) {
+  store.applyOp("delete_port_item", { def: place.step.partDef, item: ref });
+}
+
+function removeOwnItem(action, item) {
+  const question = `Remove ${item.item} from ${action.actionDef}?`;
+  if (!confirm(question)) return;
+  store.applyOp("delete_action_item", {
+    action: action.actionDef,
+    item: item.item,
+  });
 }
 
 // ------------------------------------------------------------------ helpers
@@ -687,6 +867,7 @@ function picker(options, selected) {
 /** A <select> of groups {label, names, extra?}, with `selected` chosen. */
 function groupedPicker(groups, selected) {
   const select = element("select");
+  if (!selected) select.append(new Option("choose…", ""));
   for (const group of groups) select.append(optionGroup(group));
   select.value = selected;
   return select;

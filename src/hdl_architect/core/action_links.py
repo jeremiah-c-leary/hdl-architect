@@ -56,7 +56,9 @@ class ActionEnd:
     - item: the row's action def's item the line is; None for a new line;
     - port: the performer's port (its identifier); None: no port yet;
     - port_item: an item that port carries;
-    - new_port_item: {"name", "type"}: an item the port carries from now on.
+    - new_port_item: {"name", "type"}: an item the port carries from now on;
+    - replaces: an item of the action def that the line's new item takes
+      the place of (it goes, with everything that refers to it).
     """
 
     direction: str
@@ -64,6 +66,7 @@ class ActionEnd:
     port: str | None = None
     port_item: str | None = None
     new_port_item: dict | None = None
+    replaces: str | None = None
 
 
 @dataclass
@@ -113,8 +116,9 @@ def set_action_end(model: Model, row: Row, end: ActionEnd) -> Result:
         return clear_end(model, (found, performer, row), end)
     port = _port(model, performer.def_name, end.port)[3]
     port_item = chosen_port_item(port, end)
+    notes = remove_replaced(model, performer, (end, port_item))
     item = chosen_action_item(model, performer, end, port_item)
-    notes = add_port_item(model, (performer, port), end)
+    notes += add_port_item(model, (performer, port), end)
     notes += add_line_item(model, performer, item)
     via = {"item": item["name"], "port": end.port, "portItem": port_item["name"]}
     notes += action_ops.set_item_port(
@@ -123,6 +127,27 @@ def set_action_end(model: Model, row: Row, end: ActionEnd) -> Result:
     unlink(found.action, f"{row.step}.{item['name']}")
     notes += work_out_links(model, found)
     return Result([], notes)
+
+
+def remove_replaced(model: Model, performer: Performer, line: tuple) -> list[str]:
+    """The item the line's new item takes the place of goes (checked first:
+    a refusal must change nothing)."""
+    end, port_item = line
+    if not end.replaces:
+        return []
+    if end.item:
+        raise OpError("bad_request", "a line is either an item, or replaces one")
+    old = action_ops.find_parameter(performer.action, end.replaces)
+    if old["direction"] != end.direction:
+        raise OpError("direction", f"{end.replaces} is {old['direction']}")
+    if action_ops.is_ip(model, performer.def_name):
+        raise OpError(
+            "ip_actions", f"{performer.def_name} is IP: its items are its own"
+        )
+    action_ops.check_name(port_item["name"], "item")
+    return action_ops.delete_action_item(
+        model, performer.action_name, end.replaces
+    ).notes
 
 
 def check_direction(direction: str) -> None:
@@ -509,6 +534,30 @@ def end_text(end: tuple) -> str:
     return f"{part}.{port}"
 
 
+# ---------------------------------------------------------------- port items
+
+
+def delete_port_item(model: Model, def_name: str, port_item: str) -> Result:
+    """The port no longer carries the item (`port_item` is "port.item"); the
+    part def's flows to it go too."""
+    port_name, _, item_name = port_item.partition(".")
+    _, _, owner, port = _port(model, def_name, port_name)
+    declared = next(
+        (item for item in port.get("items", []) if item["name"] == item_name), None
+    )
+    if declared is None:
+        raise OpError("not_found", f"port {port_name} has no item {item_name}")
+    port["items"].remove(declared)
+    action_ops.drop_if_empty(port, "items")
+    removed = action_ops.remove_matching(
+        owner, "flows", lambda flow: port_item in (flow["from"], flow["to"])
+    )
+    action_ops.drop_if_empty(owner, "flows")
+    if not removed:
+        return Result([])
+    return Result([], [f"Removed {removed} flow(s) to {port_item}."])
+
+
 # ---------------------------------------------------------------- the table
 
 
@@ -524,10 +573,16 @@ LINK_OPERATIONS = {
                 a.get("port"),
                 a.get("portItem"),
                 a.get("newPortItem"),
+                a.get("replaces"),
             ),
         ),
         ["sheet", "perform", "step", "direction"],
-        ["item", "port", "portItem", "newPortItem"],
+        ["item", "port", "portItem", "newPortItem", "replaces"],
+    ),
+    "delete_port_item": (
+        lambda m, a: delete_port_item(m, a["def"], a["item"]),
+        ["def", "item"],
+        [],
     ),
     "link_actions": (
         lambda m, a: link_actions(m, a["sheet"], a["perform"]),
