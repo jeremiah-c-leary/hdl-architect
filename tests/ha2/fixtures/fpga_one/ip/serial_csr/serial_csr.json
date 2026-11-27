@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "SerialCsrIp",
+    "doc": "UART control/status register file.",
+    "imports": [
+      {
+        "name": "FpgaLib::*"
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "SerialCsr",
+        "specializes": [
+          "RegisterFile"
+        ],
+        "metadata": [
+          {
+            "type": "HdlSource",
+            "values": {
+              "hdl_language": "VHDL-2008",
+              "vhdl_library": "serial_lib",
+              "files": [
+                "rtl/serial_csr_pkg.vhd",
+                "rtl/serial_csr.vhd"
+              ]
+            }
+          },
+          {
+            "type": "Provenance",
+            "values": {
+              "supplier": "internal",
+              "version": "1.0.0",
+              "license": "proprietary"
+            }
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "csr",
+            "type": "AxiLite",
+            "conjugated": true
+          },
+          {
+            "name": "tx_data",
+            "type": "DataIn",
+            "conjugated": true,
+            "doc": "Drives the TX core."
+          },
+          {
+            "name": "rx_data",
+            "type": "DataIn"
+          }
+        ]
+      }
+    ]
+  }
+}

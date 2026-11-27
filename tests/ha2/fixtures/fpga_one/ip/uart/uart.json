@@ -1,0 +1,131 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "UartIp",
+    "doc": "UART transmit and receive cores.",
+    "imports": [
+      {
+        "name": "ScalarValues::*"
+      },
+      {
+        "name": "FpgaLib::*"
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "UartTx",
+        "specializes": [
+          "Rtl"
+        ],
+        "metadata": [
+          {
+            "type": "HdlSource",
+            "values": {
+              "hdl_language": "VHDL-2008",
+              "vhdl_library": "uart_lib",
+              "files": [
+                "rtl/uart_tx.vhd"
+              ]
+            }
+          },
+          {
+            "type": "Provenance",
+            "values": {
+              "supplier": "internal",
+              "version": "2.3.1",
+              "license": "proprietary"
+            }
+          }
+        ],
+        "attributes": [
+          {
+            "name": "clk_freq_hz",
+            "type": "Integer",
+            "default": 100000000
+          },
+          {
+            "name": "baud",
+            "type": "Integer",
+            "default": 115200
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "data",
+            "type": "DataIn"
+          },
+          {
+            "name": "serial",
+            "type": "BitIn",
+            "conjugated": true,
+            "doc": "Out."
+          }
+        ]
+      },
+      {
+        "name": "UartRx",
+        "specializes": [
+          "Rtl"
+        ],
+        "metadata": [
+          {
+            "type": "HdlSource",
+            "values": {
+              "hdl_language": "VHDL-2008",
+              "vhdl_library": "uart_lib",
+              "files": [
+                "rtl/uart_rx.vhd"
+              ]
+            }
+          },
+          {
+            "type": "Provenance",
+            "values": {
+              "supplier": "internal",
+              "version": "2.3.1",
+              "license": "proprietary"
+            }
+          }
+        ],
+        "attributes": [
+          {
+            "name": "clk_freq_hz",
+            "type": "Integer",
+            "default": 100000000
+          },
+          {
+            "name": "baud",
+            "type": "Integer",
+            "default": 115200
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "data",
+            "type": "DataIn",
+            "conjugated": true,
+            "doc": "Out."
+          },
+          {
+            "name": "serial",
+            "type": "BitIn"
+          },
+          {
+            "name": "irq",
+            "type": "BitIn",
+            "conjugated": true,
+            "doc": "Out."
+          }
+        ]
+      }
+    ]
+  }
+}

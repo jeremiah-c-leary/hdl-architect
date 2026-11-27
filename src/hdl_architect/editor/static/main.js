@@ -43,6 +43,9 @@ import * as descriptions from "./descriptions.js";
 import * as partMenu from "./partmenu.js";
 import * as portMenu from "./portmenu.js";
 import * as sheetMenus from "./sheetmenus.js";
+import * as addresses from "./addresses.js";
+import * as addressDialogs from "./addressdialogs.js";
+import * as memoryMap from "./memorymap.js";
 
 // Every module's functions and state, by name: for the tests and the browser
 // console (e.g. ha2.partDef('Control')). Not used by HA 2 itself.
@@ -81,6 +84,9 @@ window.ha2 = Object.assign(
   partMenu,
   portMenu,
   sheetMenus,
+  addresses,
+  addressDialogs,
+  memoryMap,
 );
 
 // ------------------------------------------------------------------ start

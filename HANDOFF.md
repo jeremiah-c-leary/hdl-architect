@@ -239,8 +239,11 @@ as friction shows.
         connections; roots on ports), `core/addresses.py` and `ha report
         addresses` (memory maps from each root, overlap / outside / missing
         window problems, alignment warnings); FpgaOne has a root and windows.
-  - [ ] HA 2: Memory map root… on a port, Windows… on a crossbar.
-  - [ ] HA 2: the memory map view (a tree per root).
+  - [x] HA 2: Memory map root… on a manager port, Memory map windows… and
+        the Crossbar switch on a part (`core/address_ops.py`: set_root,
+        set_windows, set_crossbar); the memory map view, docked under the
+        sheet, with a Map tab (address order) and a Define tab (the tree,
+        windows edited on its lines) (`docs/ha2.md`, "Memory map").
   - [ ] Generated crossbar and top-level `.rdl`, and the crossbar config.
   - [ ] The scaffolder's test register file (ID and scratchpad) for empty blocks.
 - [ ] Files view (scaffold status per block); protocol editor; new package.

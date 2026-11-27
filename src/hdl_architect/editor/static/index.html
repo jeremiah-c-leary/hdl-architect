@@ -21,6 +21,12 @@
       <button id="resetTreeBtn" title="The reset tree of this sheet">
         Reset tree
       </button>
+      <button
+        id="memoryMapBtn"
+        title="The memory maps of the design: from each root, through its crossbars"
+      >
+        Memory map
+      </button>
       <button id="checkBtn" title="Check the whole model">Check</button>
       <button
         id="exportBtn"
@@ -95,6 +101,35 @@
           <div class="ct-body">
             <svg id="seqSvg" xmlns="http://www.w3.org/2000/svg"></svg>
             <div id="actionsTable" hidden></div>
+          </div>
+        </div>
+        <!-- the memory map view (memorymap.js), docked under the sheet -->
+        <div id="memoryMapView" hidden>
+          <div class="ct-bar">
+            <b>Memory map</b>
+            <select id="mmRoot" title="Which root's map"></select>
+            <span class="seq-tabs">
+              <button
+                id="mmTabMap"
+                class="cur"
+                title="The map, in address order"
+              >
+                Map
+              </button>
+              <button
+                id="mmTabDefine"
+                title="Set the root and the crossbars' windows"
+              >
+                Define
+              </button>
+            </span>
+            <span class="rv-spacer"></span>
+            <button id="mmClose" title="Close (Esc)">Close</button>
+          </div>
+          <div class="ct-body">
+            <div id="mmMap"></div>
+            <svg id="mmSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div id="mmNotes"></div>
           </div>
         </div>
       </div>

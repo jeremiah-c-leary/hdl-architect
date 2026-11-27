@@ -294,6 +294,10 @@ export function setPartDef(D, part, def) {
 export function setKind(P, kind) {
   return applyOp("set_kind", { def: P, kind });
 }
+/** Say a part def is a crossbar (`:> Kind, Crossbar`), or is not. */
+export function setCrossbar(P, isCrossbar) {
+  return applyOp("set_crossbar", { def: P, crossbar: isCrossbar });
+}
 export function deletePort(P, name) {
   return applyOp("delete_port", { def: P, port: name }, () => {
     const L = layoutOf(packageOf(P));

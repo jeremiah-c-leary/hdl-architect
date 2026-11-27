@@ -1,0 +1,150 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "SerialSubsystemPkg",
+    "doc": "Serial subsystem: UART TX/RX cores behind an AXI4-Lite register file.",
+    "imports": [
+      {
+        "name": "FpgaLib::*"
+      },
+      {
+        "name": "UartIp::*"
+      },
+      {
+        "name": "SerialCsrIp::*"
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "SerialSubsystem",
+        "specializes": [
+          "Subsystem"
+        ],
+        "metadata": [
+          {
+            "type": "HdlSource",
+            "values": {
+              "hdl_language": "VHDL-2008",
+              "vhdl_library": "serial_subsystem_lib",
+              "files": [
+                "gen/serial_subsystem.vhd"
+              ]
+            }
+          }
+        ],
+        "parts": [
+          {
+            "name": "regs",
+            "type": "SerialCsr",
+            "subsets": [
+              "children"
+            ]
+          },
+          {
+            "name": "tx_core",
+            "type": "UartTx",
+            "subsets": [
+              "children"
+            ],
+            "redefines": {
+              "baud": 921600
+            }
+          },
+          {
+            "name": "rx_core",
+            "type": "UartRx",
+            "subsets": [
+              "children"
+            ],
+            "redefines": {
+              "baud": 921600
+            }
+          }
+        ],
+        "bindings": [
+          {
+            "ends": [
+              "csr",
+              "regs.csr"
+            ]
+          },
+          {
+            "ends": [
+              "uart_tx",
+              "tx_core.serial"
+            ]
+          },
+          {
+            "ends": [
+              "uart_rx",
+              "rx_core.serial"
+            ]
+          },
+          {
+            "ends": [
+              "irq",
+              "rx_core.irq"
+            ]
+          },
+          {
+            "ends": [
+              "clk",
+              "regs.clk"
+            ]
+          },
+          {
+            "ends": [
+              "clk",
+              "tx_core.clk"
+            ]
+          },
+          {
+            "ends": [
+              "clk",
+              "rx_core.clk"
+            ]
+          }
+        ],
+        "connections": [
+          {
+            "ends": [
+              "regs.tx_data",
+              "tx_core.data"
+            ]
+          },
+          {
+            "ends": [
+              "rx_core.data",
+              "regs.rx_data"
+            ]
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "csr",
+            "type": "AxiLite",
+            "conjugated": true
+          },
+          {
+            "name": "uart_tx",
+            "type": "BitIn",
+            "conjugated": true
+          },
+          {
+            "name": "uart_rx",
+            "type": "BitIn"
+          },
+          {
+            "name": "irq",
+            "type": "BitIn",
+            "conjugated": true
+          }
+        ]
+      }
+    ]
+  }
+}
