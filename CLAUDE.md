@@ -218,9 +218,10 @@ review.
 - **VSG** owns VHDL style (team config, pinned version): `--fix` on
   generated VHDL and on a new Rtl skeleton; check-only on designer files.
 - **SystemRDL + PeakRDL** own registers. The model never describes
-  registers; a leaf `.rdl` never refers to the system. `.rdl` files are
-  hand-written (no authoring tool). Proposed, not decided: the architect's
-  address map in HA 2 generates the top-level `.rdl` and crossbar config.
+  registers; a leaf `.rdl` never refers to the system. Leaf `.rdl` files
+  belong to the designers and are hand-written (no authoring tool); the
+  crossbar and top-level `.rdl` files (and the crossbar config) are
+  generated from the windows the architect sets in HA 2 (decision 14).
 - **rdlfmt** owns SystemRDL formatting.
 - **stacv** owns external-interface timing constraints.
 - **ELFWS** owns warning triage of tool logs.
