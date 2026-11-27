@@ -200,21 +200,28 @@ call the actions of a composed action def "steps": `add_step`, ...)
   one, or a new name (made in the sheet's package).
 - **The Actions tab** (in the sequence view, or "Edit actions") is the
   table that edits it, one row per action, like timing arcs:
-  - **#** with ↑ ↓ to move it; **Part usage** that performs it (a part
+  - **#** with ↑ ↓ to move it and ✕ to delete it; **Part usage** that performs it (a part
     whose def does not perform the action def yet is made to; IP only
     offers what it performs); **Action**; **Action def** (what the part
     performs, then the others, or New action def…);
   - **Ingress**: a port of that part, and an item the port carries in
     (or **New item…**: a name and an item def; the port carries it from
-    now on, and the action def gets an item of the same name). **Egress**:
+    now on, and the action def gets an item of the same name; on a line
+    that already is an item, another item def replaces that item, after
+    asking, as it changes every use of the action def). **Egress**:
     the same, out. "+ in" / "+ out" (hover the action's name) add a line;
-    right-click an item for No port or to remove it from the action def;
+    right-click an item for No port, to remove it from the action def, or
+    to remove a port's items nothing uses;
   - **from** and **to** are not chosen: the core works them out from the
     wires (the latest earlier egress on a port wired to the ingress, with
     the same item def; "sheet" for the sheet's own port). ⚠ where nothing
     feeds an ingress, or an old link has no wire;
   - right-click a row to move or delete it, or open the performer's sheet
-    to break the action down; **+ Action** adds one (a name and its part).
+    to break the action down; **+ Action** adds a row: choose its part
+    usage, then its action def (what that part performs first), which
+    makes the action, named after it (`ReadFrame`: `readFrame`);
+  - under the table, the action's own items (what it gets and gives as a
+    whole, by the sheet's own ports), with ✕ on those nothing uses.
   Every edit is one undo step.
 - **The sequence view**: a lifeline per part that performs an action (the
   sheet's own ports on the left), the steps down the page in each part's

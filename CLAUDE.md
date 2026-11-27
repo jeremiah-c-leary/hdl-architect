@@ -30,8 +30,8 @@ frozen in `~/projects/sysmlpy_spike`).
   interfaces, ports, parts, definitions, nets, wires, descriptions, names,
   estimates, the device; in `core/action_ops.py` the performed actions:
   performs, steps, their items, item via port; and in `core/action_links.py`
-  the actions table: a row's ingress and egress, and the links between rows
-  worked out from the wires),
+  the actions table: a row's ingress and egress (replacing an item), the
+  links between rows worked out from the wires, and a port's items),
   run by the same table from HA 2 (`POST /api/op`; `applyOp` in `store.js`:
   save pending edits, run, take the files, one undo step), from `ha op NAME
   key=value ...` (`ha op --list`; the most used also as `ha connect`,

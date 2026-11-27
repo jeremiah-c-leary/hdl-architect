@@ -127,21 +127,26 @@ test("the user's first two rows, entered in the table, link over the new wire", 
     await E(page, `applyOp(${JSON.stringify(name)}, ${JSON.stringify(args)})`);
   await settled();
 
-  // + Action, twice.
-  for (const [name, part] of [
-    ["receiveFrame", "ethernet"],
-    ["readFrame", "Control"],
-  ]) {
-    await E(
-      page,
-      `(() => {
-        document.getElementById("atNewName").value = ${JSON.stringify(name)};
-        document.getElementById("atNewPart").value = ${JSON.stringify(part)};
-        document.querySelector(".at-add button").click();
-      })()`,
-    );
-    await settled();
-  }
+  // + Action: the part usage first, then its action def. Ethernet performs
+  // ReceiveFrame already; ReadFrame is a new action def.
+  await E(page, "document.getElementById('atAddAction').click()");
+  assert.deepEqual(await texts("#actionsTable .at-draft .at-muted"), [
+    "Choose the part usage that performs it.",
+  ]);
+  await choose("draft0|part", "ethernet");
+  const groups = await E(
+    page,
+    `[...document.querySelectorAll('select[data-role="draft0|actionDef"] optgroup')]
+      .map((group) => group.label + ": " + [...group.children].map((o) => o.textContent).join(","))`,
+  );
+  assert.match(groups[0], /^Performed by ethernet: .*ReceiveFrame/);
+  await choose("draft0|actionDef", "ReceiveFrame");
+  await settled();
+  await E(page, "document.getElementById('atAddAction').click()");
+  await choose("draft0|part", "Control");
+  await E(page, "window.prompt = () => 'ReadFrame'");
+  await choose("draft0|actionDef", "(new action def)");
+  await settled();
   assert.deepEqual(await texts("#actionsTable .at-name div"), [
     "receiveFrame",
     "readFrame",
@@ -180,12 +185,78 @@ test("undo takes back the last edit", async () => {
   assert.equal((await rowOf("readFrame")).from, "");
 });
 
+test("an item def changed on a line replaces the item, after asking", async () => {
+  await E(page, "window.confirm = () => true");
+  await E(page, "openActions('readTemperature')");
+  await choose("receiveFrame|out|int|item", "(new item)");
+  await newItem("irq", "Irq");
+  await settled();
+  const behaviour = readModel(server.dir, "wifi_packet_router_behavior.json");
+  const receiveFrame = behaviour.package.actionDefs.find(
+    (def) => def.name === "ReceiveFrame",
+  );
+  assert.deepEqual(
+    receiveFrame.parameters.map((item) => `${item.name} : ${item.type}`),
+    ["irq : Irq"],
+  );
+});
+
+test("right-click offers to remove a port's item nothing uses", async () => {
+  // The old int : Int is still on the Interrupt port, unused since the replace.
+  await E(
+    page,
+    `document.querySelector('select[data-role="receiveFrame|out|irq|item"]')
+      .parentElement.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }))`,
+  );
+  const entries = await texts("#menu .mi");
+  const remove = "Remove unused int : Int from port Interrupt";
+  assert.ok(entries.includes(remove), entries.join(" | "));
+  await E(
+    page,
+    `[...document.querySelectorAll("#menu .mi")].find((entry) => entry.textContent === ${JSON.stringify(remove)}).click()`,
+  );
+  await settled();
+  const subsystems = readModel(
+    server.dir,
+    "wifi_packet_router_subsystems.json",
+  );
+  const ethernet = subsystems.package.partDefs.find(
+    (def) => def.name === "Ethernet",
+  );
+  const interrupt = ethernet.ports.find((port) => port.name === "Interrupt");
+  assert.deepEqual(
+    interrupt.items.map((item) => item.name),
+    ["irq"],
+  );
+});
+
+test("ReadTemperature's own items nothing uses can be removed", async () => {
+  const own = await texts("#actionsTable .at-own-item");
+  assert.ok(own.some((text) => text.startsWith("gets cmdFrame : EthFrame")));
+  await E(
+    page,
+    `[...document.querySelectorAll("#actionsTable .at-own-item")]
+      .find((tag) => tag.textContent.startsWith("gets cmdFrame")).querySelector("button").click()`,
+  );
+  await settled();
+  const left = await texts("#actionsTable .at-own-item");
+  assert.ok(!left.some((text) => text.startsWith("gets cmdFrame")));
+});
+
+test("✕ deletes an action", async () => {
+  await E(page, "window.confirm = () => true");
+  await E(
+    page,
+    `[...document.querySelectorAll("#actionsTable .at-number button")]
+      .filter((b) => b.textContent === "✕")[1].click()`,
+  );
+  await settled();
+  assert.deepEqual(await texts("#actionsTable .at-name div"), ["receiveFrame"]);
+});
+
 test("the Sequence tab shows the same action", async () => {
   await E(page, "showTab('sequence')");
-  assert.deepEqual(await texts("#seqSvg .seq-step-name"), [
-    "1 receiveFrame",
-    "2 readFrame",
-  ]);
+  assert.deepEqual(await texts("#seqSvg .seq-step-name"), ["1 receiveFrame"]);
   await E(page, "closeSequence()");
 });
 
