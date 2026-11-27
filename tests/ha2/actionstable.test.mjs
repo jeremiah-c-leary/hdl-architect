@@ -442,6 +442,14 @@ test("New action… at a part: a new action def, its items with no item def yet"
     "2 readFrame",
     "3 getTemp",
   ]);
+  assert.ok(
+    await E(
+      page,
+      `(() => { const body = document.getElementById("seqSvg").parentElement;
+        return body.scrollTop + body.clientHeight >= body.scrollHeight - 1; })()`,
+    ),
+    "the dock shows the end of the diagram: the new step",
+  );
   assert.deepEqual(actionDef("GetTemp").parameters, [
     { name: "cmd", direction: "in" },
     { name: "cmd_2", direction: "out" },

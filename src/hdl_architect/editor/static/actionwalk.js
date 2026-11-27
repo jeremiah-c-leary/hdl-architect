@@ -30,6 +30,7 @@ import * as sequenceView from "./sequenceview.js";
 import * as state from "./state.js";
 import * as statusbar from "./statusbar.js";
 import * as store from "./store.js";
+import * as svg from "./svg.js";
 
 const EGRESS = "out";
 
@@ -37,11 +38,14 @@ const EGRESS = "out";
 let start = null;
 /** The exit picked last, {step, port}: the walk goes on from it. */
 let lastExit = null;
+/** A pick was saved: show its new step once the diagram has it. */
+let showNewStep = false;
 
 interaction.onPortClick(takeSheetPortClick);
 interaction.onPartClick(takePartClick);
 footprint.onWalkHere(hereOf);
 actions.onActions(showWalkHint);
+actions.onActions(scrollToNewStep);
 sequenceView.onDockOpen(showWalkHint);
 
 /** The action being walked: the dock's, while it is open; null if none. */
@@ -265,7 +269,16 @@ function walkTo(action, here, choice) {
   store.applyOp("walk_step", args, (result) => {
     start = null;
     lastExit = { step: result.data.step, port: choice.exit };
+    showNewStep = true;
   });
+}
+
+/** The dock shows the end of the diagram, where the new step is. */
+function scrollToNewStep() {
+  if (!showNewStep) return;
+  showNewStep = false;
+  const body = svg.$("seqSvg").parentElement;
+  body.scrollTop = body.scrollHeight;
 }
 
 // ------------------------------------------------------------------ the hint
