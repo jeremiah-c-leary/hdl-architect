@@ -285,3 +285,8 @@ attributes are owned by connection usages whose ends resolve to
 `AddressWindow`, and their 4 redefinitions resolve to `AddressWindow`'s
 `base` and `size`; `root` is owned by `ZynqPs`'s port `csr`, typed by
 `MemoryMapRoot`, its 2 redefinitions resolving to `MemoryMapRoot`'s.
+
+SysON check of `:> VendorIp, Crossbar` (project
+`crossbar-specialization-check`): FpgaOne's regenerated text loads with no
+messages, and `AxiCrossbar1to2` has two specializations, resolving to
+FpgaLib's `VendorIp` and `Crossbar`.
