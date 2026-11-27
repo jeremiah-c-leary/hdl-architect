@@ -149,7 +149,7 @@ function isEndOf(end, row) {
 
 /** A click on a port of the sheet while the Actions tab is open: a hop over each of its wires. */
 function takePortClick(end) {
-  if (!isActionsTabOpen()) return false;
+  if (!isDockOpen()) return false;
   const farEnds = farEndsOf(end);
   if (!farEnds.length) {
     statusbar.showHint(`${model.endStr(end)} has no wire: no hop to follow.`);
@@ -158,14 +158,15 @@ function takePortClick(end) {
   const source = sourceOf(end);
   for (const far of farEnds) addHop(source, far);
   table.redraw();
-  scrollToEnd();
+  scrollToNewRows();
   savePendingHops();
   return true;
 }
 
-function isActionsTabOpen() {
+/** The dock is open, on either tab: a click on a port adds a hop. */
+function isDockOpen() {
   if (!table.action) return false;
-  return !svg.$("sequenceView").hidden && !svg.$("actionsTable").hidden;
+  return !svg.$("sequenceView").hidden;
 }
 
 /** The ends of the wires from a port: what a hop from it can reach. */
@@ -215,9 +216,11 @@ function targetOf(far) {
   return { part: far.part, port: far.port, draft: newDraft(far.part) };
 }
 
-function scrollToEnd() {
+/** The table's new rows are at its end; the Sequence tab's strip is at the top. */
+function scrollToNewRows() {
   const body = svg.$("actionsTable").parentElement;
-  body.scrollTop = body.scrollHeight;
+  if (svg.$("actionsTable").hidden) body.scrollTop = 0;
+  else body.scrollTop = body.scrollHeight;
 }
 
 // ------------------------------------------------------------------ the items a hop can carry

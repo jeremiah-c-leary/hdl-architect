@@ -60,6 +60,7 @@ export function showTab(tab) {
   const onActions = tab === ACTIONS_TAB;
   svg.$("seqSvg").classList.toggle("seq-hidden", onActions); // no `hidden` on SVG
   svg.$("actionsTable").hidden = !onActions;
+  svg.$("seqPending").hidden = onActions;
   svg.$("seqTabSequence").classList.toggle("cur", !onActions);
   svg.$("seqTabActions").classList.toggle("cur", onActions);
   svg.$("seqExpandAll").hidden = onActions;
@@ -69,8 +70,12 @@ export function showTab(tab) {
 
 function drawShownTab() {
   svg.$("seqTitle").textContent = titleText(actions.sheetAction(shownAction));
-  if (shownTab === ACTIONS_TAB) actionsTable.renderActionsTable(shownAction);
-  else drawSequence();
+  if (shownTab === ACTIONS_TAB) {
+    actionsTable.renderActionsTable(shownAction);
+    return;
+  }
+  drawSequence();
+  actionsTable.renderPendingStrip(shownAction); // port clicks build it here too
 }
 
 export function closeSequence() {

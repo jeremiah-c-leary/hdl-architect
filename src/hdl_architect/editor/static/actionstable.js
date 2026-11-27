@@ -54,6 +54,41 @@ function redraw() {
   renderActionsTable(shownAction);
 }
 
+/**
+ * On the Sequence tab: the hops and rows not saved yet, above the diagram,
+ * to choose their items and action defs; each saved hop then appears in
+ * the diagram. With none, a hint.
+ */
+export function renderPendingStrip(actionName) {
+  actionHops.showHopsOf(actionName, redrawStrip);
+  shownAction = actionName;
+  const holder = svg.$("seqPending");
+  holder.innerHTML = "";
+  const action = actions.sheetAction(actionName);
+  if (!action) return;
+  if (!actionHops.pendingEntries().length) {
+    holder.append(dom.element("span", "at-muted", STRIP_HINT));
+    return;
+  }
+  holder.append(pendingTable(action));
+}
+
+const STRIP_HINT =
+  "Click a port on the sheet, the one an item leaves by, to add the next action.";
+
+function redrawStrip() {
+  renderPendingStrip(shownAction);
+}
+
+function pendingTable(action) {
+  const table = dom.element("table", "at-table");
+  const body = dom.element("tbody");
+  for (const entry of actionHops.pendingEntries())
+    body.append(pendingRow(entry, action));
+  table.append(headOf(), body);
+  return table;
+}
+
 function tableOf(action) {
   const table = dom.element("table", "at-table");
   const body = dom.element("tbody");

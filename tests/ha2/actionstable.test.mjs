@@ -299,6 +299,30 @@ test("the Sequence tab shows the same actions", async () => {
   await E(page, "showTab('actions')");
 });
 
+test("on the Sequence tab, a click on a port grows the diagram", async () => {
+  await E(page, "showTab('sequence')");
+  assert.match(
+    await E(page, "document.getElementById('seqPending').textContent"),
+    /^Click a port on the sheet/,
+  );
+  await clickPort("Control", "ethernet"); // ETH CSR, wired to ethernet.cmd
+  await choose("hop0|item", "(new item)");
+  await newItem("axi4liteRead", "Axi4LiteRead");
+  await E(page, "window.prompt = () => 'RxFrameReq'");
+  await choose("draft0|actionDef", "(new action def)");
+  await settled();
+  await waitFor(
+    async () => (await texts("#seqSvg .seq-step-name")).length === 3,
+    "the new action in the diagram",
+  );
+  assert.deepEqual(await texts("#seqSvg .seq-step-name"), [
+    "1 receiveFrame",
+    "2 readFrame",
+    "3 rxFrameReq",
+  ]);
+  await E(page, "showTab('actions')");
+});
+
 test("the view docks under the sheet, which stays in sight", async () => {
   await E(page, "openActions('readTemperature')");
   const boxes = await E(

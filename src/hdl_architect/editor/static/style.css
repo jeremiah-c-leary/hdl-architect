@@ -893,3 +893,11 @@ svg text {
 .at-own-item {
   margin-right: 12px;
 }
+/* the Sequence tab's strip of hops not saved yet (actionstable.js) */
+#seqPending {
+  padding: 8px 12px 0;
+  font-size: 12px;
+}
+#seqPending[hidden] {
+  display: none;
+}
