@@ -83,6 +83,8 @@ def block_text(block: Block) -> str:
     """0x4000_1000..0x4000_1FFF  4 KiB  FpgaOne.serial.regs (SerialCsr)"""
     kind = " crossbar" if block.role == CROSSBAR else ""
     name = f"{block.path} ({block.definition}{kind})"
+    if not block.window_set:
+        return f"(window not set)  {name}"
     if block.size is None:
         return f"{address_text(block.base)}  (no window)  {name}"
     end = address_text(block.base + block.size - 1)

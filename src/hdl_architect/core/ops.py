@@ -1314,10 +1314,12 @@ OPERATIONS = {
 
 
 def operations() -> dict:
-    """Every operation: this module's, and the performed actions' (action_ops,
-    action_links, action_hops and action_walk, which build on this module, so
-    they are imported here, when first needed)."""
+    """Every operation: this module's, the performed actions' (action_ops,
+    action_links, action_hops and action_walk) and the address map's
+    (address_ops). They build on this module, so they are imported here,
+    when first needed."""
     from hdl_architect.core.action_hops import HOP_OPERATIONS
+    from hdl_architect.core.address_ops import ADDRESS_OPERATIONS
     from hdl_architect.core.action_links import LINK_OPERATIONS
     from hdl_architect.core.action_ops import ACTION_OPERATIONS
     from hdl_architect.core.action_walk import WALK_OPERATIONS
@@ -1328,6 +1330,7 @@ def operations() -> dict:
         **LINK_OPERATIONS,
         **HOP_OPERATIONS,
         **WALK_OPERATIONS,
+        **ADDRESS_OPERATIONS,
     }
 
 

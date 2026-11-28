@@ -1,0 +1,189 @@
+{
+  "schemaVersion": "0.10",
+  "package": {
+    "name": "FpgaOneTop",
+    "doc": "FPGA One top level (from fpga-hierarchy (27).json, sheet \"FPGA One\").",
+    "imports": [
+      {
+        "name": "FpgaLib::*"
+      },
+      {
+        "name": "ZynqPsIp::*"
+      },
+      {
+        "name": "AxiCrossbarIp::*"
+      },
+      {
+        "name": "DeviceCsrIp::*"
+      },
+      {
+        "name": "SerialSubsystemPkg::*"
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "FpgaOne",
+        "specializes": [
+          "Fpga"
+        ],
+        "metadata": [
+          {
+            "type": "TargetDevice",
+            "values": {
+              "vendor": "AMD",
+              "family": "Zynq UltraScale+",
+              "device": "ZU19EG"
+            }
+          },
+          {
+            "type": "HdlSource",
+            "values": {
+              "hdl_language": "VHDL-2008",
+              "vhdl_library": "fpga_one_lib",
+              "files": [
+                "gen/fpga_one.vhd"
+              ]
+            }
+          }
+        ],
+        "redefines": {
+          "cap_lut": 500000,
+          "cap_ff": 400000,
+          "cap_bram": 4000
+        },
+        "parts": [
+          {
+            "name": "ps",
+            "type": "ZynqPs",
+            "subsets": [
+              "children"
+            ]
+          },
+          {
+            "name": "crossbar",
+            "type": "AxiCrossbar1to2",
+            "subsets": [
+              "children"
+            ]
+          },
+          {
+            "name": "serial",
+            "type": "SerialSubsystem",
+            "subsets": [
+              "children"
+            ]
+          },
+          {
+            "name": "csr",
+            "type": "DeviceCsr",
+            "subsets": [
+              "children"
+            ]
+          }
+        ],
+        "bindings": [
+          {
+            "ends": [
+              "rx",
+              "serial.uart_rx"
+            ]
+          },
+          {
+            "ends": [
+              "tx",
+              "serial.uart_tx"
+            ]
+          },
+          {
+            "ends": [
+              "clk",
+              "ps.clk"
+            ]
+          },
+          {
+            "ends": [
+              "clk",
+              "crossbar.clk"
+            ]
+          },
+          {
+            "ends": [
+              "clk",
+              "serial.clk"
+            ]
+          },
+          {
+            "ends": [
+              "clk",
+              "csr.clk"
+            ]
+          }
+        ],
+        "connections": [
+          {
+            "ends": [
+              "ps.csr",
+              "crossbar.s0"
+            ]
+          },
+          {
+            "ends": [
+              "crossbar.m0",
+              "csr.csr"
+            ],
+            "attributes": [
+              {
+                "name": "window",
+                "type": "AddressWindow",
+                "redefines": {
+                  "base": 0,
+                  "size": 4096
+                }
+              }
+            ]
+          },
+          {
+            "ends": [
+              "crossbar.m1",
+              "serial.csr"
+            ],
+            "attributes": [
+              {
+                "name": "window",
+                "type": "AddressWindow",
+                "redefines": {
+                  "base": 4096,
+                  "size": 4096
+                }
+              }
+            ]
+          },
+          {
+            "ends": [
+              "serial.irq",
+              "ps.irq"
+            ]
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "type": "ClockIn",
+            "redefines": {
+              "frequency_hz": 100000000.0
+            }
+          },
+          {
+            "name": "tx",
+            "type": "BitIn",
+            "conjugated": true
+          },
+          {
+            "name": "rx",
+            "type": "BitIn"
+          }
+        ]
+      }
+    ]
+  }
+}

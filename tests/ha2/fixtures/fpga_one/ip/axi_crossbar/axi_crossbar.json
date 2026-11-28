@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "0.10",
+  "package": {
+    "name": "AxiCrossbarIp",
+    "doc": "AMD AXI crossbar, 1 slave / 2 master ports (vendor IP).",
+    "imports": [
+      {
+        "name": "FpgaLib::*"
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "AxiCrossbar1to2",
+        "specializes": [
+          "VendorIp",
+          "Crossbar"
+        ],
+        "metadata": [
+          {
+            "type": "IpConfig",
+            "values": {
+              "vlnv": "xilinx.com:ip:axi_crossbar:2.1",
+              "configFile": "axi_crossbar_0/axi_crossbar_0.xci"
+            }
+          },
+          {
+            "type": "Provenance",
+            "values": {
+              "supplier": "AMD",
+              "version": "2.1",
+              "license": "AMD IP"
+            }
+          }
+        ],
+        "redefines": {
+          "lut": 500,
+          "ff": 600,
+          "bram": 100
+        },
+        "ports": [
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "s0",
+            "type": "AxiLite",
+            "conjugated": true,
+            "doc": "Slave."
+          },
+          {
+            "name": "m0",
+            "type": "AxiLite",
+            "doc": "Master."
+          },
+          {
+            "name": "m1",
+            "type": "AxiLite",
+            "doc": "Master."
+          }
+        ]
+      }
+    ]
+  }
+}

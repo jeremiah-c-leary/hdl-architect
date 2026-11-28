@@ -896,3 +896,195 @@ svg text {
 .at-own-item {
   margin-right: 12px;
 }
+/* the memory map view (memorymap.js) and its dialogs (addressdialogs.js) */
+#memoryMapView {
+  height: 50%;
+  background: var(--panel);
+  border-top: 2px solid var(--line);
+  display: flex;
+  flex-direction: column;
+}
+#memoryMapView[hidden],
+#mmMap[hidden],
+#mmSvg.mm-hidden {
+  display: none;
+}
+#mmMap {
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.mm-heading {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.mm-message,
+.mm-summary {
+  color: var(--muted);
+  margin: 6px 0;
+}
+.mm-row {
+  display: flex;
+  align-items: stretch;
+  max-width: 760px;
+}
+.mm-address {
+  width: 8.5em;
+  flex: none;
+  font-family: ui-monospace, monospace;
+  color: var(--muted);
+  padding-top: 5px;
+}
+.mm-box {
+  flex: 1;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-top: none;
+  background: var(--bg);
+  cursor: pointer;
+}
+.mm-row:first-of-type .mm-box,
+.mm-crossbar .mm-box {
+  border-top: 1px solid var(--line);
+}
+.mm-crossbar .mm-box {
+  background: var(--edge);
+  font-weight: 600;
+}
+.mm-gap .mm-box {
+  border-style: dashed;
+  background: transparent;
+  color: var(--muted);
+  cursor: default;
+}
+.mm-unset .mm-box {
+  border-style: dashed;
+  color: var(--warn);
+}
+.mm-flagged .mm-box {
+  border-color: var(--err);
+  color: var(--err);
+}
+.mm-box:hover {
+  border-color: var(--accent);
+}
+.mm-name {
+  min-width: 10em;
+}
+.mm-def {
+  color: var(--muted);
+  font-weight: normal;
+  flex: 1;
+}
+.mm-size {
+  font-family: ui-monospace, monospace;
+  font-weight: normal;
+}
+#mmSvg text {
+  font-size: 11px;
+  fill: var(--ink);
+}
+.mm-node rect {
+  fill: var(--bg);
+  stroke: #8795a8;
+  cursor: pointer;
+}
+.mm-node-crossbar rect {
+  fill: var(--edge);
+}
+.mm-node-root rect {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.mm-node.mm-flagged rect {
+  stroke: var(--err);
+}
+.mm-node:hover rect {
+  stroke: var(--accent);
+}
+#mmSvg .mm-node-name {
+  font-weight: 600;
+  pointer-events: none;
+}
+#mmSvg .mm-node-def,
+#mmSvg .mm-tree-hint {
+  fill: var(--muted);
+  pointer-events: none;
+}
+.mm-line {
+  fill: none;
+  stroke: var(--wire);
+  stroke-width: 1.5;
+}
+.mm-line-unset {
+  stroke: var(--warn);
+  stroke-dasharray: 5 4;
+}
+.mm-line-flagged {
+  stroke: var(--err);
+}
+#mmSvg .mm-label {
+  font-family: ui-monospace, monospace;
+}
+#mmSvg .mm-label-edit {
+  cursor: pointer;
+  fill: var(--accent);
+}
+#mmSvg .mm-label-edit:hover {
+  text-decoration: underline;
+}
+#mmNotes {
+  padding: 6px 12px 12px;
+  font-size: 12px;
+}
+.mm-note {
+  color: var(--muted);
+}
+.mm-note.mm-problem {
+  color: var(--err);
+}
+.mm-note.mm-warning {
+  color: var(--warn);
+}
+.mm-dialog {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  width: min(760px, 94vw);
+  padding: 14px;
+}
+.mm-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.25);
+}
+.mm-dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mm-windows input,
+.mm-dialog .est-field input {
+  width: 10em;
+  padding: 4px 6px;
+  line-height: 1.5;
+  font-family: ui-monospace, monospace;
+}
+.mm-absolute {
+  font-family: ui-monospace, monospace;
+  color: var(--muted);
+}
+.mm-muted {
+  color: var(--muted);
+  font-style: italic;
+}
+.mm-dlg-problem {
+  color: var(--err);
+  min-height: 1.2em;
+}
+.mm-danger {
+  color: var(--err);
+  margin-right: auto;
+}

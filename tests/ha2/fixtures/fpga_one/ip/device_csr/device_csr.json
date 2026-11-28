@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "0.4",
+  "package": {
+    "name": "DeviceCsrIp",
+    "doc": "Device information register file.",
+    "imports": [
+      {
+        "name": "FpgaLib::*"
+      }
+    ],
+    "partDefs": [
+      {
+        "name": "DeviceCsr",
+        "specializes": [
+          "RegisterFile"
+        ],
+        "metadata": [
+          {
+            "type": "HdlSource",
+            "values": {
+              "hdl_language": "VHDL-2008",
+              "vhdl_library": "device_csr_lib",
+              "files": [
+                "rtl/device_csr.vhd"
+              ]
+            }
+          },
+          {
+            "type": "Provenance",
+            "values": {
+              "supplier": "internal",
+              "version": "1.0.0",
+              "license": "proprietary"
+            }
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "type": "ClockIn"
+          },
+          {
+            "name": "csr",
+            "type": "AxiLite",
+            "conjugated": true
+          }
+        ]
+      }
+    ]
+  }
+}

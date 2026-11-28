@@ -185,6 +185,51 @@ never estimated.
 - Both follow every change. The numbers come from the core, the same as
   `ha report resources`.
 
+## Memory map
+
+A memory map starts at a **root**: the manager port of whatever addresses the
+design (a processor, a PCIe bridge). A design may have several. A **crossbar**
+divides its address space into one **window** (base and size) per manager
+port. A window's base is an offset from the crossbar's own base, so a
+crossbar inside a subsystem is placed by the window above it. The rest of the
+model (`MemoryMappedManager`, `Crossbar`, `AddressWindow`, `MemoryMapRoot`)
+is described in `core/addresses.py` and in decision 14 in `../HANDOFF.md`.
+
+Setting up a map, click by click:
+
+1. Right-click the root's port on its part (e.g. `ps`'s `csr`) and choose
+   **Memory map root…**. It is offered only on the manager port of a
+   memory-mapped bus (a port def that specializes `MemoryMappedManager`,
+   such as AxiLite).
+2. Type the map's name (it becomes the SystemRDL addrmap name) and the base
+   address the manager sees the map at, then **Save**. This sets the port on
+   the part def, so every instance of the part def is a root.
+   **Remove root** takes the mark off.
+3. Open the view: **Memory map** in the top bar. On the **Define** tab, the
+   tree runs from the root, through each crossbar, to each block. Each line
+   carries its window's absolute address and size.
+4. Click a line's label (or right-click a crossbar box and choose
+   **Memory map windows…**) to open the crossbar's windows. There is one row
+   per manager port: what it reaches, the base (an offset from the
+   crossbar's base), the size, and the resulting absolute span. Type numbers
+   as `0x1000`, `4096`, `4K` or `4 KiB`. Overlaps, a size of 0 and a window
+   outside the crossbar's own are shown as you type, and **Save** waits
+   until there are none. Clear both fields to remove a window.
+5. Repeat for each crossbar. A line with no window yet is dashed and
+   labelled "(no window: click to set)".
+
+The **Map** tab shows the same map as it is read: every block in address
+order, the blocks behind a crossbar indented under it, and the space between
+them marked "(unused)". Click a block to go to it on its sheet. Both tabs list
+the problems (overlapping windows, a missing window, a window outside its
+crossbar's, two maps with one name, ...) and warnings (a base that is not a
+multiple of its size). These are the same as `ha report addresses` prints.
+The picker in the bar chooses the root when there are several.
+
+On a sheet, right-click any part for **Crossbar** (✓ when its part def
+specializes `Crossbar`; click it to change that). A crossbar's menu also has
+**Memory map windows…**. FpgaLib's crossbar IP is already marked.
+
 ## Performed actions
 
 What a part def does is a SysML `perform action`; a composed action def has

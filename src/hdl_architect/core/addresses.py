@@ -50,6 +50,18 @@ SUBORDINATE_ROLE = "subordinate"
 
 
 @dataclass
+class Via:
+    """The connection a crossbar reaches a block over, where it is (for HA 2
+    to edit its window): on part def `sheet`, between `ends`."""
+
+    sheet: str
+    ends: list[str]
+    port: str  # the crossbar's manager port
+    offset: int | None  # the window's base, from the crossbar's; None: not set
+    size: int | None
+
+
+@dataclass
 class Block:
     """One block in a memory map, at its absolute address."""
 
@@ -59,6 +71,14 @@ class Block:
     size: int | None  # None: reached with no window (straight from a root)
     role: str  # CROSSBAR or REGISTERS
     children: list[Block] = field(default_factory=list)
+    sheet: str | None = None  # the part def it is a part of (its sheet)
+    part: str | None = None  # its part name there
+    via: Via | None = None  # None: reached straight from a root
+    managers: list[str] = field(default_factory=list)  # a crossbar's, wired or not
+
+    @property
+    def window_set(self) -> bool:
+        return self.via is None or self.via.offset is not None
 
 
 @dataclass
@@ -69,6 +89,10 @@ class MemoryMap:
     root: str  # the root's port: FpgaOne.ps.csr
     base: int
     top: Block | None  # None: its port is not wired to anything
+    port_def: str = ""  # the part def whose port is the root: ZynqPs
+    port: str = ""  # that port: csr
+    sheet: str = ""  # the part def the root's part is in: FpgaOne
+    part: str | None = None  # that part: ps (None: the sheet's own port)
 
 
 @dataclass
@@ -76,6 +100,7 @@ class AddressReport:
     maps: list[MemoryMap]
     problems: list[str]  # the map is wrong: the report fails
     warnings: list[str]  # worth a look, e.g. a window not aligned to its size
+    flagged: list[str] = field(default_factory=list)  # blocks a problem is about
 
 
 @dataclass
@@ -118,6 +143,7 @@ class Root:
     ref: str  # its end in `place`: "ps.csr", or "csr" for the place's own
     name: str
     base: int
+    port_def: str = ""  # the part def the port is on
 
 
 @dataclass
@@ -128,6 +154,7 @@ class Hop:
     place: Place
     ref: str
     window: dict | None
+    ends: list[str] | None = None  # the connection's (None: over a binding)
 
 
 class MapWalk:
@@ -142,7 +169,7 @@ class MapWalk:
     def roots(self, top: Place) -> list[Root]:
         """The top's own root ports, then its parts' (and theirs), in order."""
         found = [
-            self.root(top, port["name"], port)
+            self.root(top, port_id(port), port, top.definition["name"])
             for port in top.definition.get("ports", [])
             if root_attribute(port)
         ]
@@ -155,11 +182,11 @@ class MapWalk:
             for port in definition.get("ports", []):
                 if root_attribute(port):
                     ref = f"{part['name']}.{port_id(port)}"
-                    found.append(self.root(place, ref, port))
+                    found.append(self.root(place, ref, port, definition["name"]))
             found += self.part_roots(self.inside(place, part))
         return found
 
-    def root(self, place: Place, ref: str, port: dict) -> Root:
+    def root(self, place: Place, ref: str, port: dict, port_def: str) -> Root:
         values = root_attribute(port).get("redefines", {})
         name = values.get("map_name") or end_path(place, ref)
         if port_role(self.model, port) != MANAGER_ROLE:
@@ -167,17 +194,21 @@ class MapWalk:
                 f"{end_path(place, ref)}: a memory map root must be the manager "
                 f"port of a memory-mapped bus (a port def :> {MANAGER})"
             )
-        return Root(place, ref, name, values.get("base", 0))
+        return Root(place, ref, name, values.get("base", 0), port_def)
 
     def memory_map(self, root: Root) -> MemoryMap:
         path = end_path(root.place, root.ref)
+        port = root.ref.split(".")[-1]
+        found = MemoryMap(root.name, path, root.base, None, root.port_def, port)
+        found.sheet = root.place.definition["name"]
+        found.part = root.ref.split(".")[0] if "." in root.ref else None
         hop = self.hop(root.place, root.ref)
         if hop is None:
             self.report.problems.append(f"memory map {root.name}: {path} goes nowhere")
-            return MemoryMap(root.name, path, root.base, None)
+            return found
         size = window_size(hop.window)
-        top = self.reached(hop, (root.base, size), set())
-        return MemoryMap(root.name, path, root.base, top)
+        found.top = self.reached(hop, (root.base, size), set())
+        return found
 
     # ------------------------------------------------------------ the wires
 
@@ -187,7 +218,8 @@ class MapWalk:
         for connection in place.definition.get("connections", []):
             if ref in connection["ends"]:
                 far = other_end(connection, ref)
-                return Hop(place, far, window_attribute(connection))
+                window = window_attribute(connection)
+                return Hop(place, far, window, list(connection["ends"]))
         for binding in place.definition.get("bindings", []):
             if ref in binding["ends"]:
                 return self.through_binding(place, other_end(binding, ref))
@@ -217,7 +249,7 @@ class MapWalk:
         seen.add(key)  # on the way down: a loop comes back to it
         inner = bound_inside(place.definition, port_name)
         if inner is not None:
-            found = self.reached(Hop(place, inner, hop.window), window, seen)
+            found = self.reached(Hop(place, inner, hop.window, hop.ends), window, seen)
         else:
             found = self.block(place, port_name, (window, seen))
         seen.discard(key)  # reached again by another way is not a loop
@@ -227,10 +259,16 @@ class MapWalk:
         (base, size), seen = where
         definition = place.definition["name"]
         hops = self.manager_hops(place, way_in)
+        sheet = place.parent.definition["name"]
         if CROSSBAR_DEF not in part_generals(self.model, definition):
             self.refuse_windows(place, hops)
-            return Block(place.path, definition, base, size, REGISTERS)
-        crossbar = Block(place.path, definition, base, size, CROSSBAR)
+            return Block(
+                place.path, definition, base, size, REGISTERS, [], sheet, place.part
+            )
+        crossbar = Block(
+            place.path, definition, base, size, CROSSBAR, [], sheet, place.part
+        )
+        crossbar.managers = self.manager_ports(place, way_in)
         for manager, hop in hops:
             child = self.windowed(crossbar, (manager, hop), seen)
             if child is not None:
@@ -239,19 +277,24 @@ class MapWalk:
         return crossbar
 
     def manager_hops(self, place: Place, way_in: str) -> list[tuple[str, Hop]]:
-        """The part's manager ports (not the way in, nor roots), and where
-        each leads."""
+        """The part's wired manager ports, and where each leads."""
         hops = []
-        for port in place.definition.get("ports", []):
-            name = port_id(port)
-            if name == way_in or root_attribute(port):
-                continue
-            if port_role(self.model, port) != MANAGER_ROLE:
-                continue
+        for name in self.manager_ports(place, way_in):
             hop = self.hop(place.parent, f"{place.part}.{name}")
             if hop is not None:
                 hops.append((name, hop))
         return hops
+
+    def manager_ports(self, place: Place, way_in: str) -> list[str]:
+        """The part's manager ports, wired or not (not the way in, nor roots)."""
+        found = []
+        for port in place.definition.get("ports", []):
+            name = port_id(port)
+            if name == way_in or root_attribute(port):
+                continue
+            if port_role(self.model, port) == MANAGER_ROLE:
+                found.append(name)
+        return found
 
     def refuse_windows(self, place: Place, hops: list[tuple[str, Hop]]) -> None:
         """A window from a part that is not a crossbar: it says nothing."""
@@ -264,16 +307,25 @@ class MapWalk:
                 )
 
     def windowed(self, crossbar: Block, wire: tuple, seen: set) -> Block | None:
+        """What a crossbar's manager port reaches, in its window. With no
+        window set it is still shown (at the crossbar's base, with no size),
+        so HA 2 can draw the line to set it on."""
         manager, hop = wire
+        values = (hop.window or {}).get("redefines", {})
         if hop.window is None:
             self.report.problems.append(
                 f"{crossbar.path}.{manager}: no address window (every wired "
                 "manager port of a crossbar needs one)"
             )
-            return None
-        values = hop.window.get("redefines", {})
-        base = crossbar.base + values.get("base", 0)
-        return self.reached(hop, (base, values.get("size")), seen)
+        offset = values.get("base") if hop.window is not None else None
+        size = values.get("size")
+        base = crossbar.base + (offset or 0)
+        found = self.reached(hop, (base, size), seen)
+        if found is not None and hop.ends is not None:
+            found.via = Via(
+                hop.place.definition["name"], hop.ends, manager, offset, size
+            )
+        return found
 
     def inside(self, place: Place, part: dict) -> Place:
         definition = part_def(self.model, part["type"])
@@ -286,7 +338,7 @@ class MapWalk:
 
 def check_windows(crossbar: Block, report: AddressReport) -> None:
     """A crossbar's windows: within its own, not overlapping, aligned."""
-    placed = [child for child in crossbar.children if child.size is not None]
+    placed = [c for c in crossbar.children if c.window_set and c.size is not None]
     for child in placed:
         check_inside(crossbar, child, report)
         check_aligned(crossbar, child, report)
@@ -297,16 +349,18 @@ def check_windows(crossbar: Block, report: AddressReport) -> None:
                 f"{crossbar.path}: the windows of {first.path} and {second.path} "
                 f"overlap ({span_text(first)} and {span_text(second)})"
             )
+            report.flagged += [first.path, second.path]
 
 
 def check_inside(crossbar: Block, child: Block, report: AddressReport) -> None:
-    if crossbar.size is None:
+    if crossbar.size is None or not crossbar.window_set:
         return
     if child.base + child.size > crossbar.base + crossbar.size:
         report.problems.append(
             f"{child.path}: its window ({span_text(child)}) ends outside "
             f"{crossbar.path}'s own ({span_text(crossbar)})"
         )
+        report.flagged.append(child.path)
 
 
 def check_aligned(crossbar: Block, child: Block, report: AddressReport) -> None:
@@ -435,3 +489,53 @@ def size_text(size: int) -> str:
 def span_text(block: Block) -> str:
     end = block.base + block.size - 1
     return f"{address_text(block.base)}..{address_text(end)}"
+
+
+# ---------------------------------------------------------------- for HA 2
+
+
+def report_as_dict(report: AddressReport) -> dict:
+    """The report as JSON for HA 2 (GET /api/addresses)."""
+    return {
+        "maps": [map_as_dict(memory_map) for memory_map in report.maps],
+        "problems": report.problems,
+        "warnings": report.warnings,
+        "flagged": sorted(set(report.flagged)),
+    }
+
+
+def map_as_dict(memory_map: MemoryMap) -> dict:
+    top = memory_map.top
+    return {
+        "name": memory_map.name,
+        "root": memory_map.root,
+        "base": memory_map.base,
+        "portDef": memory_map.port_def,
+        "port": memory_map.port,
+        "sheet": memory_map.sheet,
+        "part": memory_map.part,
+        "top": block_as_dict(top) if top is not None else None,
+    }
+
+
+def block_as_dict(block: Block) -> dict:
+    via = block.via
+    return {
+        "path": block.path,
+        "definition": block.definition,
+        "base": block.base,
+        "size": block.size,
+        "role": block.role,
+        "sheet": block.sheet,
+        "part": block.part,
+        "windowSet": block.window_set,
+        "via": None if via is None else {
+            "sheet": via.sheet,
+            "ends": via.ends,
+            "port": via.port,
+            "offset": via.offset,
+            "size": via.size,
+        },
+        "managers": block.managers,
+        "children": [block_as_dict(child) for child in block.children],
+    }  # fmt: skip

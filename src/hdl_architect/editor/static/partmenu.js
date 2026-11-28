@@ -2,6 +2,8 @@
 //
 // Each group of entries is made by its own function from `component`:
 // {sheet, part, def}: the sheet it is on, its part name, and its part def.
+import * as addressDialogs from "./addressdialogs.js";
+import * as addresses from "./addresses.js";
 import * as descriptions from "./descriptions.js";
 import * as dialogs from "./dialogs.js";
 import * as edits from "./edits.js";
@@ -25,6 +27,7 @@ export function partMenu(event, sheet, part) {
     { sep: true },
     ...definitionEntries(component, position),
     ...estimates.estimateItems(component),
+    ...addressEntries(component),
     { sep: true },
     deleteEntry(component),
   ]);
@@ -91,6 +94,25 @@ function definitionEntries(component, position) {
       act: () => changeDefinitionMenu(component, position),
     },
   ];
+}
+
+/** Mark its part def as a crossbar or not; a crossbar's windows. */
+function addressEntries(component) {
+  if (!addresses.canMarkCrossbars()) return [];
+  const { sheet, part, def } = component;
+  const isCrossbar = addresses.isCrossbar(def);
+  const entries = [
+    {
+      label: `Crossbar${isCrossbar ? " ✓" : ""}  (${def}, every instance)`,
+      act: () => edits.setCrossbar(def, !isCrossbar),
+    },
+  ];
+  if (isCrossbar)
+    entries.push({
+      label: "Memory map windows…",
+      act: () => addressDialogs.editWindows(sheet, part),
+    });
+  return entries;
 }
 
 function renameEntries(component) {

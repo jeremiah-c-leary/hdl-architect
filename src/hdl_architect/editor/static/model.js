@@ -237,9 +237,9 @@ export function hasNoSheets() {
   return sheetNames().length === 0;
 }
 
-/** The FPGA's sheet, if the model has one. */
+/** The FPGA's sheet, if the model has one (never the kind Fpga itself). */
 export function fpgaSheet() {
-  return sheetNames().find(isFpga);
+  return sheetNames().find((name) => isFpga(name) && !isKindName(name));
 }
 
 function isFpga(name) {

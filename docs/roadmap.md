@@ -18,7 +18,7 @@ Phases (from `HANDOFF.md`): **0** consolidate, **1** HA 2 for architecture, **2*
 | **CO** | Cores | `.core` per block: files, library, version, licence | designer, scaffolder | partly (trial; files still in `@HdlSource`) |
 | **E** | Estimates | resources (and effort) per block | HA 2 | partly (resources: model, device library and `ha report resources`; HA 2 editing to come; effort later) |
 | **F** | Features | performed actions (HA 1's feature arcs) / scenarios (Gherkin) | HA 2, `.feature` files | partly (model, core, `ha report actions`, HA 2 sequence view, footprint and the walk; scenarios not yet) |
-| **A** | Address map | a window (base, size) per register-bearing block; roots | HA 2 | partly (model, `ha report addresses`; HA 2 editing next) |
+| **A** | Address map | a window (base, size) per register-bearing block; roots | HA 2 | partly (model, `ha report addresses`, HA 2 view and editing; generated `.rdl` next) |
 | **R** | Registers | leaf `.rdl` files | designer | no |
 | **SQ** | Sequences | register sequences by name (proposed input) | designer | no (needs your OK) |
 | **VC** | VC registry | protocol -> verification component | team library | no |
@@ -37,7 +37,7 @@ Phases (from `HANDOFF.md`): **0** consolidate, **1** HA 2 for architecture, **2*
 | Clock and reset nets, clock/reset trees | done | - | ● |  | ● |  |  | ● |  |  |  |  |  |  |  |  |  |  |  |  |
 | CDC and reset-use checks | done | - | ● | ○ | ● |  |  | ● |  |  |  |  |  |  |  |  |  |  |  |  |
 | Move blocks between levels | planned | 1 | ● |  | ● |  | ○ |  |  |  |  |  |  |  |  |  |  |  |  | one command instead of ~10 edits |
-| Address map view and checks | partly | 1 | ● |  | ● |  |  |  |  |  |  |  | ● | ○ |  |  |  |  |  | overlaps, span vs window, reachability |
+| Address map view and checks | done | 1 | ● |  | ● |  |  |  |  |  |  |  | ● | ○ |  |  |  |  |  | overlaps, span vs window, reachability |
 | Resource roll-up, plan vs actual | partly | 3 | ● |  |  |  |  |  |  |  | ● |  |  |  |  |  |  |  | ○ | `ha report resources` rolls estimates up against the target device (Wi-Fi: XCZU9EG); HA 2 entry and display next; plan vs actual needs synthesis results |
 | Feature Mapping (sequence view) | done | 2 | ● | ○ | ● |  |  |  |  |  |  | ● |  |  |  |  |  |  |  | HA 1 had it |
 | Feature footprint (highlighted path) | done | 2 |  |  | ● |  |  |  |  |  |  | ● |  |  | ○ |  |  |  |  | computed from the scenarios |
@@ -50,7 +50,7 @@ Phases (from `HANDOFF.md`): **0** consolidate, **1** HA 2 for architecture, **2*
 | Scaffolded workspace and cores | partly | 0 | ● |  |  | ● |  |  |  | ○ |  |  |  |  |  |  |  |  |  | trial works; team templates needed |
 | Leaf drift check (RTL vs model ports) | planned | 0 | ● | ● |  |  |  |  |  | ● |  |  |  |  |  |  |  |  |  |  |
 | Register file wrapper (PeakRDL) | waits on a decision | 3 |  | ● |  |  |  |  |  |  |  |  |  | ● |  |  |  |  |  | PeakRDL join undecided |
-| Top-level `.rdl` and crossbar config | waits on a decision | 3 | ● |  | ● |  |  |  |  |  |  |  | ● | ● |  |  |  |  |  | address map ownership (A6) |
+| Top-level `.rdl` and crossbar config | next | 3 | ● |  | ● |  |  |  |  |  |  |  | ● | ● |  |  |  |  |  | decided: generated from the windows (decision 14) |
 | Clock constraints (create_clock, CDC) | planned | 3 |  |  | ○ |  |  | ● |  |  |  |  |  |  |  |  |  |  |  |  |
 | Interface timing constraints (stacv) | planned | 3 |  | ● | ● |  |  |  |  |  |  |  |  |  |  |  | ● |  |  |  |
 | Pin constraints | planned | later |  | ○ |  |  |  |  |  |  |  |  |  |  |  |  | ● |  |  |  |

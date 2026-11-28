@@ -2,6 +2,8 @@
 //
 // `port` is {def, name, isEdge}: the part def (or sheet) it belongs to, its
 // name, and whether it is the sheet's own port (drawn on the edge).
+import * as addressDialogs from "./addressdialogs.js";
+import * as addresses from "./addresses.js";
 import * as descriptions from "./descriptions.js";
 import * as dialogs from "./dialogs.js";
 import * as edits from "./edits.js";
@@ -41,7 +43,7 @@ export function portMenu(event, port) {
       label: "Set interface…",
       act: () => portDefMenu(position, { ...port, type: found.type }),
     },
-    clockEntry(event, port, found),
+    ...busEntries(event, port, found),
     ...placeEntries(port),
     ...nameEntries(port, found),
     { sep: true },
@@ -72,6 +74,22 @@ function clockEntry(event, port, found) {
   return {
     label: `Sampled by: ${nets.pairedClock(found) || "(no clock)"}…`,
     act: () => nets.pairMenu(event, port.def, port.name),
+  };
+}
+
+/** What the port is on: the clock that samples it, and its memory map. */
+function busEntries(event, port, found) {
+  return [clockEntry(event, port, found), rootEntry(port, found)];
+}
+
+/** "Memory map root…", on the manager port of a memory-mapped bus. */
+function rootEntry(port, found) {
+  if (!addresses.isManagerPort(found)) return null;
+  const root = addresses.rootOf(found);
+  const tick = root ? ` ✓ (${root.map_name})` : "";
+  return {
+    label: `Memory map root${tick}…  (on ${port.def}, every instance)`,
+    act: () => addressDialogs.editRoot(port.def, port.name),
   };
 }
 
